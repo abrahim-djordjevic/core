@@ -11,6 +11,9 @@ namespace GSInteractiveDeviceAnalyzer
     {
         public static async Task Main()
         {
+            Console.CursorVisible = false;
+
+
             var currentPath = Directory.GetCurrentDirectory();
             var lastPath = string.Empty;
             var selectedIndex = 0;
@@ -26,6 +29,8 @@ namespace GSInteractiveDeviceAnalyzer
 
                     // Keep calculating and don't freeze the UI
                     _ = DiskScannerEngine.CalculateMissingSizesAsync(items);
+
+                    Console.Clear();
                 }
 
                 if (selectedIndex >= items.Count)
@@ -76,7 +81,8 @@ namespace GSInteractiveDeviceAnalyzer
 
         private static void DrawMenu(string currentPath, List<FileSystemInfo> items, int selectedIndex)
         {
-            Console.Clear();
+            Console.SetCursorPosition(0, 0);
+            Console.CursorVisible = false;
 
             Console.ForegroundColor = ConsoleColor.Cyan;
 
@@ -91,12 +97,12 @@ namespace GSInteractiveDeviceAnalyzer
 
             Console.ResetColor();
 
-            Console.WriteLine("=========================================================================");
-            Console.WriteLine($"ROOT: {currentPath}");
-            Console.WriteLine("[UP/DOWN] Navigate | [ENTER] Open | [BACKSPACE] Go Back | [DELETE] Nuke");
-            Console.WriteLine("=========================================================================");
+            Console.WriteLine("=========================================================================".PadRight(Console.WindowWidth - 1));
+            Console.WriteLine($"ROOT: {currentPath}".PadRight(Console.WindowWidth - 1));
+            Console.WriteLine("[UP/DOWN] Navigate | [ENTER] Open | [BACKSPACE] Go Back | [DELETE] Nuke".PadRight(Console.WindowWidth - 1));
+            Console.WriteLine("=========================================================================".PadRight(Console.WindowWidth - 1));
 
-            var maxItems = Math.Max(5, Console.WindowHeight - 6);
+            var maxItems = Math.Max(5, Console.WindowHeight - 16);
             var startIndex = Math.Max(0, selectedIndex - maxItems / 2);
             var endIndex = Math.Min(items.Count, startIndex + maxItems);
 
@@ -118,31 +124,40 @@ namespace GSInteractiveDeviceAnalyzer
 
                 var item = items[i];
 
+                string outputLine;
+
                 if (item is DirectoryInfo dir)
                 {
                     if (DiskScannerEngine.DirectorySizeCache.TryGetValue(dir.FullName, out long size))
                     {
-                        Console.WriteLine($"[DIR] {item.Name,-40} | {(size / 0876.0):F2} MB");
+                        outputLine = $"[DIR] {item.Name,-40} | {(size /1048576.0):F2} MB";
                     }
                     else
                     {
-                        Console.WriteLine($"[DIR] {item.Name,-40} | Calculating...");
+                        outputLine = $"[DIR] {item.Name,-40} | Calculating...";
                     }
 
                 }
                 else if (item is FileInfo file)
                 {
-                    Console.WriteLine($"[FILE] {item.Name,-40} | {(file.Length / 104876.0):F2} MB");
+                    outputLine = $"[FILE] {item.Name,-40} | {(file.Length / 1048576.0):F2} MB";
                 }
 
                 else
                 {
-                    Console.WriteLine($"{item.Name,-40}");
+                    outputLine = $"{item.Name,-40}";
 
                 }
+
+                Console.WriteLine(outputLine.PadRight(Console.WindowWidth - 1));
             }
 
             Console.ResetColor();
+
+            for (int i = Console.CursorTop; i < Console.WindowHeight - 1; i++)
+            {
+                Console.WriteLine(new string(' ', Console.WindowWidth - 1));
+            }
         }
 
     }

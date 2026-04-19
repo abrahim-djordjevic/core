@@ -63,13 +63,31 @@ public static class DiskScannerEngine
     public static void ExecuteDelete(FileSystemInfo item)
     {
         if(item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
-        try
+
+        Console.ResetColor();
+        Console.Write($"\n ARE YOU SURE YOU WANT TO DELETE THIS? ");
+
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine(item.Name);
+        Console.ResetColor();
+
+        Console.Write("Permanently? (Y/N):  ");
+        var confirm = Console.ReadKey(true).Key;
+        if (confirm == ConsoleKey.Y)
         {
-            if(item is DirectoryInfo dir) dir.Delete(true);
-            else if (item is FileInfo file) file.Delete();
+            try
+            {
+                if (item is DirectoryInfo dir) dir.Delete(true);
+                else if (item is FileInfo file) file.Delete();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error deleting item: {ex.Message}");
+                Console.WriteLine("Press Any Key to continue....");
+                Console.ReadKey(true);
+            }
         }
-        catch (Exception )
-        {
-        }
+        
     }
 }
