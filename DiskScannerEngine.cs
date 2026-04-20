@@ -2,11 +2,11 @@
 
 namespace GSInteractiveDeviceAnalyzer;
 
-public static class DiskScannerEngine
+public class DiskScannerEngine
 {
-    public static ConcurrentDictionary<string, long> DirectorySizeCache = new ConcurrentDictionary<string, long>();
+    public ConcurrentDictionary<string, long> DirectorySizeCache = new ConcurrentDictionary<string, long>();
 
-    public static List<FileSystemInfo> LoadDirectoryItems(string path)
+    public List<FileSystemInfo> LoadDirectoryItems(string path)
     {
         var items = new List<FileSystemInfo>();
         try
@@ -23,7 +23,7 @@ public static class DiskScannerEngine
         return items;
     }
 
-    public static async Task CalculateMissingSizesAsync(List<FileSystemInfo> items)
+    public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items)
     {
         var directoriesToScan = items.OfType<DirectoryInfo>()
             .Where(d => !DirectorySizeCache.ContainsKey(d.FullName))
@@ -38,7 +38,7 @@ public static class DiskScannerEngine
         });
     }
 
-    private static long GetDirectorySize(DirectoryInfo dir)
+    private long GetDirectorySize(DirectoryInfo dir)
     {
         long size = 0;
         try
@@ -60,7 +60,7 @@ public static class DiskScannerEngine
         return size;
     }
 
-    public static void ExecuteDelete(FileSystemInfo item)
+    public void ExecuteDelete(FileSystemInfo item)
     {
         if(item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
 

@@ -11,6 +11,7 @@ namespace GSInteractiveDeviceAnalyzer
     {
         public static async Task Main()
         {
+            var scanner = new DiskScannerEngine();
             Console.CursorVisible = false;
 
 
@@ -23,12 +24,12 @@ namespace GSInteractiveDeviceAnalyzer
             {
                 if (currentPath != lastPath)
                 {
-                    items = DiskScannerEngine.LoadDirectoryItems(currentPath);
+                    items = scanner.LoadDirectoryItems(currentPath);
 
                     lastPath = currentPath;
 
                     // Keep calculating and don't freeze the UI
-                    _ = DiskScannerEngine.CalculateMissingSizesAsync(items);
+                    _ = scanner.CalculateMissingSizesAsync(items);
 
                     Console.Clear();
                 }
@@ -38,7 +39,7 @@ namespace GSInteractiveDeviceAnalyzer
                     selectedIndex = Math.Max(0, items.Count - 1);
                 }
 
-                DrawMenu(currentPath, items, selectedIndex);
+                DrawMenu(scanner, currentPath, items, selectedIndex);
 
                 await Task.Delay(50);
 
@@ -71,7 +72,7 @@ namespace GSInteractiveDeviceAnalyzer
                             }
                             break;
                         case ConsoleKey.Delete:
-                            DiskScannerEngine.ExecuteDelete(items[selectedIndex]);
+                            scanner.ExecuteDelete(items[selectedIndex]);
                             lastPath = string.Empty; // Force reload after delete
                             break;
                     }
@@ -79,7 +80,7 @@ namespace GSInteractiveDeviceAnalyzer
             }
         }
 
-        private static void DrawMenu(string currentPath, List<FileSystemInfo> items, int selectedIndex)
+        private static void DrawMenu(DiskScannerEngine scanner, string currentPath, List<FileSystemInfo> items, int selectedIndex)
         {
             Console.SetCursorPosition(0, 0);
             Console.CursorVisible = false;
@@ -128,7 +129,7 @@ namespace GSInteractiveDeviceAnalyzer
 
                 if (item is DirectoryInfo dir)
                 {
-                    if (DiskScannerEngine.DirectorySizeCache.TryGetValue(dir.FullName, out long size))
+                    if (scanner.DirectorySizeCache.TryGetValue(dir.FullName, out long size))
                     {
                         outputLine = $"[DIR] {item.Name,-40} | {(size /1048576.0):F2} MB";
                     }
