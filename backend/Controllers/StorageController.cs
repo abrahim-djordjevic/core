@@ -54,6 +54,31 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             return Ok(response);
         }
 
+        [HttpGet("drive-stats")]
+        public IActionResult GetDriveStats([FromQuery] string driveLetter)
+        {
+            try
+            {
+                var drive = new DriveInfo(driveLetter);
+
+                long total = drive.TotalSize;
+                long free = drive.AvailableFreeSpace;
+                long used = total - free;
+
+                return Ok(new
+                {
+                    TotalBytes = total,
+                    FreeBytes = free,
+                    UsedBytes = used,
+                    PercentageFree = Math.Round((double)free / total * 100, 1)
+                });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new { message = "Could not read hardware telemetry for drive: " + driveLetter });
+            }
+        }
+
         [HttpPost("nuke")]
         public IActionResult DeleteItem([FromQuery] string path)
         {
