@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-using Microsoft.VisualBasic;
-
-namespace GSInteractiveDeviceAnalyzer
+﻿namespace GSInteractiveDeviceAnalyzer
 {
     public static class InteractiveAnalyzer
     {

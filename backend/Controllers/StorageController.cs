@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GSInteractiveDeviceAnalyzer.Controllers
@@ -23,43 +20,29 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         [HttpGet("scan")]
         public async Task<IActionResult> ScanDirectory([FromQuery] string path)
         {
-            var items = _scanner.LoadDirectoryItems(path);
-            await _scanner.CalculateMissingSizesAsync(items);
-
-            var response = items.Select(item =>
+            try
             {
-                DateTime safeDate;
-                try
-                {
-                    safeDate = item.LastWriteTime;
-                }
-                catch
-                {
-                    safeDate = DateTime.UtcNow;
-                }
+                var result = _diskService.ScanDirectory(path);
 
-                long itemSize = 0;
-                if (item is FileInfo f)
+                var response = new ApiResponse<IEnumerable<StorageNode>>
                 {
-                    itemSize = f.Length;
-                }
-                else if (item is DirectoryInfo d && _scanner.DirectorySizeCache.TryGetValue(d.FullName, out long cachedSize))
-                {
-                    itemSize = cachedSize;
-                }
-
-                return new StorageNode
-                {
-                    Name = item.Name,
-                    Path = item.FullName,
-                    Type = item.Attributes.HasFlag(FileAttributes.Directory) ? "Directory" : "File",
-                    SizeBytes = itemSize,
-                    LastModified = safeDate
+                    Success = true,
+                    Message = "Directory scanned successfully.",
+                    Data = result
                 };
 
-            });
+                return Ok(response);
+            }
+            catch (Exception ex) 
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Scan failed: {ex.Message}"
+                });
+            }
 
-            return Ok(response);
+
         }
 
         [HttpGet("drive-stats")]
@@ -69,12 +52,23 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             {
                 var stats = _diskService.GetDriveTelemetry(driveLetter);
 
+                var response = new ApiResponse<DriveTelemetryDto>
+                {
+                    Success = true,
+                    Message = "Telemetry retrieved Successfully.",
+                    Data = stats
+                };
 
-                return Ok(stats);
+
+                return Ok(response);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return BadRequest(new { message = "Could not read hardware telemetry for drive: " + driveLetter });
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Could not read hardware telemetry for drive: " + ex.Message
+                });
             }
         }
 
@@ -83,28 +77,40 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         {
             try
             {
-                if (System.IO.File.Exists(path))
+                var result = _diskService.ObliterateNode(path);
+
+                var response = new ApiResponse<NukeResultDto>
                 {
-                    System.IO.File.Delete(path);
-                    return Ok(new { message = "TARGET NUKED", path = path, type = "File" });
-                }
-                else if (System.IO.Directory.Exists(path))
+                    Success = true,
+                    Message = "Target Nuked Successfully",
+                    Data = result
+                };
+
+                return Ok(response);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
                 {
-                    System.IO.Directory.Delete(path, true);
-                    return Ok(new { message = "TARGET NUKED", path = path, type = "Directory" });
-                }
-                else
-                {
-                    return NotFound(new { message = "Target not found in the Matrix." });
-                }
+                    Success = false,
+                    Message = ex.Message
+                });
             }
             catch (UnauthorizedAccessException)
             {
-                return StatusCode(403, new { message = "ACCESS DENIED: OS level restricted" });
+                return StatusCode(403, new  ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "ACCESS DENIED: OS level restricted"
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = $"NUKE FAILED: {ex.Message}" });
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Could not nuke target " + ex.Message
+                });
             }
         }
     }
