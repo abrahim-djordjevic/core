@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using GSInteractiveDeviceAnalyzer.Models;
+using GSInteractiveDeviceAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GSInteractiveDeviceAnalyzer.Controllers
@@ -10,7 +11,14 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
     [Route("api/[controller]")]
     public class StorageController(DiskScannerEngine scanner) : ControllerBase
     {
+        private readonly IDiskOperationService _diskService;
         private readonly DiskScannerEngine _scanner = scanner;
+
+        public StorageController(DiskScannerEngine scanner, IDiskOperationService diskService) : this(scanner)
+        {
+            this._scanner = scanner;
+            this._diskService = diskService;
+        }
 
         [HttpGet("scan")]
         public async Task<IActionResult> ScanDirectory([FromQuery] string path)
@@ -59,19 +67,10 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         {
             try
             {
-                var drive = new DriveInfo(driveLetter);
+                var stats = _diskService.GetDriveTelemetry(driveLetter);
 
-                long total = drive.TotalSize;
-                long free = drive.AvailableFreeSpace;
-                long used = total - free;
 
-                return Ok(new
-                {
-                    TotalBytes = total,
-                    FreeBytes = free,
-                    UsedBytes = used,
-                    PercentageFree = Math.Round((double)free / total * 100, 1)
-                });
+                return Ok(stats);
             }
             catch (Exception)
             {
