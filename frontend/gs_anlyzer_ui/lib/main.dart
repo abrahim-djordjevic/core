@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/screen/test_screen.dart';
-import 'services/api_service.dart';
+import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
 
 void main() {
   runApp(const AnalyzerApp());
@@ -14,7 +13,7 @@ class AnalyzerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
-      home: const TestScreen(),
+      home: const AnalyzerDashboard(),
     );
   }
 }
