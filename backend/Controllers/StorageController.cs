@@ -79,13 +79,34 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             }
         }
 
-        [HttpPost("nuke")]
-        public IActionResult DeleteItem([FromQuery] string path)
+        [HttpDelete("nuke")]
+        public IActionResult NukeNode([FromQuery] string path)
         {
-            var item = new DirectoryInfo(path).Exists ? (FileSystemInfo)new DirectoryInfo(path) : new FileInfo(path);
-
-            _scanner.ExecuteDelete(item);
-            return Ok(new {message = "Item nuked successfully"});
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    System.IO.File.Delete(path);
+                    return Ok(new { message = "TARGET NUKED", path = path, type = "File" });
+                }
+                else if (System.IO.Directory.Exists(path))
+                {
+                    System.IO.Directory.Delete(path, true);
+                    return Ok(new { message = "TARGET NUKED", path = path, type = "Directory" });
+                }
+                else
+                {
+                    return NotFound(new { message = "Target not found in the Matrix." });
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { message = "ACCESS DENIED: OS level restricted" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"NUKE FAILED: {ex.Message}" });
+            }
         }
     }
 }

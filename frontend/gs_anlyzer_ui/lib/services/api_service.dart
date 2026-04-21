@@ -7,7 +7,13 @@ class ApiService {
   static  const String baseUrl = 'http://localhost:5200/api/storage';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
-    final response = await http.get(Uri.parse('$baseUrl/scan?path=$path'));
+    final uri = Uri.parse('$baseUrl/scan').replace(queryParameters: {
+      'path': path
+    });
+    print('MATRIX BRIDGE FIRING TO: $uri');
+
+
+    final response = await http.get(uri);
 
     if(response.statusCode == 200) {
       List<dynamic> data = json.decode(response.body);
@@ -25,6 +31,21 @@ class ApiService {
       return DriveStats.fromJson(json.decode(response.body));
     } else {
       throw Exception('Failed to load hardware telemetry');
+    }
+  }
+
+  Future<bool> nukeNode(String path) async {
+    final uri = Uri.parse('$baseUrl/nuke').replace(queryParameters: {
+      'path': path
+    });
+
+    print("INITIATING NUKE PROTOCOL ON: $uri");
+    final response = await http.delete(uri);
+
+    if(response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('Nuke Failed: ${response.statusCode} - ${response.body}');
     }
   }
 }
