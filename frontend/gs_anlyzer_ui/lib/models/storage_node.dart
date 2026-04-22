@@ -6,6 +6,8 @@ class StorageNode {
   final String type;
   final int sizeBytes;
   final DateTime lastModified;
+  bool get isDirectory => type.toLowerCase() == 'directory';
+
 
   StorageNode({
     required this.name,

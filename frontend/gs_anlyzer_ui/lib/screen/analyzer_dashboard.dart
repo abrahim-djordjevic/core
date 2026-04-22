@@ -4,12 +4,15 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
+import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
 
 String formatBytes(int bytes) {
-  if (bytes <= 0) return "--";
+  if (bytes < 0) return "--";
+  if (bytes == 0) return "0 B";
   const suffixes = ["B", "KB", "MB", "GB", "TB"];
   var i = (log(bytes) / log(1024)).floor();
-  return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  double val = bytes / pow(1024, i);
+  return '${val < 10 && i > 0 ? val.toStringAsFixed(1) : val.toStringAsFixed(0)} ${suffixes[i]}';
 }
 
 class AnalyzerDashboard extends StatefulWidget {
@@ -177,124 +180,114 @@ class _AnalyzerDashboardState extends State<AnalyzerDashboard> {
                   padding: const EdgeInsets.all(8.0),
                   child: _buildSearchBar(),
                 ))),
-        body: Column(
+        body: Row(
           children: [
-            // Directory List
-            Expanded(
-              child: FutureBuilder<List<StorageNode>>(
-                  future: _directoryData,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return _buildTelemetryHUD();
-                    } else if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'BRIDGE FAILURE: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      );
-                    }
-
-                    // Search Filter Logic
-                    final allNodes = snapshot.data ?? [];
-                    final displayNodes = allNodes.where((node) {
-                      return node.name.toLowerCase().contains(_searchQuery.toLowerCase());
-                    }).toList();
-
-                    bool isRoot = _currentPath == 'C:/' || _currentPath == 'C:\\';
-
-                    if (displayNodes.isEmpty && isRoot) {
-                      return const Center(
-                        child: Text(
-                          'NO DATA FOUND IN SECTOR',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      );
-                    }
-
-                    int itemCount = isRoot ? displayNodes.length : displayNodes.length + 1;
-
-                    return Column(
-                      children: [
-                        _buildTableHeader(),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: itemCount,
-                            itemBuilder: (context, index) {
-                              if (!isRoot && index == 0) {
-                                return _buildGoUpRow();
-                              }
-
-                              final node = displayNodes[isRoot ? index : index - 1];
-                              return _buildDataRow(node);
-                            },
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
+            // LEFT PANEL: Persistent Tree
+            Container(
+              width: 300,
+              decoration: const BoxDecoration(
+                color: Color(0xFF161616),
+                border: Border(right: BorderSide(color: Colors.white10)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('DATA TREE',
+                        style: TextStyle(
+                            color: Colors.white24,
+                            fontFamily: 'Courier',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2)),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: FutureBuilder<List<StorageNode>>(
+                        future: _apiService.scanDirectory('C:/'), // Persistent Root
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.cyan));
+                          return Column(
+                            children: snapshot.data!
+                                .where((n) => n.isDirectory)
+                                .map((node) => DirectoryNodeWidget(
+                                      node: node,
+                                      apiService: _apiService,
+                                      onNuke: _armNukePop,
+                                      onNavigate: _navigateTo,
+                                      depth: 0,
+                                      isTreeView: true,
+                                    ))
+                                .toList(),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            // The Telemetry Bar
-            _buildTelemetryBar(),
+            // RIGHT PANEL: Directory Table
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: FutureBuilder<List<StorageNode>>(
+                        future: _directoryData,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return _buildTelemetryHUD();
+                          } else if (snapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'BRIDGE FAILURE: ${snapshot.error}',
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            );
+                          }
+                          // Search Filter Logic
+                          final allNodes = snapshot.data ?? [];
+                          final displayNodes = allNodes.where((node) {
+                            return node.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                          }).toList();
+
+                          bool isRoot = _currentPath == 'C:/' || _currentPath == 'C:\\' || _currentPath == 'C:';
+
+                          return Column(
+                            children: [
+                              _buildTableHeader(),
+                              if (!isRoot && _searchQuery.isEmpty) _buildGoUpRow(),
+                              Expanded(
+                                child: displayNodes.isEmpty && _searchQuery.isNotEmpty
+                                    ? const Center(
+                                        child: Text(
+                                          'NO DATA FOUND IN SECTOR',
+                                          style: TextStyle(color: Colors.white54),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: displayNodes.length,
+                                        itemBuilder: (context, index) {
+                                          final node = displayNodes[index];
+                                          return _buildDataRow(node);
+                                        },
+                                      ),
+                              ),
+                            ],
+                          );
+                        }),
+                  ),
+                  _buildTelemetryBar(),
+                ],
+              ),
+            ),
           ],
         ));
   }
 
-  Widget _buildTableHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
-        border: Border(bottom: BorderSide(color: Colors.white10)),
-      ),
-      child: const Row(
-        children: [
-          Expanded(flex: 4, child: Text('NAME', style: _headerStyle)),
-          Expanded(flex: 3, child: Text('DATE MODIFIED', style: _headerStyle)),
-          Expanded(flex: 2, child: Text('TYPE', style: _headerStyle)),
-          Expanded(flex: 2, child: Text('SIZE', style: _headerStyle, textAlign: TextAlign.right)),
-          Expanded(flex: 1, child: Text('ACTION', style: _headerStyle, textAlign: TextAlign.center)),
-        ],
-      ),
-    );
-  }
-
-  static const TextStyle _headerStyle = TextStyle(
-    color: Colors.white24,
-    fontFamily: 'Courier',
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 1.5,
-  );
-
-  Widget _buildGoUpRow() {
-    return InkWell(
-      onTap: _navigateUp,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.white10)),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.keyboard_return_outlined, color: Colors.cyanAccent, size: 20),
-            SizedBox(width: 12),
-            Text(
-              '[..] GO UP A DIRECTION',
-              style: TextStyle(
-                color: Colors.cyanAccent,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Courier',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildDataRow(StorageNode node) {
-    final isDir = node.type == 'Directory';
+    final isDir = node.isDirectory;
     return InkWell(
       onTap: isDir ? () => _navigateTo(node.path) : null,
       hoverColor: Colors.white.withValues(alpha: 0.05),
@@ -363,6 +356,87 @@ class _AnalyzerDashboardState extends State<AnalyzerDashboard> {
                 onPressed: () => _armNukePop(node.name, node.path),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1A),
+        border: Border(bottom: BorderSide(color: Colors.white10)),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                SizedBox(width: 32), // Arrow space
+                SizedBox(width: 20), // Icon space
+                SizedBox(width: 8),  // Spacer space
+                Text('NAME', style: _headerStyle),
+              ],
+            ),
+          ),
+          Expanded(flex: 3, child: Text('DATE MODIFIED', style: _headerStyle)),
+          Expanded(flex: 2, child: Text('TYPE', style: _headerStyle)),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Text('SIZE', style: _headerStyle, textAlign: TextAlign.right),
+            ),
+          ),
+          Expanded(flex: 1, child: Text('ACTION', style: _headerStyle, textAlign: TextAlign.center)),
+        ],
+      ),
+    );
+  }
+
+  static const TextStyle _headerStyle = TextStyle(
+    color: Colors.white24,
+    fontFamily: 'Courier',
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1.5,
+  );
+
+  Widget _buildGoUpRow() {
+    return InkWell(
+      onTap: _navigateUp,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white10)),
+        ),
+        child: const Row(
+          children: [
+            Expanded(
+              flex: 4,
+              child: Row(
+                children: [
+                  SizedBox(width: 32), // Arrow space
+                  Icon(Icons.keyboard_return_outlined, color: Colors.cyanAccent, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    '[..] GO UP A DIRECTION',
+                    style: TextStyle(
+                      color: Colors.cyanAccent,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Courier',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(flex: 3, child: SizedBox()),
+            Expanded(flex: 2, child: SizedBox()),
+            Expanded(flex: 2, child: SizedBox()),
+            Expanded(flex: 1, child: SizedBox()),
           ],
         ),
       ),
