@@ -1,10 +1,20 @@
 ﻿using System.Collections.Concurrent;
+using GSInteractiveDeviceAnalyzer.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer;
 
 public class DiskScannerEngine
 {
     public ConcurrentDictionary<string, long> DirectorySizeCache = new ConcurrentDictionary<string, long>();
+
+    private readonly IHubContext<StorageHub> _hub;
+    private int _scannedFilesCount = 0;
+
+    public DiskScannerEngine(IHubContext<StorageHub> hub)
+    {
+        _hub = hub;
+    }
 
     public List<FileSystemInfo> LoadDirectoryItems(string path)
     {
@@ -29,24 +39,40 @@ public class DiskScannerEngine
             .Where(d => !DirectorySizeCache.ContainsKey(d.FullName))
             .ToList();
 
+        _scannedFilesCount = 0;
+        await _hub.Clients.All.SendAsync("ScanProgress", new {status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...."});
+
         await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
         {
-            long size = await Task.Run(() => GetDirectorySize(dir));
+            var size = await Task.Run(() => GetDirectorySize(dir));
 
 
             DirectorySizeCache.TryAdd(dir.FullName, size);
         });
+
+        await _hub.Clients.All.SendAsync("ScanProgress", new {status = "COMPLETED", count = _scannedFilesCount, currentTarget = "Scan completed"});
     }
 
     private long GetDirectorySize(DirectoryInfo dir)
     {
+        if (DirectorySizeCache.TryGetValue(dir.FullName, out var knownSize))
+        {
+            return knownSize;
+        }
         long size = 0;
         try
         {
-            foreach (var file in dir.GetFiles())
+            var files = dir.GetFiles();
+            size += files.Sum(f => f.Length);
+
+            var currentCount = Interlocked.Add(ref _scannedFilesCount, files.Length);
+
+            _ = _hub.Clients.All.SendAsync("ScanProgress", new
             {
-                size += file.Length;
-            }
+                status = "SCANNING",
+                count = currentCount,
+                currentTarget = dir.Name
+            });
 
             foreach (var subDir in dir.GetDirectories())
             {
@@ -56,6 +82,8 @@ public class DiskScannerEngine
         catch (Exception e)
         {
         }
+
+        DirectorySizeCache.TryAdd(dir.FullName, size);
 
         return size;
     }

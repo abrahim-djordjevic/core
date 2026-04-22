@@ -2,6 +2,7 @@
 {
     public static class InteractiveAnalyzer
     {
+        /*
         public static async Task Main()
         {
             var scanner = new DiskScannerEngine();
@@ -153,6 +154,7 @@
                 Console.WriteLine(new string(' ', Console.WindowWidth - 1));
             }
         }
-
+        */
     }
+        
 }

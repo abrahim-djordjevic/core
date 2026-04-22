@@ -1,4 +1,5 @@
 using GSInteractiveDeviceAnalyzer;
+using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Services;
 
@@ -17,12 +18,14 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddScoped<DiskScannerEngine>();
+builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 app.UseCors("AllowFlutterApp");
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<StorageHub>("/storageHub");
 
 app.Run();
