@@ -6,14 +6,12 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class StorageController(DiskScannerEngine scanner) : ControllerBase
+    public class StorageController : ControllerBase
     {
         private readonly IDiskOperationService _diskService;
-        private readonly DiskScannerEngine _scanner = scanner;
 
-        public StorageController(DiskScannerEngine scanner, IDiskOperationService diskService) : this(scanner)
+        public StorageController(IDiskOperationService diskService)
         {
-            this._scanner = scanner;
             this._diskService = diskService;
         }
 

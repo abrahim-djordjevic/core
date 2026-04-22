@@ -16,11 +16,17 @@ class ApiService {
     final response = await http.get(uri);
 
     if(response.statusCode == 200) {
-      List<dynamic> data = json.decode(response.body);
+      final jsonBody = jsonDecode(response.body);
 
-      return data.map((json) => StorageNode.fromJson(json)).toList();
+      if(jsonBody['success'] == true) {
+        print('FEDEX BOX OPENED! Data is: ${jsonBody['data']}');
+        List<dynamic> data = jsonBody['data'];
+        return data.map((json) => StorageNode.fromJson(json)).toList();
+      } else {
+        throw Exception(jsonBody['message']);
+      }
     } else {
-      throw Exception('Failed to load system data from C# Bridge');
+      throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
     }
   }
 
@@ -28,7 +34,13 @@ class ApiService {
     final response = await http.get(Uri.parse('$baseUrl/drive-stats?driveLetter=$driveLetter'));
 
     if(response.statusCode == 200) {
-      return DriveStats.fromJson(json.decode(response.body));
+      final jsonBody = json.decode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return DriveStats.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
     } else {
       throw Exception('Failed to load hardware telemetry');
     }
@@ -43,7 +55,13 @@ class ApiService {
     final response = await http.delete(uri);
 
     if(response.statusCode == 200) {
-      return true;
+      final jsonBody = json.decode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return true;
+      } else {
+        throw Exception(jsonBody['message']);
+      }
     } else {
       throw Exception('Nuke Failed: ${response.statusCode} - ${response.body}');
     }
