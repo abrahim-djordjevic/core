@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
+import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 
 class TelemetryState {
   final String status;
@@ -24,8 +26,9 @@ class TelemetryState {
 
 class TelemetryNotifier extends StateNotifier<TelemetryState> {
   TelemetryService? _telemetryService;
+  final Ref ref;
 
-  TelemetryNotifier() : super(const TelemetryState()) {
+  TelemetryNotifier(this.ref) : super(const TelemetryState()) {
     _initRadio();
   }
 
@@ -34,6 +37,18 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       state = state.copyWith(status: status, count: count, target: target);
       },
     );
+    _telemetryService?.onSectorChanged = (changedFolder) {
+      final currentPath = ref.read(directoryProvider).currentPath;
+
+      final normalizedCurrent = currentPath.replaceAll('\\', '/').toLowerCase();
+      final normalizedChanged = changedFolder.replaceAll('\\', '/').toLowerCase();
+
+      if(normalizedCurrent == normalizedChanged) {
+        print('LIVE UPDATE: REFRESHING UI FOR $currentPath');
+        ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+      }
+      ref.invalidate(driveStatsProvider);
+    };
     _telemetryService?.startListening();
   }
 
@@ -45,5 +60,5 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 }
 
 final telemetryProvider = StateNotifierProvider<TelemetryNotifier, TelemetryState>((ref) {
-  return TelemetryNotifier();
+  return TelemetryNotifier(ref);
 });

@@ -82,6 +82,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
                     itemSize = cachedSize.Size;
                 }
 
+
                 return new StorageNode
                 {
                     Name = item.Name,

@@ -1,7 +1,10 @@
+import 'package:http/http.dart' as ref;
 import 'package:signalr_netcore/signalr_client.dart';
+import '../providers/directory_provider.dart';
 
   class TelemetryService {
     late HubConnection _hubConnection;
+    Function(String)? onSectorChanged;
 
     final Function(String status, int count, String target) onProgressUpdate;
 
@@ -18,6 +21,7 @@ import 'package:signalr_netcore/signalr_client.dart';
           .build();
 
       _hubConnection.on('ScanProgress', _handleIncomingTelemetry);
+      _hubConnection.on('SectorChanged', _handleSectorChanged);
     }
 
     Future<void> startListening() async {
@@ -47,6 +51,17 @@ import 'package:signalr_netcore/signalr_client.dart';
         final target = data['currentTarget'] as String;
 
         onProgressUpdate(status, count, target);
+      }
+    }
+
+    void _handleSectorChanged(List<Object?>? arguments) {
+      if(arguments != null && arguments.isNotEmpty) {
+        String changedFolder = arguments[0].toString();
+        print('RADAR ALERT RECEIVED: Changes in $changedFolder');
+
+        if(onSectorChanged != null) {
+          onSectorChanged!(changedFolder);
+        }
       }
     }
 
