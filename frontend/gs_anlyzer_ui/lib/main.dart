@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const AnalyzerApp());
+  runApp(const ProviderScope(child:  AnalyzerApp()));
 }
 
 class AnalyzerApp extends StatelessWidget {

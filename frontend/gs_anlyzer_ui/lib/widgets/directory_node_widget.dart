@@ -140,30 +140,12 @@ class _DirectoryNodeWidgetState extends State<DirectoryNodeWidget> {
             ),
             child: Row(
               children: [
-                // NAME Column (Includes expansion arrow and depth padding)
+                // NAME Column
                 Expanded(
                   flex: 4,
                   child: Row(
                     children: [
-                      SizedBox(width: leftPadding),
-                      InkWell(
-                        onTap: () {
-                          if (isDir) _toggleExpand();
-                        },
-                        child: SizedBox(
-                          width: 32,
-                          child: isDir
-                              ? Center(
-                                  child: AnimatedRotation(
-                                    turns: _isExpanded ? 0.25 : 0.0,
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: Curves.easeInOut,
-                                    child: const Icon(Icons.keyboard_arrow_right_outlined, color: Colors.cyanAccent, size: 20),
-                                  ),
-                                )
-                              : const SizedBox(),
-                        ),
-                      ),
+                      const SizedBox(width: 32), // Replaced expansion arrow with static padding
                       Icon(
                         isDir ? Icons.folder : Icons.insert_drive_file_outlined,
                         color: isDir ? Colors.amber : Colors.greenAccent,

@@ -28,4 +28,13 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<StorageHub>("/storageHub");
 
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+var engine = app.Services.GetRequiredService<DiskScannerEngine>();
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    Console.WriteLine("SERVER SHUTTING DOWN: Backing up memory to disk...");
+    engine.SaveMemoryToDisk();
+});
+
 app.Run();

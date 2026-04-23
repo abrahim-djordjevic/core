@@ -77,9 +77,9 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
                 long itemSize = 0;
                 if (item is FileInfo f) itemSize = f.Length;
-                else if (item is DirectoryInfo d && _scanner.DirectorySizeCache.TryGetValue(d.FullName, out long cachedSize))
+                else if (item is DirectoryInfo d && _scanner.DirectorySizeCache.TryGetValue(d.FullName, out var cachedSize))
                 {
-                    itemSize = cachedSize;
+                    itemSize = cachedSize.Size;
                 }
 
                 return new StorageNode
