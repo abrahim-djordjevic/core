@@ -33,19 +33,78 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             title: Text(dirState.currentPath, style: const TextStyle(color: Colors.white70, fontFamily: 'Courier', fontWeight: FontWeight.bold)),
             backgroundColor: const Color(0xFF1E1E1E),
             elevation: 0,
+            actions: [
+              PopupMenuButton<dynamic>(
+                icon: const Icon(Icons.sort_outlined),
+                tooltip: 'Sort Option',
+                onSelected: (value) {
+                  if (value is SortMethod) {
+                    ref.read(directoryProvider.notifier).setSortMethod(value);
+                  } else if (value is bool) {
+                    ref.read(directoryProvider.notifier).setAscending(value);
+                  }
+                },
+                itemBuilder: (context) => [
+                  CheckedPopupMenuItem(
+                    value: SortMethod.name,
+                    checked: dirState.sortMethod == SortMethod.name,
+                    child: Text('Name'),
+                  ),
+                   CheckedPopupMenuItem(
+                    value: SortMethod.size,
+                    checked: dirState.sortMethod == SortMethod.size,
+                    child: Text('Total Size'),
+                  ),
+                  CheckedPopupMenuItem(
+                    value: SortMethod.date,
+                    checked: dirState.sortMethod == SortMethod.date,
+                    child: Text('DateModified'),
+                  ),
+                  const PopupMenuDivider(),
+                  CheckedPopupMenuItem(
+                    value: true,
+                    checked: dirState.isAscending == true,
+                    child: Text('Ascending'),
+                  ),
+                  CheckedPopupMenuItem(
+                    value: false,
+                    checked: dirState.isAscending == false,
+                    child: Text('Descending'),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(directoryProvider.notifier).toggleSelectionMode();
+                },
+                child: Text(
+                  dirState.isSelectionMode ? 'Cancel Selection' : 'Select Multiple',
+                  style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontWeight: FontWeight.bold,
+                  )
+                ),
+              ),
+              if (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.delete_forever_outlined, color: Colors.redAccent),
+                  tooltip:'Nuke Selected (${dirState.selectedPath.length})',
+                  onPressed: () => executeNukeProtocol(context, ref)
+                ),
+            ],
             bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(60),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: const DirectorySearchWidget(),
-                )
-            )
+              preferredSize: const Size.fromHeight(60),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: const DirectorySearchWidget(),
+              )
+            ),
         ),
         body: Row(
           children: [
             // LEFT PANEL: Persistent Tree
             SideBarTreeWidget(
-              onNuke: (name, path) => executeNukeProtocol(context, ref, name, path),
+              onNuke: (name, path) => executeNukeProtocol(context, ref, fileName: name, filePath: path),
             ),
             // RIGHT PANEL: Directory Table
             Expanded(
@@ -72,7 +131,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                               return DirectoryNodeWidget(
                                 node: dirState.displayNodes[index],
                                 apiService: ApiService(),
-                                onNuke: (name, path) => executeNukeProtocol(context, ref, name, path),
+                                onNuke: (name, path) => executeNukeProtocol(context, ref, fileName: name, filePath: path),
                                 onNavigate: dirNotifier.scanDirectory,
                                 depth: 0,
                               );

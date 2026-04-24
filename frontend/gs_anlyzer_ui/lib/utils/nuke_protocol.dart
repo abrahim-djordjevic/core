@@ -1,9 +1,20 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
-void executeNukeProtocol(BuildContext context, WidgetRef ref, String fileName, String filePath) {
+void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath}) {
+  final dirState = ref.watch(directoryProvider);
+  final dirNotifier = ref.read(directoryProvider.notifier);
+
+  final isBulk = dirState.isSelectionMode && dirState.selectedPath.isNotEmpty;
+
+  if (!isBulk && filePath == null) return;
+
+  final warningText = isBulk ? 'WARNING: You are about to permanently delete ${dirState.selectedPath.length} items. This cannot be undone.' : 'Warning: You are about to permanently delete "$fileName". This cannot be undone.';
+
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -21,7 +32,7 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, String fileName, S
           style: TextStyle(color: Colors.redAccent, fontFamily: 'Courier', fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'You are about to permanently nuke this:\n\n$fileName\n\nThis bypass the RecycleBin. There is no go back.',
+          warningText,
           style: const TextStyle(
             color: Colors.white70,
           ),
@@ -47,15 +58,28 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, String fileName, S
               Navigator.of(context).pop();
 
               try {
-                bool success = await ApiService().nukeNode(filePath);
-                if (success && context.mounted) {
+                bool allSuccess = true;
+                if(isBulk) {
+                  for (final targetPath in dirState.selectedPath) {
+                    bool success = await ApiService().nukeNode(targetPath);
+                    if (!success) {
+                      allSuccess = false;
+                    }
+                  }
+                  dirNotifier.toggleSelectionMode();
+                } else {
+                  bool success = await ApiService().nukeNode(filePath!);
+                  allSuccess = success;
+                }
+                if (allSuccess && context.mounted) {
                   final currentPath = ref.read(directoryProvider).currentPath;
                   ref.read(directoryProvider.notifier).scanDirectory(currentPath);
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'TARGET NUKE',
+                        isBulk ? 'ALL TARGETS NUKE SUCCESSFUL' : 'TARGET NUKE SUCCESSFUL',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       backgroundColor: Colors.redAccent,
                     ),

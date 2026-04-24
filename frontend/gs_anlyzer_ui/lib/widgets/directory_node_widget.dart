@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'dart:math';
+
+import '../providers/directory_provider.dart';
 
 String formatBytes(int bytes) {
   if (bytes < 0) return "--";
@@ -11,7 +14,7 @@ String formatBytes(int bytes) {
   return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }
 
-class DirectoryNodeWidget extends StatefulWidget {
+class DirectoryNodeWidget extends ConsumerStatefulWidget {
   final StorageNode node;
   final ApiService apiService;
   final int depth;
@@ -30,10 +33,10 @@ class DirectoryNodeWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<DirectoryNodeWidget> createState() => _DirectoryNodeWidgetState();
+  ConsumerState<DirectoryNodeWidget> createState() => _DirectoryNodeWidgetState();
 }
 
-class _DirectoryNodeWidgetState extends State<DirectoryNodeWidget> {
+class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
   bool _isExpanded = false;
   bool _isLoading = false;
   List<StorageNode>? _children;
@@ -140,12 +143,22 @@ class _DirectoryNodeWidgetState extends State<DirectoryNodeWidget> {
             ),
             child: Row(
               children: [
+                // Checkbox for select
+                if(ref.watch(directoryProvider).isSelectionMode)
+                  Checkbox(
+                    value: ref.watch(directoryProvider).selectedPath.contains(widget.node.path),
+                    onChanged: (bool? value) {
+                      ref.read(directoryProvider.notifier).toggleSelection(widget.node.path);
+                    },
+                    activeColor: Colors.cyanAccent,
+                    side: BorderSide(color: Colors.white54),
+                  ),
                 // NAME Column
                 Expanded(
                   flex: 4,
                   child: Row(
                     children: [
-                      const SizedBox(width: 32), // Replaced expansion arrow with static padding
+                      const SizedBox(width: 32),
                       Icon(
                         isDir ? Icons.folder : Icons.insert_drive_file_outlined,
                         color: isDir ? Colors.amber : Colors.greenAccent,
