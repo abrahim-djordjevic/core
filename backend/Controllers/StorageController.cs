@@ -12,7 +12,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
         public StorageController(IDiskOperationService diskService)
         {
-            this._diskService = diskService;
+            _diskService = diskService;
         }
 
         [HttpGet("scan")]
@@ -31,7 +31,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
                 return Ok(response);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 return BadRequest(new ApiResponse<object>
                 {
@@ -96,7 +96,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             }
             catch (UnauthorizedAccessException)
             {
-                return StatusCode(403, new  ApiResponse<object>
+                return StatusCode(403, new ApiResponse<object>
                 {
                     Success = false,
                     Message = "ACCESS DENIED: OS level restricted"

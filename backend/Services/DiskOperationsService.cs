@@ -31,30 +31,63 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
         public NukeResultDto ObliterateNode(string path)
         {
-            if (System.IO.File.Exists(path))
+            try
             {
-                System.IO.File.Delete(path);
-                return new NukeResultDto
+                if (File.Exists(path))
                 {
-                    Message = "TARGET NUKED",
-                    Path = path,
-                    Type = "File"
-                };
-            }
-            else if (System.IO.Directory.Exists(path))
-            {
-                System.IO.Directory.Delete(path, true);
-                return new NukeResultDto
+                    File.Delete(path);
+                    return new NukeResultDto
+                    {
+                        Message = "TARGET NUKED",
+                        Path = path,
+                        Type = "File"
+                    };
+                }
+                else if (Directory.Exists(path))
                 {
-                    Message = "TARGET NUKED",
-                    Path = path,
-                    Type = "Directory"
-                };
+                    Directory.Delete(path, true);
+                    return new NukeResultDto
+                    {
+                        Message = "TARGET NUKED",
+                        Path = path,
+                        Type = "Directory"
+                    };
+                }
+                else
+                {
+                    throw new FileLoadException("TARGET NOT FOUND");
+                }
             }
-            else
+            finally
             {
-                throw new FileLoadException("TARGET NOT FOUND");
+                InvalidateCache(path);
             }
+
+        }
+
+        private void InvalidateCache(string path)
+        {
+            var normalizedPath = Path.GetFullPath(path);
+
+            string pathWithSlash = normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString()) ? normalizedPath : normalizedPath + Path.DirectorySeparatorChar;
+
+            var keysToRemove = _scanner.DirectorySizeCache.Keys
+                .Where(k => k.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase) || k.StartsWith(pathWithSlash, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _scanner.DirectorySizeCache.TryRemove(key, out _);
+            }
+
+            var parent = Path.GetDirectoryName(normalizedPath);
+            while (!string.IsNullOrEmpty(parent))
+            {
+                _scanner.DirectorySizeCache.TryRemove(parent, out _);
+                parent = Path.GetDirectoryName(parent);
+            }
+
+            _scanner.SaveMemoryToDisk();
         }
 
         public IEnumerable<StorageNode> ScanDirectory(string path)

@@ -1,52 +1,36 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 
 void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath}) {
-  final dirState = ref.watch(directoryProvider);
+  final dirState = ref.read(directoryProvider);
   final dirNotifier = ref.read(directoryProvider.notifier);
 
   final isBulk = dirState.isSelectionMode && dirState.selectedPath.isNotEmpty;
 
   if (!isBulk && filePath == null) return;
 
-  final warningText = isBulk ? 'WARNING: You are about to permanently delete ${dirState.selectedPath.length} items. This cannot be undone.' : 'Warning: You are about to permanently delete "$fileName". This cannot be undone.';
+  final warningText = isBulk
+      ? 'WARNING: You are about to permanently delete ${dirState.selectedPath.length} items. This cannot be undone.'
+      : 'Warning: You are about to permanently delete "$fileName". This cannot be undone.';
 
   showDialog(
     context: context,
-    builder: (BuildContext context) {
+    builder: (dialogContext) {
       return AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            color: Colors.redAccent,
-            width: 2,
-          ),
+          side: const BorderSide(color: Colors.redAccent, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
-        title: const Text(
-          'CONFIRM NUKE',
-          style: TextStyle(color: Colors.redAccent, fontFamily: 'Courier', fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          warningText,
-          style: const TextStyle(
-            color: Colors.white70,
-          ),
-        ),
+        title: const Text('CONFIRM NUKE', style: TextStyle(color: Colors.redAccent, fontFamily: 'Courier', fontWeight: FontWeight.bold)),
+        content: Text(warningText, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'ABORT',
-              style: TextStyle(
-                color: Colors.white54,
-                fontFamily: 'Courier',
-              ),
-            ),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ABORT', style: TextStyle(color: Colors.white54, fontFamily: 'Courier')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -55,7 +39,8 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
               side: const BorderSide(color: Colors.redAccent),
             ),
             onPressed: () async {
-              Navigator.of(context).pop();
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(dialogContext);
 
               try {
                 bool allSuccess = true;
@@ -71,26 +56,30 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
                   bool success = await ApiService().nukeNode(filePath!);
                   allSuccess = success;
                 }
-                if (allSuccess && context.mounted) {
-                  final currentPath = ref.read(directoryProvider).currentPath;
-                  ref.read(directoryProvider.notifier).scanDirectory(currentPath);
 
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) {
+                  await Future.delayed(const Duration(milliseconds: 500));
+                  final currentPath = ref.read(directoryProvider).currentPath;
+                  await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+
+                  ref.invalidate(rootTreeProvider);
+
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(
-                        isBulk ? 'ALL TARGETS NUKE SUCCESSFUL' : 'TARGET NUKE SUCCESSFUL',
+                        allSuccess
+                            ? (isBulk ? 'ALL TARGETS NUKE SUCCESSFUL' : 'TARGET NUKE SUCCESSFUL')
+                            : 'PARTIAL NUKE: Some files were locked by the OS',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      backgroundColor: Colors.redAccent,
+                      backgroundColor: allSuccess ? Colors.redAccent : Colors.orange,
                     ),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(
-                      'ERROR: $e',
-                    ),
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('ERROR: $e'),
                     backgroundColor: Colors.orange,
                   ));
                 }

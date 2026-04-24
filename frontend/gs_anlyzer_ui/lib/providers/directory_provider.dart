@@ -94,7 +94,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     try {
       final nodes = await _apiService.scanDirectory(safePath);
 
-      state = state.copyWith(allNodes: nodes, isLoading: false);
+      state = state.copyWith(allNodes: nodes, currentPath: targetPath, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
