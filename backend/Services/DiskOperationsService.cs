@@ -29,40 +29,44 @@ namespace GSInteractiveDeviceAnalyzer.Services
             };
         }
 
-        public NukeResultDto ObliterateNode(string path)
+        public NukeResultDto ObliterateNode(List<string> paths)
         {
-            try
+            foreach (var path in paths)
             {
-                if (File.Exists(path))
+                try
                 {
-                    File.Delete(path);
-                    return new NukeResultDto
+                    if (File.Exists(path))
                     {
-                        Message = "TARGET NUKED",
-                        Path = path,
-                        Type = "File"
-                    };
-                }
-                else if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                    return new NukeResultDto
+                        File.Delete(path);
+                        return new NukeResultDto
+                        {
+                            Message = "TARGET NUKED",
+                            Path = path,
+                            Type = "File"
+                        };
+                    }
+                    else if (Directory.Exists(path))
                     {
-                        Message = "TARGET NUKED",
-                        Path = path,
-                        Type = "Directory"
-                    };
+                        Directory.Delete(path, true);
+                        return new NukeResultDto
+                        {
+                            Message = "TARGET NUKED",
+                            Path = path,
+                            Type = "Directory"
+                        };
+                    }
+                    else
+                    {
+                        throw new FileLoadException("TARGET NOT FOUND");
+                    }
                 }
-                else
+                finally
                 {
-                    throw new FileLoadException("TARGET NOT FOUND");
+                    InvalidateCache(path);
                 }
-            }
-            finally
-            {
-                InvalidateCache(path);
             }
 
+            return new NukeResultDto { Message = "CARPET BOMBING COMPLETE" };
         }
 
         private void InvalidateCache(string path)

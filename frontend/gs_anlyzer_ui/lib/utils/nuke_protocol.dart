@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
+import 'package:gs_analyzer_ui/main.dart';
+import 'package:gs_analyzer_ui/utils/globals.dart';
 
 void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath}) {
   final dirState = ref.read(directoryProvider);
@@ -39,50 +41,33 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
               side: const BorderSide(color: Colors.redAccent),
             ),
             onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(dialogContext);
 
               try {
                 bool allSuccess = true;
+                final api = ApiService();
                 if(isBulk) {
-                  for (final targetPath in dirState.selectedPath) {
-                    bool success = await ApiService().nukeNode(targetPath);
-                    if (!success) {
-                      allSuccess = false;
-                    }
-                  }
+                  allSuccess = await api.nukeNode(dirState.selectedPath.toList());
                   dirNotifier.toggleSelectionMode();
                 } else {
-                  bool success = await ApiService().nukeNode(filePath!);
-                  allSuccess = success;
+                  allSuccess = await api.nukeNode([filePath!]);
                 }
+                
+                final currentPath = ref.read(directoryProvider).currentPath;
+                await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+                ref.invalidate(rootTreeProvider);
 
-                if (context.mounted) {
-                  await Future.delayed(const Duration(milliseconds: 500));
-                  final currentPath = ref.read(directoryProvider).currentPath;
-                  await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+                snackbarKey.currentState?.showSnackBar(SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  content: Text(
+                    allSuccess ? (isBulk ? 'ALL TARGET NUKED SUCCESSFULLY' : 'TARGET NUKED SUCCESSFULLY') : 'PARTIAL NUKE: Some Files were Locked',
 
-                  ref.invalidate(rootTreeProvider);
-
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        allSuccess
-                            ? (isBulk ? 'ALL TARGETS NUKE SUCCESSFUL' : 'TARGET NUKE SUCCESSFUL')
-                            : 'PARTIAL NUKE: Some files were locked by the OS',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      backgroundColor: allSuccess ? Colors.redAccent : Colors.orange,
-                    ),
-                  );
-                }
+                  ),
+                  backgroundColor: allSuccess ? Colors.green : Colors.orange,
+                ),
+                );
               } catch (e) {
-                if (context.mounted) {
-                  messenger.showSnackBar(SnackBar(
-                    content: Text('ERROR: $e'),
-                    backgroundColor: Colors.orange,
-                  ));
-                }
+                snackbarKey.currentState?.showSnackBar(SnackBar(content: Text('ERROR: $e'), backgroundColor: Colors.orange));
               }
             },
             child: const Text('NUKE TARGET', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Courier')),

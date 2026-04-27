@@ -46,13 +46,13 @@ class ApiService {
     }
   }
 
-  Future<bool> nukeNode(String path) async {
+  Future<bool> nukeNode(List<String> paths) async {
     final uri = Uri.parse('$baseUrl/nuke').replace(queryParameters: {
-      'path': path
+      'path': paths
     });
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
-    final response = await http.delete(uri);
+    final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(paths));
 
     if(response.statusCode == 200) {
       final jsonBody = json.decode(response.body);

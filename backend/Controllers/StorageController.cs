@@ -71,11 +71,17 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpDelete("nuke")]
-        public IActionResult NukeNode([FromQuery] string path)
+        public IActionResult NukeNode([FromBody] List<string> paths)
         {
             try
             {
-                var result = _diskService.ObliterateNode(path);
+                foreach (var path in paths)
+                {
+                    if (path.StartsWith("C:\\Windows", StringComparison.OrdinalIgnoreCase))
+                        return BadRequest(new ApiResponse<object>
+                            { Success = false, Message = "CRITICAL OS FILES PROTECTED." });
+                }
+                var result = _diskService.ObliterateNode(paths);
 
                 var response = new ApiResponse<NukeResultDto>
                 {
