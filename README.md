@@ -1,8 +1,11 @@
 # 🦅 GS Interactive Device Analyzer
 
 ![Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+
 ![Riverpod](https://img.shields.io/badge/State-Riverpod-000000?style=for-the-badge&logo=dart&logoColor=white)
+
 ![ASP.NET Core](https://img.shields.io/badge/Backend-ASP.NET_Core_10-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+
 ![SignalR](https://img.shields.io/badge/WebSockets-SignalR-0078D4?style=for-the-badge&logo=microsoft&logoColor=white)
 
 A high-performance, cross-platform system telemetry and disk management engine. Built with a reactive Flutter UI and powered by a multithreaded C# backend, the GS Analyzer provides real-time OS-level insights and execution protocols wrapped in a custom "Cyber-HUD" aesthetic.
