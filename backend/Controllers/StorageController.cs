@@ -71,7 +71,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpDelete("nuke")]
-        public IActionResult NukeNode([FromBody] List<string> paths)
+        public async Task<IActionResult> NukeNode([FromBody] List<string> paths)
         {
             try
             {
@@ -81,7 +81,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                         return BadRequest(new ApiResponse<object>
                             { Success = false, Message = "CRITICAL OS FILES PROTECTED." });
                 }
-                var result = _diskService.ObliterateNode(paths);
+                var result = await _diskService.ObliterateNode(paths);
 
                 var response = new ApiResponse<NukeResultDto>
                 {
@@ -116,6 +116,18 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                     Message = "Could not nuke target " + ex.Message
                 });
             }
+        }
+
+        [HttpPost("abort-nuke")]
+        public IActionResult AbortNuke()
+        {
+            _diskService.TriggerAbort();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Abort Signal received. Brakes applied."
+            });
         }
     }
 }

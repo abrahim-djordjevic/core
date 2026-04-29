@@ -15,6 +15,7 @@ public class CacheEntry
 public class DiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource _nukeCts;
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
     private readonly string _cacheFilePath = "scanner_memory.json";
@@ -118,6 +119,10 @@ public class DiskScannerEngine
         long size = 0;
         try
         {
+            var option = new EnumerationOptions
+            {
+                IgnoreInaccessible = true
+            };
             var files = dir.GetFiles();
             size += files.Sum(f => f.Length);
 
@@ -224,6 +229,18 @@ public class DiskScannerEngine
             _ = _hub.Clients.All.SendAsync("SectorChanged", folderThatChanged.Replace("\\", "/"));
         }
         catch { }
+    }
+
+    public CancellationToken NukeToken()
+    {
+        _nukeCts?.Cancel();
+        _nukeCts = new CancellationTokenSource();
+        return _nukeCts.Token;
+    }
+
+    public void TriggerAbort()
+    {
+        _nukeCts?.Cancel();
     }
 
     public void ExecuteDelete(FileSystemInfo item)

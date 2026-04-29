@@ -1,12 +1,12 @@
-import 'package:http/http.dart' as ref;
 import 'package:signalr_netcore/signalr_client.dart';
-import '../providers/directory_provider.dart';
 
   class TelemetryService {
     late HubConnection _hubConnection;
     Function(String)? onSectorChanged;
 
     final Function(String status, int count, String target) onProgressUpdate;
+    Function(double percentage, String target, int completed)? onNukeProgress;
+    Function()? onNukeAborted;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -22,6 +22,8 @@ import '../providers/directory_provider.dart';
 
       _hubConnection.on('ScanProgress', _handleIncomingTelemetry);
       _hubConnection.on('SectorChanged', _handleSectorChanged);
+      _hubConnection.on('NukeProgress', _handleNukeProgress);
+      _hubConnection.on('NukeAborted', _handleNukeAborted);
     }
 
     Future<void> startListening() async {
@@ -65,4 +67,23 @@ import '../providers/directory_provider.dart';
       }
     }
 
+    void _handleNukeProgress(List<Object?>? arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final data = arguments[0] as Map<String, dynamic>;
+
+        final percentage = (data['percentage'] as num?) ?.toDouble() ?? 0.0;
+        final target = data['target'] as String? ?? '';
+        final completed = (data['completed'] as num?)?.toInt() ?? 0;
+        if (onNukeProgress != null) {
+          onNukeProgress!(percentage, target, completed);
+        }
+      }
+    }
+
+    void _handleNukeAborted(List<Object?>? arguments) {
+      print('RADIO ALERT: NUKE ABORT SIGNAL RECEIVED FROM BACKEND');
+      if (onNukeAborted != null) {
+        onNukeAborted!();
+      }
+    }
   }

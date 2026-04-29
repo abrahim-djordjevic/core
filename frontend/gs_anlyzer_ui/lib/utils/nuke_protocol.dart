@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/main.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
+
+import '../providers/nuke_provider.dart';
+import '../widgets/nuke_progress_dialog.dart';
 
 void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath}) {
   final dirState = ref.read(directoryProvider);
@@ -42,6 +46,18 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
             ),
             onPressed: () async {
               Navigator.pop(dialogContext);
+              ref.read(nukeProgressProvider.notifier).state = 0.0;
+              ref.read(nukeCompletedProvider.notifier).state = 0;
+            ref.read(nukeTargetProvider.notifier).state = 'INITIALIZING OBLITERATION....';
+
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const NukeProgressDialog(),
+              );
+
+              final masterNavigator = Navigator.of(context, rootNavigator: true);
 
               try {
                 bool allSuccess = true;
@@ -52,10 +68,13 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
                 } else {
                   allSuccess = await api.nukeNode([filePath!]);
                 }
+
+                masterNavigator.pop();
                 
                 final currentPath = ref.read(directoryProvider).currentPath;
                 await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
                 ref.invalidate(rootTreeProvider);
+                ref.invalidate(driveStatsProvider);
 
                 snackbarKey.currentState?.showSnackBar(SnackBar(
                   behavior: SnackBarBehavior.floating,
@@ -67,6 +86,7 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
                 ),
                 );
               } catch (e) {
+                masterNavigator.pop();
                 snackbarKey.currentState?.showSnackBar(SnackBar(content: Text('ERROR: $e'), backgroundColor: Colors.orange));
               }
             },

@@ -66,4 +66,12 @@ class ApiService {
       throw Exception('Nuke Failed: ${response.statusCode} - ${response.body}');
     }
   }
+
+  Future<void> abortNuke() async {
+    try {
+      await http.post(Uri.parse('$baseUrl/abort-nuke'));
+    } catch (e) {
+      print('Failed to send abort signal: $e');
+    }
+  }
 }

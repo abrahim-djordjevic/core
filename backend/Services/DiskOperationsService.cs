@@ -1,15 +1,19 @@
-﻿using GSInteractiveDeviceAnalyzer.Interfaces;
+﻿using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
+using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer.Services
 {
     public class DiskOperationsService : IDiskOperationService
     {
         private readonly DiskScannerEngine _scanner;
+        private readonly IHubContext<StorageHub> _hubContext;
 
-        public DiskOperationsService(DiskScannerEngine scanner)
+        public DiskOperationsService(DiskScannerEngine scanner, IHubContext<StorageHub> hubContext)
         {
             _scanner = scanner;
+            _hubContext = hubContext;
         }
 
         public DriveTelemetryDto GetDriveTelemetry(string driveLetter)
@@ -17,7 +21,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             var drive = new DriveInfo(driveLetter);
 
             var total = drive.TotalSize;
-            var free = drive.AvailableFreeSpace;
+            var free = drive.TotalFreeSpace;
             var used = total - free;
 
             return new DriveTelemetryDto
@@ -29,40 +33,49 @@ namespace GSInteractiveDeviceAnalyzer.Services
             };
         }
 
-        public NukeResultDto ObliterateNode(List<string> paths)
+        public async Task<NukeResultDto> ObliterateNode(List<string> paths)
         {
+            var totalNodes = paths.Count;
+            var processedNodes = 0;
+            var cancelToken = _scanner.NukeToken();
             foreach (var path in paths)
             {
+                if (cancelToken.IsCancellationRequested)
+                {
+                    await _hubContext.Clients.All.SendAsync("NukeAborted", "OPERATION ABORTED BY USER");
+                    return new NukeResultDto { Message = "PARTIAL NUKE: ABORTED" };
+                }
                 try
                 {
                     if (File.Exists(path))
                     {
                         File.Delete(path);
-                        return new NukeResultDto
-                        {
-                            Message = "TARGET NUKED",
-                            Path = path,
-                            Type = "File"
-                        };
                     }
                     else if (Directory.Exists(path))
                     {
                         Directory.Delete(path, true);
-                        return new NukeResultDto
-                        {
-                            Message = "TARGET NUKED",
-                            Path = path,
-                            Type = "Directory"
-                        };
                     }
                     else
                     {
-                        throw new FileLoadException("TARGET NOT FOUND");
+                        continue;
                     }
-                }
-                finally
-                {
+
                     InvalidateCache(path);
+
+                    processedNodes++;
+                    var percentage = Math.Round(((double)processedNodes / totalNodes) * 100, 1);
+
+                    await _hubContext.Clients.All.SendAsync("NukeProgress", new
+                    {
+                        completed = processedNodes,
+                        total = totalNodes,
+                        percentage = percentage,
+                        currentTarget = Path.GetFileName(path)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[NUKE ERROR] Failed to Nuke {path}: {ex.Message}");
                 }
             }
 
@@ -129,6 +142,11 @@ namespace GSInteractiveDeviceAnalyzer.Services
                     LastModified = safeDate
                 };
             });
+        }
+
+        public void TriggerAbort()
+        {
+            _scanner.TriggerAbort();
         }
     }
 }

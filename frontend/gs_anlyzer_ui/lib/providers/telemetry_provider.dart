@@ -4,6 +4,8 @@ import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 
+import 'nuke_provider.dart';
+
 class TelemetryState {
   final String status;
   final int count;
@@ -37,7 +39,23 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       state = state.copyWith(status: status, count: count, target: target);
       },
     );
+
+    _telemetryService?.onNukeProgress = (percentage, target, completed) {
+      ref.read(nukeProgressProvider.notifier).state = percentage;
+      ref.read(nukeTargetProvider.notifier).state = target;
+      ref.read(nukeCompletedProvider.notifier).state = completed;
+      };
+
+      _telemetryService?.onNukeAborted = () {
+        ref.read(nukeProgressProvider.notifier).state = 0.0;
+        ref.read(nukeTargetProvider.notifier).state = 'ABORTED';
+      };
+
     _telemetryService?.onSectorChanged = (changedFolder) {
+      final currentProgress = ref.read(nukeProgressProvider);
+      if (currentProgress > 0.0 && currentProgress < 100.0) {
+        return;
+      }
       final currentPath = ref.read(directoryProvider).currentPath;
 
       final normalizedCurrent = currentPath.replaceAll('\\', '/').toLowerCase();
