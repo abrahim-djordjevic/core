@@ -109,6 +109,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
         public IEnumerable<StorageNode> ScanDirectory(string path)
         {
+            PurgeDeadMemory(path);
             var items = _scanner.LoadDirectoryItems(path);
 
             _scanner.CalculateMissingSizesAsync(items).GetAwaiter().GetResult();
@@ -142,6 +143,30 @@ namespace GSInteractiveDeviceAnalyzer.Services
                     LastModified = safeDate
                 };
             });
+        }
+
+        private void PurgeDeadMemory(string currentPath)
+        {
+            var memoryChanged = false;
+
+            var keysToCheck = _scanner.DirectorySizeCache.Keys
+                .Where(k => k.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var key in keysToCheck)
+            {
+                if (!Directory.Exists(key))
+                {
+                    _scanner.DirectorySizeCache.TryRemove(key, out _);
+                    memoryChanged = true;
+                    Console.WriteLine($"MEMORY PURGED: Removed Ghost Folder -> {key}");
+                }
+            }
+
+            if (memoryChanged)
+            {
+                _scanner.SaveMemoryToDisk();
+            }
         }
 
         public void TriggerAbort()

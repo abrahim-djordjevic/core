@@ -91,6 +91,11 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                   tooltip:'Nuke Selected (${dirState.selectedPath.length})',
                   onPressed: () => executeNukeProtocol(context, ref)
                 ),
+              IconButton(
+                icon: const Icon(Icons.refresh_outlined, color: Colors.cyanAccent),
+                tooltip: 'Refresh',
+                onPressed: () => dirNotifier.scanDirectory(dirState.currentPath)
+              ),
             ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(60),

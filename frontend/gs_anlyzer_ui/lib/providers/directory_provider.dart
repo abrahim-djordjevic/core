@@ -88,6 +88,10 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   }
 
   Future<void> scanDirectory(String targetPath) async {
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+    );
     String safePath = targetPath.replaceAll('\\', '/');
     state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: []);
 
