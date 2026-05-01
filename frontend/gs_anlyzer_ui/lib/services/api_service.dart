@@ -74,4 +74,13 @@ class ApiService {
       print('Failed to send abort signal: $e');
     }
   }
+
+  Future<void> abortScan() async {
+    try {
+      print('SENDING SCAN ABORT SIGNAL...');
+      await http.post(Uri.parse('$baseUrl/abort-scan'));
+    } catch (e) {
+      print('Failed to send abort signal: $e');
+    }
+  }
 }

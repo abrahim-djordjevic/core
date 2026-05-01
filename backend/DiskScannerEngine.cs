@@ -15,7 +15,8 @@ public class CacheEntry
 public class DiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
-    private CancellationTokenSource _nukeCts;
+    private CancellationTokenSource? _nukeCts;
+    private CancellationTokenSource? _scanCts;
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
     private readonly string _cacheFilePath = "scanner_memory.json";
@@ -86,7 +87,7 @@ public class DiskScannerEngine
 
                 await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
                 {
-                    var size = await Task.Run(() => GetDirectorySize(dir));
+                    var size = await Task.Run(() => GetDirectorySize(dir, token));
 
                     DirectorySizeCache[dir.FullName] = new CacheEntry
                     {
@@ -107,8 +108,13 @@ public class DiskScannerEngine
         
     }
 
-    private long GetDirectorySize(DirectoryInfo dir)
+    private long GetDirectorySize(DirectoryInfo dir, CancellationToken token)
     {
+        if(token.IsCancellationRequested)
+        {
+            return 0;
+        }
+
         if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))
         {
             if(dir.LastWriteTimeUtc <= entry.LastUpdated)
@@ -135,9 +141,9 @@ public class DiskScannerEngine
                 currentTarget = dir.Name
             });
 
-            foreach (var subDir in dir.GetDirectories())
+            foreach (var subDir in dir.GetDirectories("*", option))
             {
-                size += GetDirectorySize(subDir);
+                size += GetDirectorySize(subDir, token);
             }
         }
         catch (Exception e)
@@ -238,11 +244,23 @@ public class DiskScannerEngine
         return _nukeCts.Token;
     }
 
-    public void TriggerAbort()
+    public void TriggerNukeAbort()
     {
         _nukeCts?.Cancel();
     }
 
+    public CancellationToken ScanToken()
+    {
+        _scanCts?.Cancel();
+        _scanCts  = new CancellationTokenSource();
+        return _scanCts.Token;
+    }
+
+    public void TriggerScanAbort()
+    {
+        _scanCts?.Cancel();
+        Console.WriteLine("SCAN ABORT SIGNAL RECEIVED");
+    }
     public void ExecuteDelete(FileSystemInfo item)
     {
         if(item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;

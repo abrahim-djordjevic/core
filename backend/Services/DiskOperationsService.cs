@@ -169,9 +169,14 @@ namespace GSInteractiveDeviceAnalyzer.Services
             }
         }
 
-        public void TriggerAbort()
+        public void TriggerNukeAbort()
         {
-            _scanner.TriggerAbort();
+            _scanner.TriggerNukeAbort();
+        }
+
+        public void TriggerScanAbort()
+        {
+            _scanner.TriggerScanAbort();
         }
     }
 }

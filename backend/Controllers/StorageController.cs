@@ -121,7 +121,19 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         [HttpPost("abort-nuke")]
         public IActionResult AbortNuke()
         {
-            _diskService.TriggerAbort();
+            _diskService.TriggerNukeAbort();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Abort Signal received. Brakes applied."
+            });
+        }
+
+        [HttpPost("abort-scan")]
+        public IActionResult AbortScan()
+        {
+            _diskService.TriggerScanAbort();
 
             return Ok(new ApiResponse<object>
             {
