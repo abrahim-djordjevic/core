@@ -1,4 +1,5 @@
-﻿using GSInteractiveDeviceAnalyzer.Hubs;
+﻿using System.Drawing;
+using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -38,6 +39,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             var totalNodes = paths.Count;
             var processedNodes = 0;
             var cancelToken = _scanner.NukeToken();
+
             foreach (var path in paths)
             {
                 if (cancelToken.IsCancellationRequested)
@@ -49,11 +51,12 @@ namespace GSInteractiveDeviceAnalyzer.Services
                 {
                     if (File.Exists(path))
                     {
+                        File.SetAttributes(path, FileAttributes.Normal);
                         File.Delete(path);
                     }
                     else if (Directory.Exists(path))
                     {
-                        Directory.Delete(path, true);
+                        AggressiveObliterate(path);
                     }
                     else
                     {
@@ -82,11 +85,24 @@ namespace GSInteractiveDeviceAnalyzer.Services
             return new NukeResultDto { Message = "CARPET BOMBING COMPLETE" };
         }
 
+        private void AggressiveObliterate(string targetPath)
+        {
+            var dir = new DirectoryInfo(targetPath);
+
+            foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            {
+                info.Attributes = FileAttributes.Normal;
+            }
+
+            dir.Attributes = FileAttributes.Normal;
+            dir.Delete(true);
+        }
+
         private void InvalidateCache(string path)
         {
             var normalizedPath = Path.GetFullPath(path);
 
-            string pathWithSlash = normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString()) ? normalizedPath : normalizedPath + Path.DirectorySeparatorChar;
+            var pathWithSlash = normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString()) ? normalizedPath : normalizedPath + Path.DirectorySeparatorChar;
 
             var keysToRemove = _scanner.DirectorySizeCache.Keys
                 .Where(k => k.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase) || k.StartsWith(pathWithSlash, StringComparison.OrdinalIgnoreCase))
@@ -114,7 +130,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
             _scanner.CalculateMissingSizesAsync(items).GetAwaiter().GetResult();
 
-            return items.Select(item =>
+            var nodes = items.Select(item =>
             {
                 DateTime safeDate;
                 try
@@ -128,7 +144,8 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
                 long itemSize = 0;
                 if (item is FileInfo f) itemSize = f.Length;
-                else if (item is DirectoryInfo d && _scanner.DirectorySizeCache.TryGetValue(d.FullName, out var cachedSize))
+                else if (item is DirectoryInfo d &&
+                         _scanner.DirectorySizeCache.TryGetValue(d.FullName, out var cachedSize))
                 {
                     itemSize = cachedSize.Size;
                 }
@@ -142,7 +159,17 @@ namespace GSInteractiveDeviceAnalyzer.Services
                     SizeBytes = itemSize,
                     LastModified = safeDate
                 };
-            });
+            }).ToList();
+
+            var actualFolderSize = nodes.Sum(n => n.SizeBytes);
+
+            var normalizedPath = Path.GetFullPath(path);
+            _scanner.DirectorySizeCache[normalizedPath] = new CacheEntry
+                { Size = actualFolderSize, LastUpdated = DateTime.UtcNow };
+
+            _scanner.SaveMemoryToDisk();
+
+            return nodes;
         }
 
         private void PurgeDeadMemory(string currentPath)

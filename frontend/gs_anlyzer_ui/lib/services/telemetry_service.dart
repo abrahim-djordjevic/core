@@ -3,8 +3,7 @@ import 'package:signalr_netcore/signalr_client.dart';
   class TelemetryService {
     late HubConnection _hubConnection;
     Function(String)? onSectorChanged;
-
-    final Function(String status, int count, String target) onProgressUpdate;
+    final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
     Function(double percentage, String target, int completed)? onNukeProgress;
     Function()? onNukeAborted;
 
@@ -48,11 +47,13 @@ import 'package:signalr_netcore/signalr_client.dart';
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
 
-        final status = data['status'] as String;
-        final count = data['count'] as int;
-        final target = data['currentTarget'] as String;
+        final status = data['status'] as String?;
+        final completed = (data['completed'] as num?)?.toInt();
+        final total = (data['total'] as num?)?.toInt();
+        final percentageComplete = (data['percentComplete'] as num?)?.toDouble();
+        final target = data['currentTarget'] as String?;
 
-        onProgressUpdate(status, count, target);
+        onProgressUpdate(status, completed, total, percentageComplete, target);
       }
     }
 

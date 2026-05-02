@@ -8,19 +8,25 @@ import 'nuke_provider.dart';
 
 class TelemetryState {
   final String status;
-  final int count;
+  final int completed;
+  final int total;
+  final double percentComplete;
   final String target;
 
   const TelemetryState({
     this.status = 'IDLE',
-    this.count = 0,
+    this.completed = 0,
+    this.total = 0,
+    this.percentComplete = 0.0,
     this.target = '',
   });
 
-  TelemetryState copyWith({String? status, int? count, String? target}) {
+  TelemetryState copyWith({String? status, int? completed, int? total, double? percentComplete, String? target}) {
     return TelemetryState(
       status: status ?? this.status,
-      count: count ?? this.count,
+      completed: completed ?? this.completed,
+      total: total ?? this.total,
+      percentComplete: percentComplete ?? this.percentComplete,
       target: target ?? this.target,
     );
   }
@@ -35,8 +41,8 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
   }
 
   void _initRadio() {
-    _telemetryService = TelemetryService(onProgressUpdate: (status, count, target) {
-      state = state.copyWith(status: status, count: count, target: target);
+    _telemetryService = TelemetryService(onProgressUpdate: (status, completed, total, percentComplete, target) {
+      state = state.copyWith(status: status, completed: completed, total: total, percentComplete: percentComplete, target: target);
       },
     );
 

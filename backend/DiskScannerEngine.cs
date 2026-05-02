@@ -19,6 +19,7 @@ public class DiskScannerEngine
     private CancellationTokenSource? _scanCts;
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
+    private int _deepScanThrottle = 0;
     private readonly string _cacheFilePath = "scanner_memory.json";
     private FileSystemWatcher? _liveRader;
     private readonly object _radarLock = new object();
@@ -80,13 +81,21 @@ public class DiskScannerEngine
                 .Where(d => !DirectorySizeCache.ContainsKey(d.FullName))
                 .ToList();
 
-            if (directoriesToScan.Count > 0)
+            var totalNodes = directoriesToScan.Count;
+
+            if (totalNodes > 0)
             {
+                var completedNode = 0;
+                _deepScanThrottle = 0;
                 _scannedFilesCount = 0;
+
+                var token = _scanCts?.Token ?? CancellationToken.None;
+
                 await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
 
                 await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
                 {
+                    if (token.IsCancellationRequested) return;
                     var size = await Task.Run(() => GetDirectorySize(dir, token));
 
                     DirectorySizeCache[dir.FullName] = new CacheEntry
@@ -94,6 +103,17 @@ public class DiskScannerEngine
                         Size = size,
                         LastUpdated = dir.LastWriteTimeUtc
                     };
+
+                    var completed = Interlocked.Increment(ref completedNode);
+                    var percentage = Math.Round(((double)completed / totalNodes) * 100, 1);
+
+                    _ = _hub.Clients.All.SendAsync("ScanProgress", new
+                    {
+                        completed = completed,
+                        total = totalNodes,
+                        percentageComplete = percentage,
+                        currentTarget = dir.Name
+                    });
                 });
 
                 SaveMemoryToDisk();
@@ -132,14 +152,20 @@ public class DiskScannerEngine
             var files = dir.GetFiles();
             size += files.Sum(f => f.Length);
 
+            var pulse = Interlocked.Increment(ref _deepScanThrottle);
+        
             var currentCount = Interlocked.Add(ref _scannedFilesCount, files.Length);
 
-            _ = _hub.Clients.All.SendAsync("ScanProgress", new
+            if (pulse % 50 == 0)
             {
-                status = "SCANNING",
-                count = currentCount,
-                currentTarget = dir.Name
-            });
+                _ = _hub.Clients.All.SendAsync("ScanProgress", new
+                {
+                    status = "SCANNING",
+                    count = currentCount,
+                    currentTarget = dir.Name
+                });
+            }
+            
 
             foreach (var subDir in dir.GetDirectories("*", option))
             {
@@ -265,30 +291,14 @@ public class DiskScannerEngine
     {
         if(item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
 
-        Console.ResetColor();
-        Console.Write($"\n ARE YOU SURE YOU WANT TO DELETE THIS? ");
-
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine(item.Name);
-        Console.ResetColor();
-
-        Console.Write("Permanently? (Y/N):  ");
-        var confirm = Console.ReadKey(true).Key;
-        if (confirm == ConsoleKey.Y)
+        try
         {
-            try
-            {
-                if (item is DirectoryInfo dir) dir.Delete(true);
-                else if (item is FileInfo file) file.Delete();
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error deleting item: {ex.Message}");
-                Console.WriteLine("Press Any Key to continue....");
-                Console.ReadKey(true);
-            }
+            if (item is DirectoryInfo dir) dir.Delete(true);
+            else if (item is FileInfo file) file.Delete();
         }
-        
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting item: {ex.Message}");
+        }
     }
 }
