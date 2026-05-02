@@ -117,14 +117,18 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                 child: const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1, color: Colors.cyan)),
               )
             else if (_children != null)
-              ..._children!.where((n) => n.isDirectory).map((child) => DirectoryNodeWidget(
-                    node: child,
-                    apiService: widget.apiService,
-                    onNuke: widget.onNuke,
-                    onNavigate: widget.onNavigate,
-                    depth: widget.depth + 1,
-                    isTreeView: true,
-                  )),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _children!.where((n) => n.isDirectory).map((child) => DirectoryNodeWidget(
+                  node: child,
+                  apiService: widget.apiService,
+                  onNuke: widget.onNuke,
+                  onNavigate: widget.onNavigate,
+                  depth: widget.depth + 1,
+                  isTreeView: true,
+                  )).toList(),
+              ),
+
           ]
         ],
       );

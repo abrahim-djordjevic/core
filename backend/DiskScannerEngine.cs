@@ -147,7 +147,8 @@ public class DiskScannerEngine
         {
             var option = new EnumerationOptions
             {
-                IgnoreInaccessible = true
+                IgnoreInaccessible = true,
+                AttributesToSkip = 0
             };
             var files = dir.GetFiles();
             size += files.Sum(f => f.Length);

@@ -125,9 +125,8 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
         public IEnumerable<StorageNode> ScanDirectory(string path)
         {
-            PurgeDeadMemory(path);
             var items = _scanner.LoadDirectoryItems(path);
-
+            PurgeDeadMemory(path, items);
             _scanner.CalculateMissingSizesAsync(items).GetAwaiter().GetResult();
 
             var nodes = items.Select(item =>
@@ -172,17 +171,25 @@ namespace GSInteractiveDeviceAnalyzer.Services
             return nodes;
         }
 
-        private void PurgeDeadMemory(string currentPath)
+        private void PurgeDeadMemory(string currentPath, List<FileSystemInfo> actualItems)
         {
             var memoryChanged = false;
 
+            var actualPaths =
+                new HashSet<string>(actualItems.Select(i => i.FullName), StringComparer.OrdinalIgnoreCase);
+
+            var pathWithSlash = currentPath.EndsWith(Path.DirectorySeparatorChar.ToString())
+                ? currentPath
+                : currentPath + Path.DirectorySeparatorChar;
+
             var keysToCheck = _scanner.DirectorySizeCache.Keys
-                .Where(k => k.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase))
+                .Where(k => k.StartsWith(pathWithSlash, StringComparison.OrdinalIgnoreCase))
+                .Where(k => k.Length >= pathWithSlash.Length && k.IndexOf(Path.DirectorySeparatorChar, pathWithSlash.Length) == -1)
                 .ToList();
 
             foreach (var key in keysToCheck)
             {
-                if (!Directory.Exists(key))
+                if (!actualPaths.Contains(key))
                 {
                     _scanner.DirectorySizeCache.TryRemove(key, out _);
                     memoryChanged = true;
