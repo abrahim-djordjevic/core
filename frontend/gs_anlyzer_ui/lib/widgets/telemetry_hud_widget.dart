@@ -4,6 +4,8 @@ import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import '../providers/directory_provider.dart';
 import '../services/api_service.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/hud_label.dart';
 
 class TelemetryHudWidget extends ConsumerWidget {
   const TelemetryHudWidget({super.key});
@@ -18,11 +20,7 @@ class TelemetryHudWidget extends ConsumerWidget {
       child: Container(
         width: 500, // Fixed width
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0XFF1E1E1E),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.cyan.withValues(alpha: 0.3)),
-        ),
+        decoration: HudTheme.hudPanelDecoration,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,12 +36,7 @@ class TelemetryHudWidget extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     '${telemetry.status}...',
-                    style: const TextStyle(
-                      color: Colors.cyan,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
+                    style: HudTheme.headerCyan,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -54,7 +47,7 @@ class TelemetryHudWidget extends ConsumerWidget {
             if (telemetry.total > 0) ...[
               LinearProgressIndicator(
                 value: calculateProgress,
-                color: Colors.greenAccent,
+                color: HudTheme.accentGreen,
                 backgroundColor: Colors.white10,
                 minHeight: 6,
               ),
@@ -64,51 +57,28 @@ class TelemetryHudWidget extends ConsumerWidget {
                 children: [
                   Text(
                     'SECTORS SCANNED: ${telemetry.completed} / ${telemetry.total}',
-                    style: const TextStyle(
-                      color: Colors.greenAccent,
-                      fontSize: 14,
-                      fontFamily: 'Courier',
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: HudTheme.statGreen,
                   ),
                   Text(
                     '${displayPercentage.toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      color: Colors.greenAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      fontFamily: 'Courier',
-                    ),
+                    style: HudTheme.statGreen,
                   ),
                 ],
               ),
             ] else ...[
               const Text(
                 'CALCULATING SECTORS...',
-                style: TextStyle(
-                  color: Colors.greenAccent,
-                  fontSize: 18,
-                  fontFamily: 'Courier',
-                  fontWeight: FontWeight.bold,
-                ),
+                style: HudTheme.statGreen,
               ),
             ],
-
             const SizedBox(height: 16),
-
             Text(
               'TARGET: ${telemetry.target}',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-                fontFamily: 'Courier',
-              ),
+              style: HudTheme.labelMuted,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
-
             const SizedBox(height: 16),
-
             Align(
               alignment: Alignment.bottomRight,
               child: TextButton(
@@ -117,19 +87,14 @@ class TelemetryHudWidget extends ConsumerWidget {
                   ref.read(directoryProvider.notifier).state = ref.read(directoryProvider).copyWith(isLoading: false);
                   snackbarKey.currentState?.showSnackBar(
                       const SnackBar(
-                        content: Text('Scan Aborted', style: TextStyle(fontFamily: 'Courier', fontWeight: FontWeight.bold)),
-                        backgroundColor: Colors.orange,
+                        content: Text('Scan Aborted', style: TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold)),
+                        backgroundColor: HudTheme.accentAmber,
                       )
                   );
                 },
                 child: const Text(
                   'ABORT SCAN',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontFamily: 'Courier',
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
+                  style: HudTheme.actionRed,
                 ),
               ),
             ),

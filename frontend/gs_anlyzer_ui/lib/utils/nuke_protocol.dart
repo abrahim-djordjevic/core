@@ -6,6 +6,7 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/main.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 import '../providers/nuke_provider.dart';
 import '../widgets/nuke_progress_dialog.dart';
@@ -26,23 +27,23 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: HudTheme.bgPanel,
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: Colors.redAccent, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
-        title: const Text('CONFIRM NUKE', style: TextStyle(color: Colors.redAccent, fontFamily: 'Courier', fontWeight: FontWeight.bold)),
-        content: Text(warningText, style: const TextStyle(color: Colors.white70)),
+        title: const Text('CONFIRM NUKE', style: HudTheme.actionRed),
+        content: Text(warningText, style: HudTheme.bodyText),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('ABORT', style: TextStyle(color: Colors.white54, fontFamily: 'Courier')),
+            child: Text('ABORT', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
-              foregroundColor: Colors.redAccent,
-              side: const BorderSide(color: Colors.redAccent),
+              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
+              foregroundColor: HudTheme.accentRed,
+              side: const BorderSide(color: HudTheme.accentRed),
             ),
             onPressed: () async {
               Navigator.pop(dialogContext);
@@ -80,17 +81,17 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
                   behavior: SnackBarBehavior.floating,
                   content: Text(
                     allSuccess ? (isBulk ? 'ALL TARGET NUKED SUCCESSFULLY' : 'TARGET NUKED SUCCESSFULLY') : 'PARTIAL NUKE: Some Files were Locked',
-
+                    style: TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold,),
                   ),
-                  backgroundColor: allSuccess ? Colors.green : Colors.orange,
+                  backgroundColor: allSuccess ? HudTheme.accentGreen : HudTheme.accentAmber,
                 ),
                 );
               } catch (e) {
                 masterNavigator.pop();
-                snackbarKey.currentState?.showSnackBar(SnackBar(content: Text('ERROR: $e'), backgroundColor: Colors.orange));
+                snackbarKey.currentState?.showSnackBar(SnackBar(content: Text('ERROR: $e', style: TextStyle(fontFamily: HudTheme.fontCore),), backgroundColor: HudTheme.accentRed));
               }
             },
-            child: const Text('NUKE TARGET', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Courier')),
+            child: const Text('NUKE TARGET', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
           )
         ],
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class DirectorySearchWidget extends ConsumerStatefulWidget {
   const DirectorySearchWidget({super.key});
@@ -26,29 +27,23 @@ class _DirectorySearchWidget extends ConsumerState<DirectorySearchWidget> {
 
     return TextField(
       controller: _searchController,
-      style: const TextStyle(
-        color: Colors.cyanAccent,
-        fontFamily: 'Courier',
-      ),
+      style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
       decoration: InputDecoration(
         prefixIcon: const Icon(
           Icons.search_outlined,
-          color: Colors.white54,
+          color: HudTheme.textDim,
         ),
         suffixIcon: dirState.searchQuery.isNotEmpty ? IconButton(
-          icon: const Icon(Icons.clear_outlined, color: Colors.redAccent),
+          icon: const Icon(Icons.clear_outlined, color: HudTheme.accentRed),
           onPressed: () {
             _searchController.clear();
             dirNotifier.updateSearchQuery('');
           },
         ) : null,
         hintText: 'QUERY DIRECTORY....',
-        hintStyle: const TextStyle(
-          color: Colors.white24,
-          fontFamily: 'Courier',
-        ),
+        hintStyle: HudTheme.labelMuted,
         filled: true,
-        fillColor: const Color(0xFF1A1A1A),
+        fillColor: HudTheme.bgPanel,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,

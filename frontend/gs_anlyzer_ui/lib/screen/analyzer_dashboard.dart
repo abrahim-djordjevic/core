@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/_directory_search_widget.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
 import 'package:gs_analyzer_ui/widgets/drive_telemetry_widget.dart';
@@ -28,15 +29,16 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
     ref.watch(telemetryProvider);
 
     return Scaffold(
-        backgroundColor: const Color(0xFF121212),
+        backgroundColor: HudTheme.bgBase,
         appBar: AppBar(
-            title: Text(dirState.currentPath, style: const TextStyle(color: Colors.white70, fontFamily: 'Courier', fontWeight: FontWeight.bold)),
-            backgroundColor: const Color(0xFF1E1E1E),
+            title: Text(dirState.currentPath, style: HudTheme.bodyText.copyWith(color: HudTheme.textMuted, fontWeight: FontWeight.bold)),
+            backgroundColor: HudTheme.bgPanel,
             elevation: 0,
             actions: [
               PopupMenuButton<dynamic>(
                 icon: const Icon(Icons.sort_outlined),
                 tooltip: 'Sort Option',
+                color: HudTheme.bgPanel,
                 onSelected: (value) {
                   if (value is SortMethod) {
                     ref.read(directoryProvider.notifier).setSortMethod(value);
@@ -48,28 +50,28 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                   CheckedPopupMenuItem(
                     value: SortMethod.name,
                     checked: dirState.sortMethod == SortMethod.name,
-                    child: Text('Name'),
+                    child: Text('Name', style: HudTheme.bodyText,),
                   ),
                    CheckedPopupMenuItem(
                     value: SortMethod.size,
                     checked: dirState.sortMethod == SortMethod.size,
-                    child: Text('Total Size'),
+                    child: Text('Total Size', style: HudTheme.bodyText,),
                   ),
                   CheckedPopupMenuItem(
                     value: SortMethod.date,
                     checked: dirState.sortMethod == SortMethod.date,
-                    child: Text('DateModified'),
+                    child: Text('DateModified', style: HudTheme.bodyText,),
                   ),
                   const PopupMenuDivider(),
                   CheckedPopupMenuItem(
                     value: true,
                     checked: dirState.isAscending == true,
-                    child: Text('Ascending'),
+                    child: Text('Ascending', style: HudTheme.bodyText,),
                   ),
                   CheckedPopupMenuItem(
                     value: false,
                     checked: dirState.isAscending == false,
-                    child: Text('Descending'),
+                    child: Text('Descending', style: HudTheme.bodyText,),
                   ),
                 ],
               ),
@@ -78,21 +80,18 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                   ref.read(directoryProvider.notifier).toggleSelectionMode();
                 },
                 child: Text(
-                  dirState.isSelectionMode ? 'Cancel Selection' : 'Select Multiple',
-                  style: const TextStyle(
-                    color: Colors.cyanAccent,
-                    fontWeight: FontWeight.bold,
-                  )
+                  dirState.isSelectionMode ? 'CANCEL SELECTION' : 'SELECT MULTIPLE',
+                  style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan, fontWeight: FontWeight.bold)
                 ),
               ),
               if (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.delete_forever_outlined, color: Colors.redAccent),
+                  icon: const Icon(Icons.delete_forever_outlined, color: HudTheme.accentRed),
                   tooltip:'Nuke Selected (${dirState.selectedPath.length})',
                   onPressed: () => executeNukeProtocol(context, ref)
                 ),
               IconButton(
-                icon: const Icon(Icons.refresh_outlined, color: Colors.cyanAccent),
+                icon: const Icon(Icons.refresh_outlined, color: HudTheme.accentCyan),
                 tooltip: 'Refresh',
                 onPressed: () => dirNotifier.scanDirectory(dirState.currentPath)
               ),
@@ -119,7 +118,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                     child: dirState.isLoading
                         ? const TelemetryHudWidget()
                         : dirState.errorMessage != null
-                        ? Center(child: Text('BRIDGE FAILURE: ${dirState.errorMessage}', style: const TextStyle(color: Colors.red)))
+                        ? Center(child: Text('BRIDGE FAILURE: ${dirState.errorMessage}', style: HudTheme.actionRed))
                         : Column(
                       children: [
                         DirectoryTableHeader(),
@@ -128,7 +127,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                         Expanded(
                           child: dirState.displayNodes.isEmpty && dirState.searchQuery.isNotEmpty
                               ? const Center(
-                            child: Text('NO DATA FOUND IN SECTOR', style: TextStyle(color: Colors.white54)),
+                            child: Text('NO DATA FOUND IN SECTOR', style: HudTheme.labelMuted),
                           )
                               : ListView.builder(
                             itemCount: dirState.displayNodes.length,
