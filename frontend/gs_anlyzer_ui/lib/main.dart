@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/screen/master_layout.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';

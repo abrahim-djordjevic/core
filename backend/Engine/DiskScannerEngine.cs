@@ -3,7 +3,7 @@ using System.Text.Json;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer;
+namespace GSInteractiveDeviceAnalyzer.Engine;
 
 public class CacheEntry
 {

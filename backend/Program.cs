@@ -1,4 +1,4 @@
-using GSInteractiveDeviceAnalyzer;
+using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Services;
@@ -19,6 +19,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<DiskScannerEngine>();
+builder.Services.AddSingleton<RamMonitoringEngine>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddSignalR();
 var app = builder.Build();
