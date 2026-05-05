@@ -83,4 +83,17 @@ class ApiService {
       print('Failed to send abort signal: $e');
     }
   }
+  
+  Future<bool> killRamProcess(int pid) async {
+    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill/$pid');
+    print('INITIATING ASASSINATION PROTOCOL ON PID: $pid at $uri');
+
+    final response = await http.delete(uri);
+
+    if(response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception('Failed to terminate PID $pid. Status: ${response.statusCode} - ${response.body}');
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
@@ -45,6 +46,10 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       state = state.copyWith(status: status, completed: completed, total: total, percentComplete: percentComplete, target: target);
       },
     );
+
+    _telemetryService?.onRamUpdate = (data) {
+      ref.read(ramProvider.notifier).updateProcesses(data);
+    };
 
     _telemetryService?.onNukeProgress = (percentage, target, completed) {
       ref.read(nukeProgressProvider.notifier).state = percentage;

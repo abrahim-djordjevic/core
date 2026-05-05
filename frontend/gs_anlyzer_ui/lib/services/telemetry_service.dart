@@ -6,6 +6,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
     Function(double percentage, String target, int completed)? onNukeProgress;
     Function()? onNukeAborted;
+    Function(List<dynamic>)? onRamUpdate;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -23,6 +24,7 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('SectorChanged', _handleSectorChanged);
       _hubConnection.on('NukeProgress', _handleNukeProgress);
       _hubConnection.on('NukeAborted', _handleNukeAborted);
+      _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
     }
 
     Future<void> startListening() async {
@@ -85,6 +87,14 @@ import 'package:signalr_netcore/signalr_client.dart';
       print('RADIO ALERT: NUKE ABORT SIGNAL RECEIVED FROM BACKEND');
       if (onNukeAborted != null) {
         onNukeAborted!();
+      }
+    }
+
+    void _handleRamUpdate(List<Object?>? arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        if (onRamUpdate != null) {
+          onRamUpdate!(arguments[0] as List<dynamic>);
+        }
       }
     }
   }
