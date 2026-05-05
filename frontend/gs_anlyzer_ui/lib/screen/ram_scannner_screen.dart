@@ -21,9 +21,9 @@ class RamScannerScreen extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              Expanded(child: _buildAllocationCard('ACTIVE MEMORY', 'Calculated LiveE', HudTheme.accentCyan, 0.65)),
-              Expanded(child: _buildAllocationCard('CACHED (STANDBY)', 'System Reserved', HudTheme.accentGreen, 0.20)),
-              Expanded(child: _buildAllocationCard('SWAP / PAGEFILE', 'Virtual Memory', HudTheme.accentAmber, 0.15)),
+              Expanded(child: _buildAllocationCard('ACTIVE MEMORY', '${ramState.activeGb.toStringAsFixed(1)} GB', HudTheme.accentCyan, ramState.activeGb / ramState.totalGb)),
+              Expanded(child: _buildAllocationCard('CACHE (STANDBY)', '${ramState.cacheGb.toStringAsFixed(1)} GB', HudTheme.accentGreen, ramState.cacheGb / ramState.totalGb)),
+              Expanded(child: _buildAllocationCard('SWAP / PAGEFILE', '${ramState.swapGb.toStringAsFixed(1)} GB', HudTheme.accentAmber, ramState.swapGb / (ramState.totalGb * 2))),
             ],
           ),
         ),

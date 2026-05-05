@@ -42,15 +42,33 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                 while (await timer.WaitForNextTickAsync(token))
                 {
                     var snapshot = GetTopProcesses(50);
+                    var globalMetrics = SystemMemoryMetrics.GetLiveMetrics();
 
-                    await _hub.Clients.All.SendAsync("RamTelemetryUpdate", snapshot, cancellationToken: token);
+                    var payload = new
+                    {
+                        Global = globalMetrics ?? new
+                        {
+                            activeGb = 0.0,
+                            cachedGb = 0.0,
+                            swapGb = 0.0,
+                            totalGb = 16.0,
+                        },
+                        Processes = snapshot
+                    };
 
-                    Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Top Offender: {snapshot.FirstOrDefault()?.Name} - {snapshot.FirstOrDefault()?.RamMb} MB");
+                    await _hub.Clients.All.SendAsync("RamTelemetryUpdate", payload, cancellationToken: token);
+
+                    Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
                 }
             }
-            catch (OperationCanceledException )
+            catch (OperationCanceledException)
             {
                 
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[RAM ENGINE FATAL RADAR] ERROR: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
             }
         }
 

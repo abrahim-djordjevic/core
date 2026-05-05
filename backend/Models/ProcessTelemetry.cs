@@ -5,6 +5,6 @@
         public int ProcessId { get; set; }
         public string Name { get; set; }
         public long WorkingSetBytes { get; set; }
-        public double RamMb => Math.Round(WorkingSetBytes / 102.0 / 1024.0, 2);
+        public double RamMb => Math.Round(WorkingSetBytes / 1024.0 / 1024.0, 2);
     }
 }

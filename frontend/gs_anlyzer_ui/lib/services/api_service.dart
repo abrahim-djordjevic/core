@@ -96,4 +96,16 @@ class ApiService {
       throw Exception('Failed to terminate PID $pid. Status: ${response.statusCode} - ${response.body}');
     }
   }
+
+  Future<void> startRamRadar() async {
+    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/start');
+    try {
+      final response = await http.post(uri);
+      if (response.statusCode == 200) {
+        print('FLUTTER COMMAND: RAM Radar Started Successfully!');
+      }
+      } catch (e) {
+      print('FLUTTER ERROR: Failed to start RAM Radar - $e');
+    }
+  }
 }

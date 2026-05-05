@@ -6,7 +6,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
     Function(double percentage, String target, int completed)? onNukeProgress;
     Function()? onNukeAborted;
-    Function(List<dynamic>)? onRamUpdate;
+    Function(Map<String, dynamic>)? onRamUpdate;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -91,10 +91,26 @@ import 'package:signalr_netcore/signalr_client.dart';
     }
 
     void _handleRamUpdate(List<Object?>? arguments) {
-      if (arguments != null && arguments.isNotEmpty) {
-        if (onRamUpdate != null) {
-          onRamUpdate!(arguments[0] as List<dynamic>);
+      if (arguments == null && arguments!.isEmpty) return;
+      try {
+        final rawData = arguments[0];
+        
+        if(rawData is Map) {
+          final data = Map<String, dynamic>.from(rawData);
+          if (onRamUpdate != null) {
+            onRamUpdate!(data);
+          }
         }
+        
+        else if (rawData is List) {
+          print('ARCHITECT ALERT: The backend is still sending the old list! The C# engine needs to be rebuilt');
+        }
+
+        else {
+          print('UNKNOWN PAYLOAD TYPE: ${rawData.runtimeType}');
+        }
+        } catch (e) {
+        print('RAM PAYLOAD CRASH: $e');
       }
     }
   }

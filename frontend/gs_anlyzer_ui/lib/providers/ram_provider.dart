@@ -8,17 +8,28 @@ import '../services/api_service.dart';
 class RamState {
   final List<ProcessTelemetry> processes;
   final bool isLoading;
-  final double totalSytemsRamMb = 16384.0;
+  final double activeGb;
+  final double cacheGb;
+  final double swapGb;
+  final double totalGb;
 
   const RamState({
     this.processes = const [],
     this.isLoading = true,
+    this.activeGb = 0.0,
+    this.cacheGb = 0.0,
+    this.swapGb = 0.0,
+    this.totalGb = 16.0, // fix: hard coded total ram size
   });
 
-  RamState copyWith({List<ProcessTelemetry>? processes, bool? isLoading}) {
+  RamState copyWith({List<ProcessTelemetry>? processes, bool? isLoading, double? activeGb, double? cacheGb, double? swapGb, double? totalGb}) {
     return RamState(
       processes: processes ?? this.processes,
       isLoading: isLoading ?? this.isLoading,
+      activeGb: activeGb ?? this.activeGb,
+      cacheGb: cacheGb ?? this.cacheGb,
+      swapGb: swapGb ?? this.swapGb,
+      totalGb: totalGb ?? this.totalGb,
     );
   }
 }
@@ -26,14 +37,29 @@ class RamState {
 class RamNotifier extends StateNotifier<RamState> {
   final ApiService _apiService = ApiService();
 
-  RamNotifier() : super(const RamState());
+  RamNotifier() : super(const RamState())
+  {
+    _apiService.startRamRadar();
+  }
 
-  void updateProcesses(List<dynamic> rawList) {
-    final parsed = rawList.map((json) => ProcessTelemetry.fromJson(json, state.totalSytemsRamMb)).toList();
+  void updateProcesses(Map<String, dynamic> payload) {
+    final global = payload['global'] ?? payload['Global'] ?? {};
+
+    print('🦅 MATRIX RADAR - Global Memory Payload: $global');
+
+    double parseGb(String lowerKey, String upperKey, double fallback) {
+      final val = global[lowerKey] ?? global[upperKey] ?? fallback;
+      return (val as num).toDouble();
+    }
+    final totalGb = parseGb('totalGb', 'TotalGb', 16.0);
+    final totalMb = totalGb * 1024.0;
+
+    final rawProcesses = payload['processes'] as List<dynamic>? ?? [];
+    final parsed = rawProcesses.map((p) => ProcessTelemetry.fromJson(p, totalMb)).toList();
 
     parsed.sort((a, b) => b.ramMb.compareTo(a.ramMb));
 
-    state = state.copyWith(processes: parsed, isLoading: false);
+    state = state.copyWith(processes: parsed, isLoading: false, activeGb: (global['activeGb'] ?? 0.0).toDouble(), cacheGb: (global['cacheGb'] ?? 0.0).toDouble(), swapGb: (global['swapGb'] ?? 0.0).toDouble(), totalGb: totalGb);
   }
 
   Future<void> killProcess(int pid) async {
