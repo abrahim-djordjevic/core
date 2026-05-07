@@ -16,54 +16,65 @@ class SideBarTreeWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rootNodeAsync = ref.watch(rootTreeProvider);
     final dirNotifier = ref.read(directoryProvider.notifier);
+    final isExpanded = ref.watch(treeExpandedProvider);
 
-    return Container(
-      width: 300,
-      decoration: const BoxDecoration(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: isExpanded ? 300.0 : 0.0,
+      decoration: BoxDecoration(
         color: HudTheme.bgBase,
-        border: Border(right: BorderSide(color: Colors.white10)),
+        border: Border(right: BorderSide(color: isExpanded ? Colors.white10 : Colors.transparent)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: HudLabel('DATA TREE', overflow: TextOverflow.visible),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: rootNodeAsync.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: CircularProgressIndicator(color: HudTheme.primaryBorder),
-                  ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: SizedBox(
+          width: 300.0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: HudTheme.bgPanel,
+                  border: Border(bottom: BorderSide(color: Colors.white10)),
                 ),
-                error: (err, stack) => const Center(
-                  child: Text(
-                    'FAILED TO LOAD TREE',
-                    style: TextStyle(color: HudTheme.accentRed, fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold),
-                  ),
+                child: const HudLabel('DATA TREE', overflow: TextOverflow.visible
                 ),
-                data: (nodes) {
-                  return Column(
-                    children: nodes
-                        .where((n) => n.isDirectory)
-                        .map((node) => DirectoryNodeWidget(
-                              node: node,
-                              apiService: ApiService(),
-                              onNuke: onNuke,
-                              onNavigate: dirNotifier.scanDirectory,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: rootNodeAsync.when(
+                    loading: () => const Center (
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: CircularProgressIndicator(color: HudTheme.primaryBorder),
+                      )
+                    ),
+                    error: (err, stack) => const Center(
+                      child: Text(
+                        'FAILED TO LOAD TREE',
+                        style: TextStyle(color: HudTheme.accentRed, fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    data: (nodes) {
+                      return Column (
+                        children: nodes
+                            .where((n) => n.isDirectory)
+                            .map((node) => DirectoryNodeWidget(node: node, apiService: ApiService(), onNuke: onNuke, onNavigate: dirNotifier.scanDirectory,
                               depth: 0,
                               isTreeView: true,
-                            ))
-                        .toList(),
-                  );
-                },
+                        )).toList(),
+                      );
+                    }
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

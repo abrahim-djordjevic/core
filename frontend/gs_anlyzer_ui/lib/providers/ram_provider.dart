@@ -1,7 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/process_telemetry.dart';
-import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 

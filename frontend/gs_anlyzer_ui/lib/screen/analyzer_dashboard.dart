@@ -31,7 +31,27 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
     return Scaffold(
         backgroundColor: HudTheme.bgBase,
         appBar: AppBar(
-            title: Text(dirState.currentPath, style: HudTheme.bodyText.copyWith(color: HudTheme.textMuted, fontWeight: FontWeight.bold)),
+            title: Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    ref.watch(treeExpandedProvider) ? Icons.menu_open_outlined : Icons.menu_outlined,
+                    color: HudTheme.accentCyan,
+                  ),
+                  tooltip: 'Toggle Data Tree',
+                  onPressed: () {
+                    final notifier = ref.read(treeExpandedProvider.notifier);
+                    notifier.state = !notifier.state;
+                  },
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(dirState.currentPath,
+                  style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                )
+                )
+              ],
+            ),
             backgroundColor: HudTheme.bgPanel,
             elevation: 0,
             actions: [

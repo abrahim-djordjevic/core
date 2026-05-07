@@ -164,3 +164,5 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 final directoryProvider = StateNotifierProvider<DirectoryNotifier, DirectoryState>((ref) {
   return DirectoryNotifier();
 });
+
+final treeExpandedProvider = StateProvider<bool>((ref) => true);
