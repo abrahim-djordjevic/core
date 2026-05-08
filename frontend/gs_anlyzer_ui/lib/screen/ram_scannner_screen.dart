@@ -30,15 +30,17 @@ class RamScannerScreen extends ConsumerWidget {
 
         // Live Data Table
         Expanded(
-          child: ramState.isLoading && ramState.processes.isEmpty ? const Center(child: CircularProgressIndicator(color: HudTheme.primaryBorder,)) : ListView.builder(
-            itemCount: ramState.processes.length + 1,
+          child: ramState.isLoading && ramState.groupedProcesses.isEmpty ? const Center(child: CircularProgressIndicator(color: HudTheme.primaryBorder,)) : ListView.builder(
+            itemCount: ramState.groupedProcesses.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) return _buildTableHeader();
 
-              final process = ramState.processes[index - 1];
+              final group = ramState.groupedProcesses[index - 1];
               // Highlight rows > 10% memory usage
-              final isCritical = process.percentMem > 10.0;
+              final isCritical = group.totalPercentMem > 10.0;
               final textColor = isCritical ? HudTheme.accentAmber : HudTheme.textMain;
+
+              final displayName = group.count > 1 ? '${group.name} (x${group.count})' : group.name;
 
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -48,17 +50,25 @@ class RamScannerScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Expanded(flex: 2, child: Text(process.pid.toString(), style: HudTheme.bodyText.copyWith(color: textColor))),
-                    Expanded(flex: 4, child: Text(process.name, style: HudTheme.bodyText.copyWith(color: textColor, fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text(group.count > 1 ? 'GROUPED' : group.primaryPid.toString(), style: HudTheme.bodyText.copyWith(color: HudTheme.textDim))),
+                    Expanded(flex: 4, child: Text(displayName, style: HudTheme.bodyText.copyWith(color: textColor, fontWeight: FontWeight.bold))),
                     Expanded(child: Text('SYS_ADMIN', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim))),
-                    Expanded(flex: 2, child: Text('${process.percentMem.toStringAsFixed(1)}%', style: HudTheme.statGreen.copyWith(color: textColor), textAlign: TextAlign.right)),
-                    Expanded(flex: 2, child: Text('${process.ramMb.toStringAsFixed(1)} MB', style: HudTheme.statGreen.copyWith(color: textColor), textAlign: TextAlign.right)),
+                    Expanded(flex: 2, child: Text('${group.totalPercentMem.toStringAsFixed(1)}%', style: HudTheme.statGreen.copyWith(color: textColor), textAlign: TextAlign.right)),
+                    Expanded(flex: 2, child: Text('${group.totalRamMb.toStringAsFixed(1)} MB', style: HudTheme.statGreen.copyWith(color: textColor), textAlign: TextAlign.right)),
                     Expanded(
                       flex: 1,
                       child: IconButton(
                         icon: const Icon(Icons.cancel_outlined, color: HudTheme.accentRed, size: 20,),
                         tooltip: 'Kill Process',
-                        onPressed: () => ref.read(ramProvider.notifier).killProcess(process.pid),
+                        onPressed: () {
+                          if (group.count > 1) {
+                            ref.read(ramProvider.notifier).killProcess(
+                                group.primaryPid);
+                          } else {
+                            ref.read(ramProvider.notifier).killProcessGroup(
+                                group.name);
+                          }
+                        }
                       ),
                     ),
                   ],

@@ -84,16 +84,16 @@ class ApiService {
     }
   }
   
-  Future<bool> killRamProcess(int pid) async {
-    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill/$pid');
-    print('INITIATING ASASSINATION PROTOCOL ON PID: $pid at $uri');
+  Future<bool> killRamProcesses(List<int> pids) async {
+    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill');
+    print('INITIATING ASASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
-    final response = await http.delete(uri);
+    final response = await http.delete(uri, headers: {'Content-Type': 'application/josn'}, body: jsonEncode(pids));
 
     if(response.statusCode == 200) {
       return true;
     } else {
-      throw Exception('Failed to terminate PID $pid. Status: ${response.statusCode} - ${response.body}');
+      throw Exception('Failed to terminate PID Status: ${response.statusCode} - ${response.body}');
     }
   }
 

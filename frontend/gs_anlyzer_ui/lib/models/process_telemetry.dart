@@ -21,3 +21,19 @@ class ProcessTelemetry {
     );
   }
 }
+
+class ProcessGroup {
+  final String name;
+  final List<ProcessTelemetry> processes;
+
+  ProcessGroup({
+    required this.name,
+    required this.processes,
+  });
+
+  double get totalRamMb => processes.fold(0, (sum, p) => sum + p.ramMb);
+  double get totalPercentMem => processes.fold(0, (sum, p) => sum + p.percentMem);
+  int get count => processes.length;
+
+  int get primaryPid => processes.isNotEmpty ? processes.first.pid : 0;
+}

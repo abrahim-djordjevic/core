@@ -104,25 +104,25 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                 .ToList();
         }
 
-        public bool ExecuteOrder66(int processId)
+        public int ExecuteOrder66(List<int> processIds)
         {
-            try
+            int killCount = 0;
+            foreach (var pid in processIds)
             {
-                var process = Process.GetProcessById(processId);
-                process.Kill();
-                Console.WriteLine($"[RAM RADAR] ASSASSINATED PID: {processId}");
-                return true;
+                try
+                {
+                    var process = Process.GetProcessById(pid);
+                    process.Kill();
+                    killCount++;
+                    Console.WriteLine($"[RAM RADAR] ASSASSINATED PID: {pid}");
+                }
+                catch
+                {
+                 
+                }
             }
-            catch (ArgumentException)
-            {
-                Console.WriteLine($"[RAM RADAR] Target PID {processId} is already dead.");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[RAM RADAR] ASSASSINATION FAILED for PID {processId}: {ex.Message}");
-                return false;
-            }
+            Console.WriteLine($"\n[RAM RADAR] TOTAL ASSASSINATIONS: {killCount} targets eliminated.");
+            return killCount;
         }
     }
 }

@@ -21,12 +21,13 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             return Ok(new { Message = "RAM Radar Offline" });
         }
 
-        [HttpDelete("ram/kill/{pid}")]
-        public IActionResult KillProcess([FromServices] RamMonitoringEngine ramEngine, int pid)
+        [HttpDelete("ram/kill")]
+        public IActionResult KillProcess([FromServices] RamMonitoringEngine ramEngine, [FromBody] List<int> pids)
         {
-            var success = ramEngine.ExecuteOrder66(pid);
-            if (success) return Ok(new { Message = $"PID {pid} Terminated" });
-            return BadRequest(new { Message = $"Failed to terminate PID {pid}." });
+            if (pids == null || !pids.Any()) return BadRequest(new { Message = "No PIDs provided." });
+
+            var killCount = ramEngine.ExecuteOrder66(pids);
+            return Ok(new { Message = $"{killCount} PIDs Terminated" });
         }
     }
 }
