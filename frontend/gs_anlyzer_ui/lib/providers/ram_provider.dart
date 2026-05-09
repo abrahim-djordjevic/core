@@ -45,7 +45,7 @@ class RamNotifier extends StateNotifier<RamState> {
   void updateProcesses(Map<String, dynamic> payload) {
     final global = payload['global'] ?? payload['Global'] ?? {};
 
-    print('🦅 MATRIX RADAR - Global Memory Payload: $global');
+    // print('🦅 MATRIX RADAR - Global Memory Payload: $global');
 
     double parseGb(String lowerKey, String upperKey, double fallback) {
       final val = global[lowerKey] ?? global[upperKey] ?? fallback;

@@ -21,7 +21,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             return Ok(new { Message = "RAM Radar Offline" });
         }
 
-        [HttpDelete("ram/kill")]
+        [HttpPost("ram/kill")]
         public IActionResult KillProcess([FromServices] RamMonitoringEngine ramEngine, [FromBody] List<int> pids)
         {
             if (pids == null || !pids.Any()) return BadRequest(new { Message = "No PIDs provided." });

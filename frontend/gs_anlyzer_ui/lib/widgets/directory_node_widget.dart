@@ -55,15 +55,20 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
       });
 
       try {
-        final children = await widget.apiService.scanDirectory(widget.node.path);
-        setState(() {
-          _children = children;
-          _isLoading = false;
-        });
+        final dirNotifier = ref.read(directoryProvider.notifier);
+        final children = await dirNotifier.fetchChildrenForTree(widget.node.path);
+        if (mounted) {
+          setState(() {
+            _children = children;
+            _isLoading = false;
+          });
+        }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
         print('Error Loading Children: $e');
       }
     }

@@ -11,6 +11,7 @@ enum SortMethod {
 class DirectoryState {
   final String currentPath;
   final List<StorageNode> allNodes;
+  final List<StorageNode> displayNodes;
   final Set<String> selectedPath;
   final String searchQuery;
   final SortMethod sortMethod;
@@ -22,6 +23,7 @@ class DirectoryState {
   const DirectoryState({
     this.currentPath = 'C:/',
     this.allNodes = const [],
+    this.displayNodes = const [],
     this.selectedPath = const {},
     this.searchQuery = '',
     this.sortMethod = SortMethod.name,
@@ -34,6 +36,7 @@ class DirectoryState {
   DirectoryState copyWith({
   String? currentPath,
   List<StorageNode>? allNodes,
+  List<StorageNode>? displayNodes,
   Set<String>? selectedPath,
   String? searchQuery,
   SortMethod? sortMethod,
@@ -45,6 +48,7 @@ class DirectoryState {
     return DirectoryState(
       currentPath: currentPath ?? this.currentPath,
       allNodes: allNodes ?? this.allNodes,
+      displayNodes: displayNodes ?? this.displayNodes,
       selectedPath: selectedPath ?? this.selectedPath,
       searchQuery: searchQuery ?? this.searchQuery,
       sortMethod: sortMethod ?? this.sortMethod,
@@ -54,14 +58,32 @@ class DirectoryState {
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
+}
 
-  List<StorageNode> get displayNodes {
-    List<StorageNode> nodes = searchQuery.isEmpty ? List.from(allNodes) : allNodes.where((node) => node.name.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+class DirectoryNotifier extends StateNotifier<DirectoryState> {
+  final ApiService _apiService = ApiService();
+  final Map<String, List<StorageNode>> _sectorCache ={};
 
-    nodes.sort((a, b) {
+  DirectoryNotifier() : super(const DirectoryState()) {
+    scanDirectory('C:/');
+  }
+  
+  void _applyFiltersAndSort({
+    List<StorageNode>? nodes,
+    String? searchQuery,
+    SortMethod? sortMethod,
+    bool? isAscending,
+}) {
+    final activeNodes = nodes ?? state.allNodes;
+    final activeSearchQuery = searchQuery ?? state.searchQuery;
+    final activeSortMethod = sortMethod ?? state.sortMethod;
+    final activeIsAscending = isAscending ?? state.isAscending;
+      
+    List<StorageNode> filteredNodes = activeSearchQuery.isEmpty ? List.from(activeNodes) : activeNodes.where((n) => n.name.toLowerCase().contains(activeSearchQuery.toLowerCase())).toList();
+
+    filteredNodes.sort((a, b) {
       int comparison;
-
-      switch(sortMethod) {
+      switch(activeSortMethod) {
         case SortMethod.name:
           comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
           break;
@@ -72,36 +94,57 @@ class DirectoryState {
           comparison = b.lastModified.compareTo(a.lastModified);
           break;
       }
-      return isAscending ? comparison : -comparison;
+      return activeIsAscending ? comparison : -comparison;
     });
 
-    return nodes;
-  }
-
-}
-
-class DirectoryNotifier extends StateNotifier<DirectoryState> {
-  final ApiService _apiService = ApiService();
-
-  DirectoryNotifier() : super(const DirectoryState()) {
-    scanDirectory('C:/');
-  }
-
-  Future<void> scanDirectory(String targetPath) async {
     state = state.copyWith(
-      isLoading: true,
-      errorMessage: null,
+      allNodes: activeNodes,
+      displayNodes: filteredNodes,
+      searchQuery: activeSearchQuery,
+      sortMethod: activeSortMethod,
+      isAscending: activeIsAscending,
     );
+  }
+
+  Future<void> scanDirectory(String targetPath, {bool forceRefresh = false}) async {
     String safePath = targetPath.replaceAll('\\', '/');
-    state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: []);
+
+    if (!forceRefresh && _sectorCache.containsKey(safePath)) {
+      _applyFiltersAndSort(nodes: _sectorCache[safePath]);
+      state = state.copyWith(
+        currentPath: safePath,
+        isLoading: false,
+        errorMessage: null,
+      );
+
+      _apiService.scanDirectory(safePath).then((freshNodes) {
+        _sectorCache[safePath] = freshNodes;
+        if (state.currentPath == safePath) _applyFiltersAndSort(nodes: freshNodes);
+      }).catchError((_) {});
+      return;
+    }
+
+    state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
     try {
       final nodes = await _apiService.scanDirectory(safePath);
+      _sectorCache[safePath] = nodes;
 
-      state = state.copyWith(allNodes: nodes, currentPath: targetPath, isLoading: false);
+      state = state.copyWith(isLoading: false);
+      _applyFiltersAndSort(nodes: nodes);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
+  }
+
+  Future<List<StorageNode>> fetchChildrenForTree(String path) async {
+    String safePath = path.replaceAll('\\', '/');
+    if (_sectorCache.containsKey(safePath)) {
+      return _sectorCache[safePath]!;
+    }
+    final nodes = await _apiService.scanDirectory(safePath);
+    _sectorCache[safePath] = nodes;
+    return nodes;
   }
   // Navigate to previous Directory
   void navigateUp() {
@@ -123,17 +166,17 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 
   // Filter and Sort
   void setSortMethod(SortMethod method) {
-    state = state.copyWith(sortMethod: method);
+    _applyFiltersAndSort(sortMethod: method);
   }
 
   //Search Query
   void updateSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query);
+    _applyFiltersAndSort(searchQuery: query);
   }
 
   // Direction of sorting
   void setAscending(bool ascending) {
-    state = state.copyWith(isAscending: ascending);
+    _applyFiltersAndSort(isAscending: ascending);
   }
 
   // Select Multiple

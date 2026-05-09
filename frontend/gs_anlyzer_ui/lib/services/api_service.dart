@@ -88,7 +88,7 @@ class ApiService {
     final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill');
     print('INITIATING ASASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
-    final response = await http.delete(uri, headers: {'Content-Type': 'application/josn'}, body: jsonEncode(pids));
+    final response = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
 
     if(response.statusCode == 200) {
       return true;
