@@ -7,6 +7,8 @@ import 'package:signalr_netcore/signalr_client.dart';
     Function(double percentage, String target, int completed)? onNukeProgress;
     Function()? onNukeAborted;
     Function(Map<String, dynamic>)? onRamUpdate;
+    Function(String path, List<dynamic> chunk)? onDirectoryChunk;
+    Function(String path)? onDirectoryStreamComplete;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -25,6 +27,8 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('NukeProgress', _handleNukeProgress);
       _hubConnection.on('NukeAborted', _handleNukeAborted);
       _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
+      _hubConnection.on('DirectoryChunk', _hadleDirectoryChunk);
+      _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
     }
 
     Future<void> startListening() async {
@@ -111,6 +115,23 @@ import 'package:signalr_netcore/signalr_client.dart';
         }
         } catch (e) {
         print('RAM PAYLOAD CRASH: $e');
+      }
+    }
+
+    void _hadleDirectoryChunk(List<Object?>? arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        final data = arguments[0] as Map<String, dynamic>;
+        if (onDirectoryChunk != null) {
+          onDirectoryChunk!(data['path'], data['chunk']);
+        }
+      }
+    }
+
+    void _handleDirectoryStreamComplete(List<Object?>? arguments) {
+      if (arguments != null && arguments.isNotEmpty) {
+        if (onDirectoryStreamComplete != null) {
+          onDirectoryStreamComplete!(arguments[0].toString());
+        }
       }
     }
   }

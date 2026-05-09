@@ -51,6 +51,14 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       ref.read(ramProvider.notifier).updateProcesses(data);
     };
 
+    _telemetryService?.onDirectoryChunk = (path, chunk) {
+      ref.read(directoryProvider.notifier).receiveStreamChunk(path, chunk);
+    };
+
+    _telemetryService?.onDirectoryStreamComplete = (path) {
+      ref.read(directoryProvider.notifier).finalizeStream(path);
+    };
+
     _telemetryService?.onNukeProgress = (percentage, target, completed) {
       ref.read(nukeProgressProvider.notifier).state = percentage;
       ref.read(nukeTargetProvider.notifier).state = target;

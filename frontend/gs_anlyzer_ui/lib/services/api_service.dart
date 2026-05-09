@@ -108,4 +108,11 @@ class ApiService {
       print('FLUTTER ERROR: Failed to start RAM Radar - $e');
     }
   }
+
+  Future<void> requestDirectoryStream(String path) async {
+    final uri = Uri.parse('$baseUrl/stream-sector').replace(queryParameters: {
+      'path': path
+    });
+    await http.post(uri);
+  }
 }

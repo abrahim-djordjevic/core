@@ -124,17 +124,38 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
       return;
     }
 
+    _sectorCache[safePath] = [];
+
     state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
     try {
-      final nodes = await _apiService.scanDirectory(safePath);
-      _sectorCache[safePath] = nodes;
-
-      state = state.copyWith(isLoading: false);
-      _applyFiltersAndSort(nodes: nodes);
+      await _apiService.requestDirectoryStream(safePath);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
+  }
+
+  void receiveStreamChunk(String path, List<dynamic> chunkData) {
+    String safePath = path.replaceAll('\\', '/');
+    if (state.currentPath != safePath) return;
+
+    final parsedChunk = chunkData.map((json) => StorageNode.fromJson(json)).toList();
+
+    _sectorCache[safePath] ??= [];
+    _sectorCache[safePath]!.addAll(parsedChunk);
+
+    final updatedList = List<StorageNode>.from(state.allNodes)..addAll(parsedChunk);
+
+    state = state.copyWith(allNodes: updatedList, displayNodes: updatedList);
+  }
+
+  void finalizeStream(String path) {
+    String safePath = path.replaceAll('\\', '/');
+    if (state.currentPath == safePath) {
+      state = state.copyWith(isLoading: false);
+      _applyFiltersAndSort();
+    }
+
   }
 
   Future<List<StorageNode>> fetchChildrenForTree(String path) async {

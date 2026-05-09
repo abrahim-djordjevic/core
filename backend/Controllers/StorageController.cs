@@ -1,7 +1,9 @@
 ﻿using GSInteractiveDeviceAnalyzer.Engine;
+using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer.Controllers
 {
@@ -14,6 +16,68 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         public StorageController(IDiskOperationService diskService)
         {
             _diskService = diskService;
+        }
+
+        [HttpPost("stream-sector")]
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<StorageHub> hubContext,
+            [FromBody] string path)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var dirInfo = new DirectoryInfo(path);
+                    var allNodes = new List<object>();
+                    var enumOption = new EnumerationOptions
+                        { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
+                    foreach (var d in dirInfo.GetDirectories("*", enumOption))
+                    {
+                        allNodes.Add(new
+                        {
+                            name = d.Name, path = d.FullName, type = "Directory", sizeBytes = 0,
+                            lastModified = d.LastWriteTime
+                        });
+                    }
+
+                    foreach (var f in dirInfo.GetDirectories("*", enumOption))
+                    {
+                        allNodes.Add(new
+                        {
+                            name = f.Name, path = f.FullName, type = "File", sizeBytes = 0,
+                            lastModified = f.LastWriteTime
+                        });
+                    }
+
+                    var chunkSize = 100;
+                    for (var i = 0; i < allNodes.Count; i += chunkSize)
+                    {
+                        var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
+                        await hubContext.Clients.All.SendAsync("DirectoryChunk", new
+                        {
+                            path = path, chunk = chunk
+                        });
+
+                        await Task.Delay(10);
+                    }
+
+                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
+                }
+                catch (Exception ex)
+                {
+                    await hubContext.Clients.All.SendAsync("DirectoryStreamError",
+                        new { path = path, error = ex.Message });
+                }
+                finally
+                {
+                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
+                }
+            });
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Stream Initiated"
+            });
         }
 
         [HttpGet("scan")]
