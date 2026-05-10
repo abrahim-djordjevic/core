@@ -126,7 +126,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 
     _sectorCache[safePath] = [];
 
-    state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
+    state = state.copyWith(currentPath: safePath, isLoading: false, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
     try {
       await _apiService.requestDirectoryStream(safePath);
@@ -136,13 +136,19 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   }
 
   void receiveStreamChunk(String path, List<dynamic> chunkData) {
-    String safePath = path.replaceAll('\\', '/');
-    if (state.currentPath != safePath) return;
+    String incomingPath = path.replaceAll('\\', '/').toLowerCase();
+    String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
+    if (incomingPath.endsWith('/')) incomingPath = incomingPath.substring(0, incomingPath.length - 1);
+    if (currentPath.endsWith('/')) currentPath = currentPath.substring(0, currentPath.length - 1);
+
+    if(incomingPath != currentPath) return;
 
     final parsedChunk = chunkData.map((json) => StorageNode.fromJson(json)).toList();
 
-    _sectorCache[safePath] ??= [];
-    _sectorCache[safePath]!.addAll(parsedChunk);
+    if (!_sectorCache.containsKey(state.currentPath)) {
+      _sectorCache[state.currentPath] = [];
+    }
+    _sectorCache[state.currentPath]!.addAll(parsedChunk);
 
     final updatedList = List<StorageNode>.from(state.allNodes)..addAll(parsedChunk);
 
@@ -150,10 +156,16 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   }
 
   void finalizeStream(String path) {
-    String safePath = path.replaceAll('\\', '/');
-    if (state.currentPath == safePath) {
-      state = state.copyWith(isLoading: false);
+    String incomingPath = path.replaceAll('\\', '/').toLowerCase();
+    String currentPath = path.replaceAll('\\', '/').toLowerCase();
+
+    if (incomingPath.endsWith('/')) incomingPath = incomingPath.substring(0, incomingPath.length - 1);
+    if (currentPath.endsWith('/')) currentPath = currentPath.substring(0, currentPath.length - 1);
+
+
+    if (incomingPath == currentPath) {
       _applyFiltersAndSort();
+      state = state.copyWith(isLoading: false);
     }
 
   }

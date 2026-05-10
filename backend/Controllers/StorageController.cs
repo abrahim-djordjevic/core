@@ -20,34 +20,14 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
         [HttpPost("stream-sector")]
         public IActionResult StreamDirectorySection([FromServices] IHubContext<StorageHub> hubContext,
-            [FromBody] string path)
+            [FromQuery] string path)
         {
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var dirInfo = new DirectoryInfo(path);
-                    var allNodes = new List<object>();
-                    var enumOption = new EnumerationOptions
-                        { IgnoreInaccessible = true, ReturnSpecialDirectories = false };
-                    foreach (var d in dirInfo.GetDirectories("*", enumOption))
-                    {
-                        allNodes.Add(new
-                        {
-                            name = d.Name, path = d.FullName, type = "Directory", sizeBytes = 0,
-                            lastModified = d.LastWriteTime
-                        });
-                    }
-
-                    foreach (var f in dirInfo.GetDirectories("*", enumOption))
-                    {
-                        allNodes.Add(new
-                        {
-                            name = f.Name, path = f.FullName, type = "File", sizeBytes = 0,
-                            lastModified = f.LastWriteTime
-                        });
-                    }
-
+                    var allNodes = _diskService.ScanDirectory(path).ToList();
+                    
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
                     {
