@@ -12,6 +12,7 @@ class RamState {
   final double cacheGb;
   final double swapGb;
   final double totalGb;
+  final List<double> usageHistory;
 
   const RamState({
     this.groupedProcesses = const [],
@@ -20,9 +21,14 @@ class RamState {
     this.cacheGb = 0.0,
     this.swapGb = 0.0,
     this.totalGb = 16.0, // fix: hard coded total ram size
+    this.usageHistory = const [],
   });
 
-  RamState copyWith({List<ProcessGroup>? groupedProcesses, bool? isLoading, double? activeGb, double? cacheGb, double? swapGb, double? totalGb}) {
+  double get usedPercentage => totalGb > 0 ? activeGb / totalGb : 0.0;
+  String get displayedString => '${activeGb.toStringAsFixed(2)} GB / ${totalGb.toStringAsFixed(2)} GB';
+  bool get isCritical => totalGb > 0 && (activeGb / totalGb) >= 0.90;
+
+  RamState copyWith({List<ProcessGroup>? groupedProcesses, bool? isLoading, double? activeGb, double? cacheGb, double? swapGb, double? totalGb, List<double>? usageHistory,}) {
     return RamState(
       groupedProcesses: groupedProcesses ?? this.groupedProcesses,
       isLoading: isLoading ?? this.isLoading,
@@ -30,6 +36,7 @@ class RamState {
       cacheGb: cacheGb ?? this.cacheGb,
       swapGb: swapGb ?? this.swapGb,
       totalGb: totalGb ?? this.totalGb,
+      usageHistory: usageHistory ?? this.usageHistory,
     );
   }
 }
@@ -70,7 +77,27 @@ class RamNotifier extends StateNotifier<RamState> {
 
     groupedList.sort((a, b) => b.totalRamMb.compareTo(a.totalRamMb));
 
-    state = state.copyWith(groupedProcesses: groupedList, isLoading: false, activeGb: (global['activeGb'] ?? 0.0).toDouble(), cacheGb: (global['cacheGb'] ?? 0.0).toDouble(), swapGb: (global['swapGb'] ?? 0.0).toDouble(), totalGb: totalGb);
+    //
+    // state = state.copyWith(groupedProcesses: groupedList, isLoading: false, activeGb: (global['activeGb'] ?? 0.0).toDouble(), cacheGb: (global['cacheGb'] ?? 0.0).toDouble(), swapGb: (global['swapGb'] ?? 0.0).toDouble(), totalGb: totalGb);
+
+    final parsedActiveGb = (global['activeGb'] ?? 0.0).toDouble();
+
+    final currentPercentage = totalGb > 0 ? parsedActiveGb / totalGb : 0.0;
+    final updatedHistory = List<double>.from(state.usageHistory)..add(currentPercentage);
+
+    if (updatedHistory.length > 20) {
+      updatedHistory.removeAt(0);
+    }
+
+    state = state.copyWith(
+      groupedProcesses: groupedList,
+      isLoading: false,
+      activeGb: parsedActiveGb,
+      cacheGb: (global['cacheGb'] ?? 0.0).toDouble(),
+      swapGb: (global['swapGb'] ?? 0.0).toDouble(),
+      totalGb: totalGb,
+      usageHistory: updatedHistory,
+    );
   }
 
   Future<void> killProcess(int pid) async {

@@ -40,14 +40,17 @@ class MockFactory {
   }
 
   static Map<String, dynamic> generateRamTelemetry({
-    double usedPercentage = 0.5,
+    required double activeGb,
     double totalGb = 16.0,
 }) {
     return {
-      'usedBytes': (totalGb * 1024 * 1024 * 1024 * usedPercentage).toInt(),
-      'totalBytes': (totalGb * 1024 * 1024 * 1024).toInt(),
-      'usageHistory': List.generate(10, (i) => 20.0 + (i * 5)),
-      'timestamp': DateTime.now().toIso8601String(),
+      'global': {
+        'totalGb': totalGb,
+        'activeGb': activeGb,
+        'cacheGb': 1.5,
+        'swapGb': 0.0,
+      },
+      'processes': []
     };
   }
 }
