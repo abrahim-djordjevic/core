@@ -1,4 +1,4 @@
-# 🦅 GS Interactive Device Analyzer
+# 🦅 GS System Analyzer
 
 ![Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 
@@ -52,6 +52,3 @@ Real-time monitoring of drive space, allocation percentages, and system limits d
 ## 🗺️ Future Roadmap
 * **Volatile Memory (RAM) Scanner:** Implementing a dedicated OS Task Manager subset to monitor, chart, and free up system RAM via `System.Diagnostics.Process` APIs.
 * **Deep File Type Analytics:** Visualizing disk usage via dynamically generated storage pie charts mapping out media vs. executable bloat.
-
----
-*Engineered by [G00dS0ul]*
