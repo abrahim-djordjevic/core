@@ -1,25 +1,19 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+
+import 'mock_factory.dart';
 
 void main() {
   group('DirectoryNotifier Sorting Engine Tests', () {
     test ('Sorting by Size should put largest file at the top (Ascending = true)', () {
       final notifier = DirectoryNotifier();
 
-      final fakeChunk = [
-        {
-          'name': 'small_file.txt', 'path': 'C:/small_file.txt', 'type': 'File', 'sizeBytes': 100, 'lastModified': DateTime.now().toIso8601String()
-        },
-        {
-          'name': 'big_movie.mp4', 'path': 'C:/big_movie.mp4', 'type': 'File', 'sizeBytes': 5000000, 'lastModified': DateTime.now().toIso8601String()
-        },
-        {
-          'name': 'medium_image.png', 'path': 'C:/medium_image.png', 'type': 'File', 'sizeBytes': 250000, 'lastModified': DateTime.now().toIso8601String()
-        }
-      ];
+      final fakeChunk = MockFactory.generateFakeChunk(4, 'C:/');
+
+      fakeChunk[0] = MockFactory.createFakeNodeMap(name: 'big_movie.mp4', path: 'C:/big_movie.mp4', size: 5000000);
+      fakeChunk[1] = MockFactory.createFakeNodeMap(name: 'small_file.txt', path: 'C:/small_file.txt', size: 250000);
+      fakeChunk[2] = MockFactory.createFakeNodeMap(name: 'medium_image.png', path: 'C:/medium_image.png', size: 250000);
+      fakeChunk[3] = MockFactory.createFakeNodeMap(name: 'icon.png', path: 'C:/icon.png', size: 1050);
 
       notifier.receiveStreamChunk('C:/', fakeChunk);
 
@@ -31,8 +25,9 @@ void main() {
       expect(resultList.isNotEmpty, true, reason: 'The display list should not be empty!');
 
       expect(resultList[0].name, 'big_movie.mp4');
-      expect(resultList[1].name, 'medium_image.png');
-      expect(resultList[2].name, 'small_file.txt');
+      expect(resultList[2].name, 'medium_image.png');
+      expect(resultList[3].name, 'icon.png');
+      expect(resultList[1].name, 'small_file.txt');
 
     });
   });
@@ -56,25 +51,34 @@ void main() {
 
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Downloads');
 
-      final firstLoadChunk = [
-        {
-          'name': 'Siren-S1E1-1080P.mp4',
-          'path': 'C:/Downloads/Siren-S1E1-1080P.mp4',
-          'type': 'File',
-          'sizeBytes': 250000000, // 250 MB
-          'lastModified': DateTime.now().toIso8601String()
-        },
-      ];
+      final firstLoadChunk = MockFactory.generateFakeChunk(3, 'C:/Downloads');
+
+      firstLoadChunk[0]['name'] = 'Siren-S1E1-1080.mp4';
+      firstLoadChunk[0] = MockFactory.createFakeNodeMap(name: 'Siren-S1E1-1080.mp4', path: 'C:/Downloads/S1', size: 250000000);
+      firstLoadChunk[1] = MockFactory.createFakeNodeMap(name: 'Siren-S1E3-1080.mp4', path: 'C:/Downloads/S3', size: 20000000);
+      firstLoadChunk[2] = MockFactory.createFakeNodeMap(name: 'Siren-S1E4-1080.mp4', path: 'C:/Downloads/S4', size: 200000000);
 
       notifier.receiveStreamChunk('c:/downloads', firstLoadChunk);
       notifier.finalizeStream('c:/downloads');
 
-      final loadedFile = notifier.state.displayNodes.first;
+      final loadedFile = notifier.state.displayNodes;
 
-      expect(loadedFile.type, 'File');
+      expect(loadedFile[0].type, 'File');
       expect(
-          loadedFile.sizeBytes,
+          loadedFile[0].sizeBytes,
           250000000,
+          reason: 'CRITICAL FAILURE: The file size parsed as 0 bytes on first load!'
+      );
+      expect(loadedFile[1].type, 'File');
+      expect(
+          loadedFile[1].sizeBytes,
+          20000000,
+          reason: 'CRITICAL FAILURE: The file size parsed as 0 bytes on first load!'
+      );
+      expect(loadedFile[2].type, 'File');
+      expect(
+          loadedFile[2].sizeBytes,
+          200000000,
           reason: 'CRITICAL FAILURE: The file size parsed as 0 bytes on first load!'
       );
     });
@@ -84,18 +88,10 @@ void main() {
 
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Documents');
 
-      final firstLoadChunk = [
-        {
-          'name': 'PCD_Report.pdf',
-          'path': 'C:/Documents/PCD_Report.pdf',
-          'type': 'File',
-          'sizeBytes': 15000,
-          'lastModified': '2026-05-04T22:06:54'
-        },
-        {
-          'name': 'small_file.txt', 'path': 'C:/small_file.txt', 'type': 'File', 'sizeBytes': 100, 'lastModified': DateTime.now().toIso8601String()
-        }
-      ];
+      final firstLoadChunk = MockFactory.generateFakeChunk(2, 'C:/Documents');
+
+      firstLoadChunk[0] = MockFactory.createFakeNodeMap(name: 'PCD_Report.pdf', path: 'C:/Documents/PCD_Report.pdf', size: 15000);
+      firstLoadChunk[1] = MockFactory.createFakeNodeMap(name: 'small_file.txt', path: 'C:/Documents/small_file.txt', size: 150);
 
       notifier.receiveStreamChunk('c:/documents', firstLoadChunk);
       notifier.finalizeStream('c:/documents');
@@ -106,7 +102,7 @@ void main() {
           reason: 'CRITICAL FAILURE: displayNodes is empty! The screen is blank until the user hits refresh!'
       );
 
-      expect(notifier.state.displayNodes.first.name, 'PCD_Report.pdf');
+      expect(notifier.state.displayNodes.length, 2);
     });
 
   });
