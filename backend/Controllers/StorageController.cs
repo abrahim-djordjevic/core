@@ -12,10 +12,12 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
     public class StorageController : ControllerBase
     {
         private readonly IDiskOperationService _diskService;
+        private readonly IDuplicateFileDetector _duplicateFileDetector;
 
-        public StorageController(IDiskOperationService diskService)
+        public StorageController(IDiskOperationService diskService, IDuplicateFileDetector duplicateFileDetector)
         {
             _diskService = diskService;
+            _duplicateFileDetector = duplicateFileDetector;
         }
 
         [HttpPost("stream-sector")]
@@ -185,6 +187,30 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                 Success = true,
                 Message = "Abort Signal received. Brakes applied."
             });
+        }
+
+        [HttpGet("duplicates")]
+        public async Task<IActionResult> ScanForDuplicates([FromQuery] string path)
+        {
+            try
+            {
+                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(path);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = duplicateGroups
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            { }
         }
     }
 }

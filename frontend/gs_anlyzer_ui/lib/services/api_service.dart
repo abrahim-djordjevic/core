@@ -86,7 +86,7 @@ class ApiService {
   
   Future<bool> killRamProcesses(List<int> pids) async {
     final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill');
-    print('INITIATING ASASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
+    print('INITIATING ASSASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
     final response = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
 
@@ -114,5 +114,27 @@ class ApiService {
       'path': path
     });
     await http.post(uri);
+  }
+
+  Future<List<dynamic>> scanForDuplicates(String path) async {
+    final uri = Uri.parse('$baseUrl/duplicates').replace(queryParameters: {
+      'path': path
+    });
+
+    print('INITIATING DUPLICATE HUNTER ON: $uri');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return jsonBody['data'] as List<dynamic>;
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
+    }
   }
 }

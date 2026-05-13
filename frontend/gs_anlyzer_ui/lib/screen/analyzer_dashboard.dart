@@ -12,6 +12,8 @@ import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import '../utils/nuke_protocol.dart';
 import '../widgets/directory_table_header.dart';
 import '../widgets/side_bar_widget.dart';
+import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
+import 'package:gs_analyzer_ui/widgets/duplicate_scanner_pannel.dart';
 
 class AnalyzerDashboard extends ConsumerStatefulWidget {
   const AnalyzerDashboard({super.key});
@@ -26,6 +28,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
   Widget build(BuildContext context) {
     final dirState = ref.watch(directoryProvider);
     final dirNotifier = ref.read(directoryProvider.notifier);
+    final currentMode = ref.watch(storageModeProvider);
     ref.watch(telemetryProvider);
 
     return Scaffold(
@@ -55,79 +58,105 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             backgroundColor: HudTheme.bgPanel,
             elevation: 0,
             actions: [
-              PopupMenuButton<dynamic>(
-                icon: const Icon(Icons.sort_outlined),
-                tooltip: 'Sort Option',
+              PopupMenuButton<StorageMode>(
+                icon: const Icon(Icons.build_circle_outlined, color: HudTheme.accentAmber,),
+                tooltip: 'Storage Tools',
                 color: HudTheme.bgPanel,
-                onSelected: (value) {
-                  if (value is SortMethod) {
-                    ref.read(directoryProvider.notifier).setSortMethod(value);
-                  } else if (value is bool) {
-                    ref.read(directoryProvider.notifier).setAscending(value);
-                  }
+                offset: const Offset(0, 50),
+                onSelected: (mode) {
+                  ref.read(storageModeProvider.notifier).state = mode;
                 },
                 itemBuilder: (context) => [
-                  CheckedPopupMenuItem(
-                    value: SortMethod.name,
-                    checked: dirState.sortMethod == SortMethod.name,
-                    child: Text('Name', style: HudTheme.bodyText,),
+                  PopupMenuItem(
+                    value: StorageMode.duplicateScanner,
+                    child: Text('DUPLICATE HUNTER', style: HudTheme.bodyText.copyWith(color: HudTheme.accentAmber, fontWeight: FontWeight.bold)),
                   ),
-                   CheckedPopupMenuItem(
-                    value: SortMethod.size,
-                    checked: dirState.sortMethod == SortMethod.size,
-                    child: Text('Total Size', style: HudTheme.bodyText,),
+                  PopupMenuItem(
+                    value: StorageMode.largeFileScanner,
+                    child: Text('LARGE FILE SCANNER', style: HudTheme.bodyText.copyWith(color: HudTheme.accentAmber, fontWeight: FontWeight.bold)),
                   ),
-                  CheckedPopupMenuItem(
-                    value: SortMethod.date,
-                    checked: dirState.sortMethod == SortMethod.date,
-                    child: Text('DateModified', style: HudTheme.bodyText,),
-                  ),
-                  const PopupMenuDivider(),
-                  CheckedPopupMenuItem(
-                    value: true,
-                    checked: dirState.isAscending == true,
-                    child: Text('Ascending', style: HudTheme.bodyText,),
-                  ),
-                  CheckedPopupMenuItem(
-                    value: false,
-                    checked: dirState.isAscending == false,
-                    child: Text('Descending', style: HudTheme.bodyText,),
+                  PopupMenuItem(
+                    value: StorageMode.tempFileCleaner,
+                    child: Text('TEMP FILE CLEANER', style: HudTheme.bodyText.copyWith(color: HudTheme.accentAmber, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
-              TextButton(
-                onPressed: () {
-                  ref.read(directoryProvider.notifier).toggleSelectionMode();
-                },
-                child: Text(
-                  dirState.isSelectionMode ? 'CANCEL SELECTION' : 'SELECT MULTIPLE',
-                  style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan, fontWeight: FontWeight.bold)
+              if (currentMode == StorageMode.diskAnalyzer) ...[
+                PopupMenuButton<dynamic>(
+                  icon: const Icon(Icons.sort_outlined),
+                  tooltip: 'Sort Option',
+                  color: HudTheme.bgPanel,
+                  onSelected: (value) {
+                    if (value is SortMethod) {
+                      ref.read(directoryProvider.notifier).setSortMethod(value);
+                    } else if (value is bool) {
+                      ref.read(directoryProvider.notifier).setAscending(value);
+                    }
+                  },
+                  itemBuilder: (context) =>
+                  [
+                    CheckedPopupMenuItem(
+                      value: SortMethod.name,
+                      checked: dirState.sortMethod == SortMethod.name,
+                      child: Text('Name', style: HudTheme.bodyText,),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: SortMethod.size,
+                      checked: dirState.sortMethod == SortMethod.size,
+                      child: Text('Total Size', style: HudTheme.bodyText,),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: SortMethod.date,
+                      checked: dirState.sortMethod == SortMethod.date,
+                      child: Text('DateModified', style: HudTheme.bodyText,),
+                    ),
+                    const PopupMenuDivider(),
+                    CheckedPopupMenuItem(
+                      value: true,
+                      checked: dirState.isAscending == true,
+                      child: Text('Ascending', style: HudTheme.bodyText,),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: false,
+                      checked: dirState.isAscending == false,
+                      child: Text('Descending', style: HudTheme.bodyText,),
+                    ),
+                  ],
                 ),
-              ),
-              if (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    ref.read(directoryProvider.notifier).toggleSelectionMode();
+                  },
+                  child: Text(
+                    dirState.isSelectionMode ? 'CANCEL SELECTION' : 'SELECT MULTIPLE',
+                    style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan, fontWeight: FontWeight.bold)
+                  ),
+                ),
+                if (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.delete_forever_outlined, color: HudTheme.accentRed),
+                    tooltip:'Nuke Selected (${dirState.selectedPath.length})',
+                    onPressed: () => executeNukeProtocol(context, ref)
+                  ),
                 IconButton(
-                  icon: const Icon(Icons.delete_forever_outlined, color: HudTheme.accentRed),
-                  tooltip:'Nuke Selected (${dirState.selectedPath.length})',
-                  onPressed: () => executeNukeProtocol(context, ref)
+                  icon: const Icon(Icons.refresh_outlined, color: HudTheme.accentCyan),
+                  tooltip: 'Refresh',
+                  onPressed: () => dirNotifier.scanDirectory(dirState.currentPath)
                 ),
-              IconButton(
-                icon: const Icon(Icons.refresh_outlined, color: HudTheme.accentCyan),
-                tooltip: 'Refresh',
-                onPressed: () => dirNotifier.scanDirectory(dirState.currentPath)
-              ),
+              ],
             ],
-            bottom: PreferredSize(
+            bottom: currentMode == StorageMode.diskAnalyzer ? const PreferredSize(
               preferredSize: const Size.fromHeight(60),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: const DirectorySearchWidget(),
               )
-            ),
+            ) : null,
         ),
         body: Row(
           children: [
             // LEFT PANEL: Persistent Tree
-            SideBarTreeWidget(
+            if (currentMode == StorageMode.diskAnalyzer) SideBarTreeWidget(
               onNuke: (name, path) => executeNukeProtocol(context, ref, fileName: name, filePath: path),
             ),
             // RIGHT PANEL: Directory Table
@@ -135,7 +164,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               child: Column(
                 children: [
                   Expanded(
-                    child: dirState.isLoading
+                    child: currentMode == StorageMode.duplicateScanner ? const DuplicateScannerPanel() : currentMode == StorageMode.largeFileScanner ? const Center(child: Text('LARGE FILE SCANNER OFFLINE', style: HudTheme.actionRed)) : currentMode == StorageMode.tempFileCleaner ? const Center(child: Text('TEMP FILE CLEANER OFFLINE', style: HudTheme.actionRed,)) : dirState.isLoading
                         ? const TelemetryHudWidget()
                         : dirState.errorMessage != null
                         ? Center(child: Text('BRIDGE FAILURE: ${dirState.errorMessage}', style: HudTheme.actionRed))

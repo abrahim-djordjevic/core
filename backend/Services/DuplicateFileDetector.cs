@@ -5,11 +5,12 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 
 namespace GSInteractiveDeviceAnalyzer.Services
 {
-    public class DuplicateFileDetector
+    public class DuplicateFileDetector : IDuplicateFileDetector
     {
         /// Scans a root directory and returns a dictionary of duplicate files grouped by their SHA256 hash.
         public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
