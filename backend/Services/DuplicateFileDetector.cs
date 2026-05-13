@@ -5,17 +5,16 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using GSInteractiveDeviceAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer // (Note: Change this namespace to match the other files in his repo!)
+namespace GSInteractiveDeviceAnalyzer.Services
 {
     public class DuplicateFileDetector
     {
-        /// <summary>
         /// Scans a root directory and returns a dictionary of duplicate files grouped by their SHA256 hash.
-        /// </summary>
-        public async Task<Dictionary<string, List<string>>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
+        public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
         {
-            // 1. Safely gather all files, ignoring protected system folders (Fixes the "Ghost Reading" crash)
+            // 1. Safely gather all files, ignoring protected system folders (This fixes the "Ghost Reading" crash)
             var allFiles = SafeEnumerateFiles(rootPath);
 
             // --- PASS 1: The O(n) Size Filter ---
@@ -63,12 +62,15 @@ namespace GSInteractiveDeviceAnalyzer // (Note: Change this namespace to match t
             // 3. Final Cleanup: Convert back to standard collections and filter out unique files
             return hashedFiles
                 .Where(kvp => kvp.Value.Count > 1)
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToList());
+                .Select(kvp => new DuplicateGroup
+                {
+                    FileHash = kvp.Key,
+                    FilePaths = kvp.Value.ToList()
+                })
+                .ToList();
         }
 
-        /// <summary>
         /// Helper method to traverse directories without crashing on UnauthorizedAccessException.
-        /// </summary>
         private IEnumerable<FileInfo> SafeEnumerateFiles(string rootPath)
         {
             var rootDir = new DirectoryInfo(rootPath);
@@ -80,7 +82,7 @@ namespace GSInteractiveDeviceAnalyzer // (Note: Change this namespace to match t
 
             foreach (var file in files)
             {
-                yield return file; // yield return is highly memory efficient!
+                yield return file; 
             }
 
             var directories = Enumerable.Empty<DirectoryInfo>();

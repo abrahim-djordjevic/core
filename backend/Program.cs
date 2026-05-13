@@ -31,21 +31,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<StorageHub>("/storageHub");
 
-// Testing duplicate file detector
-// app.MapGet("/test-duplicates", async (DuplicateFileDetector myEngine) => 
-// {
-//     string testFolder = @"C:\Users\AHMED IKEOLUWA\Pictures";
-
-//     var cts = new CancellationTokenSource();
-//     var results = await myEngine.FindDuplicatesAsync(testFolder, cts.Token);
-
-//     return Results.Ok(new
-//     {
-//         Message = "Scan Complete!",
-//         TotalDuplicatesFound = results.Count, 
-//         Data = results
-//     });
-// });
 
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var engine = app.Services.GetRequiredService<DiskScannerEngine>();
