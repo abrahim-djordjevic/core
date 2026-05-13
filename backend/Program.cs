@@ -1,3 +1,4 @@
+using GSInteractiveDeviceAnalyzer;
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
@@ -20,6 +21,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<RamMonitoringEngine>();
+builder.Services.AddSingleton<DuplicateFileDetector>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddSignalR();
 var app = builder.Build();
@@ -28,6 +30,7 @@ app.UseCors("AllowFlutterApp");
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<StorageHub>("/storageHub");
+
 
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var engine = app.Services.GetRequiredService<DiskScannerEngine>();

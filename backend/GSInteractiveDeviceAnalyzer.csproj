@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+    <Content Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+    <EmbeddedResource Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+    <None Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+  </ItemGroup>
+
 </Project>
