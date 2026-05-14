@@ -13,6 +13,10 @@ jobs:
     # Run on a Windows server since your C# engine uses Windows-specific FileSystemWatcher
     runs-on: windows-latest
 
+    defaults:
+      run:
+        working-directory: ./backend
+
     steps:
     # Step A: Download your code onto the cloud server
     - name: Checkout Code
