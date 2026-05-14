@@ -26,9 +26,6 @@ When a deep scan is required, the engine utilizes `Parallel.ForEachAsync`. This 
 ### 4. Cache Invalidation & The Nuke Protocol
 When a destructive command (`ObliterateNodes`) is received via the HTTP Body payload, the backend physically permanently deletes the data. Crucially, the process then executes `InvalidateCache()`, traversing the `ConcurrentDictionary` memory tree and safely removing the destroyed nodes so the server's internal memory perfectly mirrors the physical hard drive.
 
-### 5. Graceful Persistence (Shutdown)
-If the server is stopped (via terminal interrupt or process kill), the `IHostApplicationLifetime.ApplicationStopping` hook intercepts the shutdown command. The process freezes, locks the `_fileWriteLock`, serializes the active memory cache to JSON, and safely writes it to the disk before allowing the server to fully power off.
-
 ## 📂 Project Structure
 ```text
 backend/
