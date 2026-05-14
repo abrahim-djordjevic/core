@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
@@ -11,17 +13,18 @@ import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import '../providers/nuke_provider.dart';
 import '../widgets/nuke_progress_dialog.dart';
 
-void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath}) {
+void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath, List<String>? customPath, VoidCallback? onComplete}) {
   final dirState = ref.read(directoryProvider);
   final dirNotifier = ref.read(directoryProvider.notifier);
+  final List<String> targetsToNuke = customPath ?? (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty ? dirState.selectedPath.toList() : (fileName != null ? [filePath!] : []));
 
-  final isBulk = dirState.isSelectionMode && dirState.selectedPath.isNotEmpty;
+  if (targetsToNuke.isEmpty) return;
 
-  if (!isBulk && filePath == null) return;
+  final isBulk = targetsToNuke.length > 1;
 
   final warningText = isBulk
-      ? 'WARNING: You are about to permanently delete ${dirState.selectedPath.length} items. This cannot be undone.'
-      : 'Warning: You are about to permanently delete "$fileName". This cannot be undone.';
+      ? 'WARNING: You are about to permanently delete ${targetsToNuke.length} items. This cannot be undone.'
+      : 'Warning: You are about to permanently delete "${fileName ?? 'this target'}". This cannot be undone.';
 
   showDialog(
     context: context,
@@ -29,7 +32,7 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
       return AlertDialog(
         backgroundColor: HudTheme.bgPanel,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.redAccent, width: 2),
+          side: const BorderSide(color: HudTheme.accentRed, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
         title: const Text('CONFIRM NUKE', style: HudTheme.actionRed),
@@ -61,19 +64,24 @@ void executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName,
               final masterNavigator = Navigator.of(context, rootNavigator: true);
 
               try {
-                bool allSuccess = true;
                 final api = ApiService();
-                if(isBulk) {
-                  allSuccess = await api.nukeNode(dirState.selectedPath.toList());
-                  dirNotifier.toggleSelectionMode();
-                } else {
-                  allSuccess = await api.nukeNode([filePath!]);
-                }
-
+                bool allSuccess = await api.nukeNode(targetsToNuke);
                 masterNavigator.pop();
                 
-                final currentPath = ref.read(directoryProvider).currentPath;
-                await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+                if (onComplete != null) {
+                  onComplete();
+                } else {
+                  if (dirState.isSelectionMode) {
+                    dirNotifier
+                      .toggleSelectionMode();
+                  }
+                  final currentPath = ref
+                      .read(directoryProvider)
+                      .currentPath;
+                  await ref.read(directoryProvider.notifier).scanDirectory(
+                      currentPath);
+                }
+
                 ref.invalidate(rootTreeProvider);
                 ref.invalidate(driveStatsProvider);
 

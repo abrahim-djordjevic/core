@@ -46,8 +46,9 @@ class DuplicateNotifier extends StateNotifier<DuplicateState> {
     List<DuplicateGroup> parsedGroups = [];
 
     for (var item in jsonList) {
-      final hash = item['FileHash'];
-      final List<dynamic> paths = item['FilePaths'];
+      final hash = item['FileHash'] ?? item['fileHash'];
+      final List<dynamic> rawPaths = item['FilePaths'] ?? item['filePaths'];
+      final List<dynamic> paths = rawPaths;
 
       final items = paths.map((p) => DuplicateItem.fromPath(p.toString())).toList();
 
@@ -68,6 +69,15 @@ class DuplicateNotifier extends StateNotifier<DuplicateState> {
     }).toList();
 
     state = DuplicateState(isLoading: state.isLoading, duplicateGroups: updateGroups);
+  }
+
+  void clearNukedFiles() {
+    final updatedGroups = state.duplicateGroups.map((group) {
+      group.files.removeWhere((file) => file.isSelected);
+      return group;
+    }).where((group) => group.files.length > 1).toList();
+
+    state = DuplicateState(isLoading: false, duplicateGroups: updatedGroups);
   }
 
   void toggleFileSelection(String hash, String path) {

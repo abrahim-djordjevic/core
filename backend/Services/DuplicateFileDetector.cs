@@ -75,29 +75,43 @@ namespace GSInteractiveDeviceAnalyzer.Services
         private IEnumerable<FileInfo> SafeEnumerateFiles(string rootPath)
         {
             var rootDir = new DirectoryInfo(rootPath);
+
+            var options = new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = true,
+                ReturnSpecialDirectories = false
+            };
+
             var files = Enumerable.Empty<FileInfo>();
 
-            try { files = rootDir.EnumerateFiles("*.*", SearchOption.TopDirectoryOnly); }
-            catch (UnauthorizedAccessException) { /* Ignore protected folders */ }
-            catch (DirectoryNotFoundException) { /* Ignore deleted folders */ }
+            try
+            {
+                files = rootDir.EnumerateFiles("*.*", options);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                /* Ignore protected folders */
+            }
+            catch (DirectoryNotFoundException)
+            {
+                /* Ignore deleted folders */
+            }
+            catch (Exception)
+            {
+
+            }
 
             foreach (var file in files)
             {
+                if (file.FullName.Contains("\\AppData\\", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 yield return file; 
             }
 
-            var directories = Enumerable.Empty<DirectoryInfo>();
-            try { directories = rootDir.EnumerateDirectories("*.*", SearchOption.TopDirectoryOnly); }
-            catch (UnauthorizedAccessException) { }
-
-            foreach (var dir in directories)
-            {
-                // Recursive call to dive into subdirectories
-                foreach (var file in SafeEnumerateFiles(dir.FullName))
-                {
-                    yield return file;
-                }
-            }
         }
     }
 }

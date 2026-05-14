@@ -3,14 +3,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/duplicate_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/nuke_protocol.dart';
 
-import '../utils/nuke_protocol.dart';
-
-class DuplicateScannerPanel extends ConsumerWidget {
+class DuplicateScannerPanel extends ConsumerStatefulWidget {
   const DuplicateScannerPanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _DuplicateScannerPanelState createState() => _DuplicateScannerPanelState();
+}
+
+class _DuplicateScannerPanelState extends ConsumerState<DuplicateScannerPanel> {
+  late TextEditingController _pathController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pathController = TextEditingController(text: 'C:/Users');
+  }
+
+  @override
+  void dispose() {
+    _pathController.dispose();
+    super.dispose();
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
     final dupState = ref.watch(duplicateProvider);
     final dupNotifier = ref.read(duplicateProvider.notifier);
 
@@ -44,40 +63,58 @@ class DuplicateScannerPanel extends ConsumerWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white10))),
-            child: Row(
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                SizedBox(
+                  width: 260,
+                  child: TextField(
+                    controller: _pathController,
+                    style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan, fontSize: 13),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.folder_outlined, color: HudTheme.textDim, size: 20),
+                      labelText: 'TARGET SECTOR',
+                      labelStyle: HudTheme.labelMuted,
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Colors.white10)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Colors.white10)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: HudTheme.accentCyan)),
+                    ),
+                  ),
+                ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(backgroundColor: HudTheme.accentAmber, foregroundColor: Colors.black),
-                  icon: const Icon(Icons.radar_outlined),
-                  label: const Text('SCAN C:/ FOR DUPLICATES', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
-                  onPressed: () => dupNotifier.startScan('C:/'),
+                  icon: const Icon(Icons.radar_outlined, size: 18),
+                  label: const Text('INIT SCAN', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore, fontSize: 12)),
+                  onPressed: () => dupNotifier.startScan(_pathController.text),
                 ),
-                const Spacer(),
-
                 if (dupState.duplicateGroups.isNotEmpty) ...[
-                  Text('WASTED SPACE: ${dupState.totalWastedSpaceFormatted}', style: HudTheme.actionRed,),
-                  const SizedBox(width: 24),
+                  Text('WASTED: ${dupState.totalWastedSpaceFormatted}', style: HudTheme.actionRed.copyWith(fontSize: 12, fontWeight: FontWeight.bold),),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(foregroundColor: HudTheme.accentCyan, side: const BorderSide(color: HudTheme.accentCyan)),
-                    icon: const Icon(Icons.auto_fix_high),
-                    label: const Text('SMART SELECT (KEEP OLDEST)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
+                    icon: const Icon(Icons.auto_fix_high, size: 18),
+                    label: const Text('SMART SELECT', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore, fontSize: 12)),
                     onPressed: () => dupNotifier.smartSelectAll(),
                   ),
-                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
                       foregroundColor: HudTheme.accentRed,
                       side: const BorderSide(color: HudTheme.accentRed)
                     ),
-                    icon: const Icon(Icons.delete_forever),
-                    label: Text('NUKE SELECTED (${dupState.pathsToNuke.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore),
+                    icon: const Icon(Icons.delete_forever, size: 18),
+                    label: Text('NUKE (${dupState.pathsToNuke.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore, fontSize: 12)),
+                    onPressed: dupState.pathsToNuke.isEmpty ? null : () {
+                      executeNukeProtocol(context, ref, customPath: dupState.pathsToNuke, onComplete: () => dupNotifier.clearNukedFiles()
+                      );
+                    }
                   ),
-                    onPressed: () => print('Target to nuke: ${dupState.pathsToNuke}')
-                  ),
-
                 ]
               ],
             ),

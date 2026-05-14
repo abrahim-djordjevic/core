@@ -126,7 +126,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 
     _sectorCache[safePath] = [];
 
-    state = state.copyWith(currentPath: safePath, isLoading: false, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
+    state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
     try {
       await _apiService.requestDirectoryStream(safePath);
