@@ -12,6 +12,10 @@ jobs:
     # We use Windows since you are building a Windows Desktop App!
     runs-on: windows-latest
 
+    defaults:
+      run:
+        working-directory: ./frontend
+
     steps:
     # Step A: Download your code
     - name: Checkout Code
