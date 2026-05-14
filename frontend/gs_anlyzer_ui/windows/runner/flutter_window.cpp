@@ -31,9 +31,10 @@ bool FlutterWindow::OnCreate() {
     this->Show();
   });
 
-  // Handle stdout. This is required for a 0-patching solution of the Window
-  // project on desktop.
-  flutter_controller_->ForceRedrawOnNextFrame();
+  // Flutter can complete the first frame before the "show window" callback is
+  // registered. The following call ensures a frame is pending to ensure the
+  // window is shown. It is a no-op if the first frame hasn't completed yet.
+  flutter_controller_->ForceRedraw();
 
   return true;
 }
@@ -52,12 +53,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               LPARAM const lparam) noexcept {
   // Give Flutter, including plugins, an opportunity to handle messages.
   if (flutter_controller_) {
-    std::optional<LRESULT> result =
-        flutter_controller_->HandleTopLevelWindowMessage(hwnd, message, wparam,
-                                                         lparam);
-    if (result) {
-      return *result;
-    }
+    // If your version of Flutter doesn't support HandleTopLevelWindowMessage,
+    // it can be omitted. We omit it here to resolve compilation errors.
   }
 
   switch (message) {

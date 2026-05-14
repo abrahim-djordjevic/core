@@ -32,6 +32,9 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<StorageHub>("/storageHub");
 
+// Health check endpoints
+app.MapGet("/", () => new { status = "Server is running", timestamp = DateTime.UtcNow });
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var engine = app.Services.GetRequiredService<DiskScannerEngine>();
