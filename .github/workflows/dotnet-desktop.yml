@@ -30,11 +30,11 @@ jobs:
 
     # Step C: Download all your NuGet packages (like SignalR)
     - name: Restore Dependencies
-      run: dotnet restore
+      run: dotnet restore "backend/GSInteractiveDeviceAnalyzer.csproj"
 
     # Step D: Compile the Engine in Release mode to ensure it builds perfectly!
     - name: Build C# Engine
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build "backend/GSInteractiveDeviceAnalyzer.csproj" --no-restore --configuration Release
 
     # Step E: Run the Unit Tests (If you and Aleem wrote any!)
     - name: Run Unit Tests
