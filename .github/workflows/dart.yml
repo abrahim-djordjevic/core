@@ -1,0 +1,44 @@
+name: GS Flutter UI Build
+
+# 1. THE TRIGGER: Runs at the exact same time as the C# pipeline
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    # We use Windows since you are building a Windows Desktop App!
+    runs-on: windows-latest
+
+    steps:
+    # Step A: Download your code
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Step B: Install the Flutter SDK on the cloud server
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        
+    # Step C: Enable Windows Desktop builds
+    - name: Enable Windows Desktop
+      run: flutter config --enable-windows-desktop
+
+    # Step D: Download all your pubspec.yaml packages (like Riverpod & SignalR)
+    - name: Install Dependencies
+      run: flutter pub get
+
+    # Step E: Scan the Dart code for missing commas, syntax errors, or bad logic
+    - name: Analyze Dart Code
+      run: flutter analyze
+
+    # Run your Flutter Unit and Widget Tests!
+    - name: Run Flutter Tests
+      run: flutter test
+
+    # Step F: Attempt to compile the actual Windows .exe!
+    - name: Build Windows App
+      run: flutter build windows
