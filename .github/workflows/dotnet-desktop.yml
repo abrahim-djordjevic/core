@@ -1,0 +1,41 @@
+name: GS Engine Build & Test
+
+# 1. THE TRIGGER: When does this robot run?
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# 2. THE MISSION: What does the robot do?
+jobs:
+  build:
+    # Run on a Windows server since your C# engine uses Windows-specific FileSystemWatcher
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    # Step A: Download your code onto the cloud server
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Step B: Install the modern .NET SDK
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Uses the latest major .NET version
+
+    # Step C: Download all your NuGet packages (like SignalR)
+    - name: Restore Dependencies
+      run: dotnet restore 
+
+    # Step D: Compile the Engine in Release mode to ensure it builds perfectly!
+    - name: Build C# Engine
+      run: dotnet build --no-restore --configuration Release
+
+    # Step E: Run the Unit Tests (If you and Aleem wrote any!)
+    - name: Run Unit Tests
+      run: dotnet test --no-build --verbosity normal
