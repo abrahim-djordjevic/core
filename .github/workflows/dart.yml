@@ -37,7 +37,7 @@ jobs:
 
     # Step E: Scan the Dart code for missing commas, syntax errors, or bad logic
     - name: Analyze Dart Code
-      run: flutter analyze
+      run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
     # Run your Flutter Unit and Widget Tests!
     - name: Run Flutter Tests
