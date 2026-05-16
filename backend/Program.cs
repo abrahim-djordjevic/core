@@ -38,19 +38,7 @@ app.MapHub<StorageHub>("/storageHub");
 app.MapGet("/", () => new { status = "Server is running", timestamp = DateTime.UtcNow });
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
-// To Map the GET endpoint
-app.MapGet("/api/scan/largefiles", async (string root, int top, LargeFileHunterService hunter) =>
-{
-    if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
-    {
-        return Results.BadRequest("Invalid or missing root directory.");
-    }
 
-    if (top <= 0) top = 20; // Fallback to 20 if the user passes a bad number
-
-    var files = await hunter.GetTopLargeFilesAsync(root, top);
-    return Results.Ok(files);
-});
 
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var engine = app.Services.GetRequiredService<DiskScannerEngine>();
