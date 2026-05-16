@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 scanner_memory.json
+*.lscache

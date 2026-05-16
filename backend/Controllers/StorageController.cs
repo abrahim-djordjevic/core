@@ -2,6 +2,7 @@
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
+using GSInteractiveDeviceAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -211,6 +212,44 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                 });
             }
             { }
+        }
+
+        [HttpGet("scan/largefiles")]
+        public async Task<IActionResult> GetLargeFiles(
+            [FromQuery] string root,
+            [FromServices] LargeFileHunterService hunter,
+            [FromQuery] int top = 20)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(root) || !System.IO.Directory.Exists(root))
+                {
+                    return BadRequest( new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Scan failed: Invalid or missing root directory."
+                    });
+                }
+
+                var result = await hunter.GetTopLargeFilesAsync(root, top);
+
+                var response = new ApiResponse<IEnumerable<LargeFile>>
+                {
+                    Success = true,
+                    Message = "Large files scanned successfully.",
+                    Data = result
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Scan failed: {ex.Message}"
+                });
+            }
         }
     }
 }
