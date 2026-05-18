@@ -50,5 +50,5 @@ Real-time monitoring of drive space, allocation percentages, and system limits d
 4. Launch the application: `flutter run`
 
 ## 🗺️ Future Roadmap
-* **Volatile Memory (RAM) Scanner:** Implementing a dedicated OS Task Manager subset to monitor, chart, and free up system RAM via `System.Diagnostics.Process` APIs.
-* **Deep File Type Analytics:** Visualizing disk usage via dynamically generated storage pie charts mapping out media vs. executable bloat.
+* **CPU Metrics (CPU Usage Monitor):** Build the CPU_LOAD [AVG] HUD card showing overall average CPU % with a delta, and grouped per-core bar charts matching the mockup (CORE 0–3, CORE 4–7, CORE 8–15).
+* **Dry Run Mode (Nuke Protocol)** Before any deletion, show the user exactly what will be deleted and how much space will be freed — with a mandatory confirmation step.
