@@ -98,7 +98,7 @@ public class DiskScannerEngine
                     if (token.IsCancellationRequested) return;
                     try
                     {
-                        var size = await Task.Run(() => GetDirectorySize(dir, token));
+                        var size = await Task.Run(() => GetDirectorySize(dir, token), token);
 
                         DirectorySizeCache[dir.FullName] = new CacheEntry
                         {
@@ -161,7 +161,7 @@ public class DiskScannerEngine
             size += files.Sum(f => f.Length);
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);
-        
+
             var currentCount = Interlocked.Add(ref _scannedFilesCount, files.Length);
 
             if (pulse % 50 == 0)
@@ -173,12 +173,17 @@ public class DiskScannerEngine
                     currentTarget = dir.Name
                 });
             }
-            
+
 
             foreach (var subDir in dir.GetDirectories("*", option))
             {
                 size += GetDirectorySize(subDir, token);
             }
+        }
+        catch (OperationCanceledException
+              )
+        {
+            throw;
         }
         catch (Exception e)
         {

@@ -106,7 +106,8 @@ namespace GSInteractiveDeviceAnalyzer.Services
             {
                 token.ThrowIfCancellationRequested();
 
-                if (file.FullName.Contains("\\AppData\\", StringComparison.OrdinalIgnoreCase))
+                string appDataSegment = $"{Path.DirectorySeparatorChar}AppData{Path.DirectorySeparatorChar}";
+                if (file.FullName.Contains("appDataSegment", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
