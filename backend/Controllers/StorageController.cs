@@ -214,7 +214,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             { }
         }
 
-        [HttpGet("scan/largefiles")]
+        [HttpGet("scan-largefiles")]
         public async Task<IActionResult> GetLargeFiles(
             [FromQuery] string root,
             [FromServices] LargeFileHunterService hunter,
