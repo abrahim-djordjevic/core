@@ -217,7 +217,8 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         [HttpGet("scan-largefiles")]
         public async Task<IActionResult> GetLargeFiles(
             [FromQuery] string root,
-            [FromServices] LargeFileHunterService hunter,
+            [FromServices] ILargeFileHunterService hunter,
+            CancellationToken cancellationToken,
             [FromQuery] int top = 20)
         {
             try
@@ -241,6 +242,14 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                 };
 
                 return Ok(response);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Client closed request, Scan Aborted"
+                });
             }
             catch (Exception ex)
             {

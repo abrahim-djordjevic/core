@@ -3,12 +3,13 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GSInteractiveDeviceAnalyzer.Models;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using System.Runtime.CompilerServices;
 
 namespace GSInteractiveDeviceAnalyzer.Services;
-public class LargeFileHunterService
+public class LargeFileHunterService : ILargeFileHunterService
 {
-    public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN)
+    public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
     {
         // To offload the heavy hardrive I/O to a background thread
         return await Task.Run(() =>
@@ -25,6 +26,7 @@ public class LargeFileHunterService
 
             foreach (var filePath in Directory.EnumerateFiles(rootPath, "*", options))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     var fileInfo = new FileInfo (filePath);
