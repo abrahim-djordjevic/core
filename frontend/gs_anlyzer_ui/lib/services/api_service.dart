@@ -135,4 +135,27 @@ class ApiService {
       throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
     }
   }
+
+  Future<List<dynamic>> scanForLargeFiles(String rootPath, int topN) async {
+    final uri = Uri.parse('$baseUrl/scan-largefiles').replace(queryParameters: {
+      'root': rootPath,
+      'top': topN.toString(),
+    });
+
+    print('INITIATING LARGE FILE HUNTER ON: $uri');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return jsonBody['data'] as List<dynamic>;
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Bridge Failed with Status: ${response.statusCode}');
+    }
+  }
 }

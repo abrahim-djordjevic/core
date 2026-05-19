@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import '../utils/nuke_protocol.dart';
 import '../widgets/directory_table_header.dart';
+import '../widgets/large_file_scanner_panel.dart';
 import '../widgets/side_bar_widget.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/widgets/duplicate_scanner_pannel.dart';
@@ -164,7 +165,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               child: Column(
                 children: [
                   Expanded(
-                    child: currentMode == StorageMode.duplicateScanner ? const DuplicateScannerPanel() : currentMode == StorageMode.largeFileScanner ? const Center(child: Text('LARGE FILE SCANNER OFFLINE', style: HudTheme.actionRed)) : currentMode == StorageMode.tempFileCleaner ? const Center(child: Text('TEMP FILE CLEANER OFFLINE', style: HudTheme.actionRed,)) : dirState.isLoading
+                    child: currentMode == StorageMode.duplicateScanner ? const DuplicateScannerPanel() : currentMode == StorageMode.largeFileScanner ? const LargeFileScannerPanel() : currentMode == StorageMode.tempFileCleaner ? const Center(child: Text('TEMP FILE CLEANER OFFLINE', style: HudTheme.actionRed,)) : dirState.isLoading
                         ? const TelemetryHudWidget()
                         : dirState.errorMessage != null
                         ? Center(child: Text('BRIDGE FAILURE: ${dirState.errorMessage}', style: HudTheme.actionRed))
