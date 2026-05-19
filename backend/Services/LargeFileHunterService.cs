@@ -24,23 +24,24 @@ public class LargeFileHunterService : ILargeFileHunterService
                 ReturnSpecialDirectories = false
             };
 
-            foreach (var filePath in Directory.EnumerateFiles(rootPath, "*", options))
+            var directory = new DirectoryInfo(rootPath);
+
+            foreach (var fileInfo in directory.EnumerateFiles("*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    var fileInfo = new FileInfo (filePath);
+                    
                     long size = fileInfo.Length;
 
                     if (topFiles.Count < topN)
                     {
                         // We haven't reached the limit yet, so add it
-                        topFiles.Enqueue(new LargeFile { Path = filePath, SizeBytes = size }, size);
+                        topFiles.Enqueue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
                     } else if (size > topFiles.Peek().SizeBytes)
                     {
                         // Means the queue is full. Kick out the smallest file, and add the new bigger one
-                        topFiles.Dequeue();
-                        topFiles.Enqueue(new LargeFile { Path = filePath, SizeBytes = size }, size);
+                        topFiles.EnqueueDequeue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
                     }
                 }
                 catch
@@ -51,7 +52,7 @@ public class LargeFileHunterService : ILargeFileHunterService
             }
 
             // To extract the files from the queue into a list
-            var result = new List<LargeFile>();
+            var result = new List<LargeFile>(topFiles.Count);
             while (topFiles.Count > 0)
             {
                 result.Add(topFiles.Dequeue());
@@ -67,7 +68,7 @@ public class LargeFileHunterService : ILargeFileHunterService
             }
 
             return result;
-        });
+        }, cancellationToken);
     }
 
     private string FormatSize(long bytes)
