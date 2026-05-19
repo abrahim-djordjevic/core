@@ -10,9 +10,9 @@ namespace GSInteractiveDeviceAnalyzer.Services
     public class DiskOperationsService : IDiskOperationService
     {
         private readonly DiskScannerEngine _scanner;
-        private readonly IHubContext<StorageHub> _hubContext;
+        private readonly IHubContext<SystemHub> _hubContext;
 
-        public DiskOperationsService(DiskScannerEngine scanner, IHubContext<StorageHub> hubContext)
+        public DiskOperationsService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
         {
             _scanner = scanner;
             _hubContext = hubContext;

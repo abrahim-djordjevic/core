@@ -22,7 +22,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<StorageHub> hubContext, [FromServices] DiskScannerEngine engine, [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine, [FromQuery] string path)
         {
             var cancelToken = engine.ScanToken();
 

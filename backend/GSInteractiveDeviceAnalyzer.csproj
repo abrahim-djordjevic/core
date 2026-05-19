@@ -2,16 +2,24 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+
 
   <ItemGroup>
     <Compile Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
     <Content Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
     <EmbeddedResource Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
     <None Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+  </ItemGroup>
+
+
+
+  <ItemGroup>
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

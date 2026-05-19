@@ -2,7 +2,7 @@
 
 namespace GSInteractiveDeviceAnalyzer.Hubs
 {
-    public class StorageHub : Hub
+    public class SystemHub : Hub
     {
     }
 }
