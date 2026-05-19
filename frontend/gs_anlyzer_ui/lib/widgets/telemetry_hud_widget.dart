@@ -84,7 +84,7 @@ class TelemetryHudWidget extends ConsumerWidget {
               child: TextButton(
                 onPressed: () async {
                   await ApiService().abortScan();
-                  ref.read(directoryProvider.notifier).state = ref.read(directoryProvider).copyWith(isLoading: false);
+                  ref.read(directoryProvider.notifier).purgeStaleCache();
                   snackbarKey.currentState?.showSnackBar(
                       const SnackBar(
                         content: Text('Scan Aborted', style: TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold)),
