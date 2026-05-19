@@ -26,10 +26,10 @@ public class DiskScannerEngine
     private DateTime _lastRadarAlert = DateTime.MinValue;
     private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(500);
 
-    private readonly IHubContext<StorageHub> _hub;
+    private readonly IHubContext<SystemHub> _hub;
     private int _scannedFilesCount = 0;
 
-    public DiskScannerEngine(IHubContext<StorageHub> hub)
+    public DiskScannerEngine(IHubContext<SystemHub> hub)
     {
         _hub = hub;
         if (File.Exists(_cacheFilePath))

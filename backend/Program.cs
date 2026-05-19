@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using GSInteractiveDeviceAnalyzer;
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
@@ -24,6 +25,19 @@ builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<RamMonitoringEngine>();
 builder.Services.AddSingleton<DuplicateFileDetector>();
 builder.Services.AddSingleton<LargeFileHunterService>();
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+{
+    builder.Services.AddSingleton<ICpuMetricsProvider, WindowsCpuProvider>();
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Services.AddSingleton<ICpuMetricsProvider, LinuxCpuProvider>();
+}
+else
+{
+    throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
+}
+builder.Services.AddHostedService<CpuSamplerEngine>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddSignalR();
@@ -32,7 +46,7 @@ var app = builder.Build();
 app.UseCors("AllowFlutterApp");
 app.UseAuthorization();
 app.MapControllers();
-app.MapHub<StorageHub>("/storageHub");
+app.MapHub<SystemHub>("/storageHub");
 
 // Health check endpoints
 app.MapGet("/", () => new { status = "Server is running", timestamp = DateTime.UtcNow });

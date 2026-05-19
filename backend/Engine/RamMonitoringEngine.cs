@@ -8,10 +8,10 @@ namespace GSInteractiveDeviceAnalyzer.Engine
     public class RamMonitoringEngine
     {
         private CancellationTokenSource? _radarCts;
-        private readonly IHubContext<StorageHub> _hub;
+        private readonly IHubContext<SystemHub> _hub;
         private readonly object _lock = new object();
 
-        public RamMonitoringEngine(IHubContext<StorageHub> hub)
+        public RamMonitoringEngine(IHubContext<SystemHub> hub)
         {
             _hub = hub;
         }
