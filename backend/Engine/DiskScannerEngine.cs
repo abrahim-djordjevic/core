@@ -96,14 +96,21 @@ public class DiskScannerEngine
                 await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
                 {
                     if (token.IsCancellationRequested) return;
-                    var size = await Task.Run(() => GetDirectorySize(dir, token));
-
-                    DirectorySizeCache[dir.FullName] = new CacheEntry
+                    try
                     {
-                        Size = size,
-                        LastUpdated = dir.LastWriteTimeUtc
-                    };
+                        var size = await Task.Run(() => GetDirectorySize(dir, token));
 
+                        DirectorySizeCache[dir.FullName] = new CacheEntry
+                        {
+                            Size = size,
+                            LastUpdated = dir.LastWriteTimeUtc
+                        };
+                    }
+                    catch (OperationCanceledException )
+                    {
+                        return;
+                    }
+                    
                     var completed = Interlocked.Increment(ref completedNode);
                     var percentage = Math.Round(((double)completed / totalNodes) * 100, 1);
 
@@ -132,7 +139,7 @@ public class DiskScannerEngine
     {
         if(token.IsCancellationRequested)
         {
-            return 0;
+            throw new OperationCanceledException("Scan aborted by user");
         }
 
         if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))

@@ -115,7 +115,26 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
           // Result List
           Expanded(
             child: largeFileState.isLoading
-                ? const Center(child: CircularProgressIndicator(color: HudTheme.accentCyan,))
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: HudTheme.accentCyan),
+                        const SizedBox(height: 24),
+                        const Text('SCANNING DEEP SECTORS...', style: HudTheme.statGreen),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: () => largeFileNotifier.abortScan(),
+                          icon: const Icon(Icons.dangerous, color: HudTheme.accentRed),
+                          label: const Text('ABORT SCAN', style: HudTheme.actionRed),
+                          style: TextButton.styleFrom(
+                            backgroundColor: HudTheme.accentRed.withValues(alpha: 0.1),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : largeFileState.errorMessage != null
                     ? Center(child: Text('ERROR: ${largeFileState.errorMessage}', style: HudTheme.actionRed,))
                     : largeFileState.largeFiles.isEmpty
