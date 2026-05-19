@@ -3,12 +3,13 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GSInteractiveDeviceAnalyzer.Models;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using System.Runtime.CompilerServices;
 
 namespace GSInteractiveDeviceAnalyzer.Services;
-public class LargeFileHunterService
+public class LargeFileHunterService : ILargeFileHunterService
 {
-    public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN)
+    public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         // To offload the heavy hardrive I/O to a background thread
@@ -25,22 +26,24 @@ public class LargeFileHunterService
             };
 
             // needs normalization of path to support linux 
-            foreach (var filePath in Directory.EnumerateFiles(rootPath, "*", options))
+            var directory = new DirectoryInfo(rootPath);
+
+            foreach (var fileInfo in directory.EnumerateFiles("*", options))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    var fileInfo = new FileInfo (filePath);
+                    
                     long size = fileInfo.Length;
 
                     if (topFiles.Count < topN)
                     {
                         // We haven't reached the limit yet, so add it
-                        topFiles.Enqueue(new LargeFile { Path = filePath, SizeBytes = size }, size);
+                        topFiles.Enqueue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
                     } else if (size > topFiles.Peek().SizeBytes)
                     {
                         // Means the queue is full. Kick out the smallest file, and add the new bigger one
-                        topFiles.Dequeue();
-                        topFiles.Enqueue(new LargeFile { Path = filePath, SizeBytes = size }, size);
+                        topFiles.EnqueueDequeue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
                     }
                 }
                 catch
@@ -51,7 +54,7 @@ public class LargeFileHunterService
             }
 
             // To extract the files from the queue into a list
-            var result = new List<LargeFile>();
+            var result = new List<LargeFile>(topFiles.Count);
             while (topFiles.Count > 0)
             {
                 result.Add(topFiles.Dequeue());
@@ -70,8 +73,9 @@ public class LargeFileHunterService
             Console.WriteLine($"[PERF] Large File Scan Completed in: {stopwatch.ElapsedMilliseconds}ms");
 
             return result;
-        });
-       
+
+        }, cancellationToken);
+
     }
 
     private string FormatSize(long bytes)

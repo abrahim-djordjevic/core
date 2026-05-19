@@ -23,7 +23,7 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<RamMonitoringEngine>();
 builder.Services.AddSingleton<DuplicateFileDetector>();
-builder.Services.AddSingleton<LargeFileHunterService>();
+builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddSignalR();
