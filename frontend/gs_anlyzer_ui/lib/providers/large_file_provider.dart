@@ -40,6 +40,16 @@ class LargeFileNotifier extends StateNotifier<LargeFileState> {
         .toList();
     state = LargeFileState(isLoading: false, largeFiles: updatedList);
   }
+
+  void abortScan() {
+    state = LargeFileState(
+      isLoading: false,
+      largeFiles: [],
+      errorMessage: 'SCAN ABORTED BY USER'
+    );
+
+    ApiService().abortScan();
+  }
 }
 
 final largeFileProvider = StateNotifierProvider<LargeFileNotifier, LargeFileState>((ref) => LargeFileNotifier());

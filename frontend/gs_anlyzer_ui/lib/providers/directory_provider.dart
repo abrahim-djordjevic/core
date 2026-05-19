@@ -234,6 +234,12 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     }
   }
 
+  void purgeStaleCache() {
+    String current = state.currentPath.replaceAll('\\', '/');
+    _sectorCache.remove(current);
+    state = state.copyWith(allNodes: [], displayNodes: [], isLoading: false);
+  }
+
 
 }
 

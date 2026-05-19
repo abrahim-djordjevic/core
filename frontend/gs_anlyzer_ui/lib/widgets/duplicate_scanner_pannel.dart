@@ -121,7 +121,27 @@ class _DuplicateScannerPanelState extends ConsumerState<DuplicateScannerPanel> {
           ),
           Expanded(
             child: dupState.isLoading
-              ? const Center(child: CircularProgressIndicator(color: HudTheme.accentAmber))
+              ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: HudTheme.accentAmber),
+                    const SizedBox(height: 24),
+                    const Text('HUNTING DUPLICATE SECTORS...', style: TextStyle(color: HudTheme.accentAmber, fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () => dupNotifier.abortScan(),
+                      icon: const Icon(Icons.dangerous, color: HudTheme.accentRed),
+                      label: const Text('ABORT SCAN', style: HudTheme.actionRed),
+                      style: TextButton.styleFrom(
+                        backgroundColor: HudTheme.accentRed.withValues(alpha: 0.1),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        side: const BorderSide(color: HudTheme.accentRed, width: 1),
+                      ),
+                    ),
+                  ],
+                ),
+              )
               : dupState.duplicateGroups.isEmpty
                 ? Center(child: Text('AWAITING BACKEND SCAN COMMAND...', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)))
                 : ListView.builder(

@@ -94,6 +94,15 @@ class DuplicateNotifier extends StateNotifier<DuplicateState> {
 
     state = DuplicateState(isLoading: state.isLoading, duplicateGroups: updatedGroups);
   }
+
+  void abortScan() {
+    state = DuplicateState(
+      isLoading: false,
+      duplicateGroups: []
+    );
+
+    ApiService().abortScan();
+  }
 }
 
 final duplicateProvider = StateNotifierProvider<DuplicateNotifier, DuplicateState>((ref) => DuplicateNotifier());

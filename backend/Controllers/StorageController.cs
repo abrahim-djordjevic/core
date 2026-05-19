@@ -22,9 +22,10 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<StorageHub> hubContext,
-            [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<StorageHub> hubContext, [FromServices] DiskScannerEngine engine, [FromQuery] string path)
         {
+            var cancelToken = engine.ScanToken();
+
             _ = Task.Run(async () =>
             {
                 try
@@ -34,6 +35,8 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
                     {
+                        if (cancelToken.IsCancellationRequested) break;
+
                         var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
                         await hubContext.Clients.All.SendAsync("DirectoryChunk", new
                         {
@@ -191,16 +194,25 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpGet("duplicates")]
-        public async Task<IActionResult> ScanForDuplicates([FromQuery] string path)
+        public async Task<IActionResult> ScanForDuplicates([FromQuery] string path, [FromServices] DiskScannerEngine engine)
         {
             try
             {
+                var cancelToken = engine.ScanToken();
                 var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(path);
 
                 return Ok(new
                 {
                     success = true,
                     data = duplicateGroups
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Duplicate Scan Aborted by User."
                 });
             }
             catch (Exception ex)

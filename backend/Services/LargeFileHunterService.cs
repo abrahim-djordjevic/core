@@ -10,6 +10,7 @@ public class LargeFileHunterService
 {
     public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         // To offload the heavy hardrive I/O to a background thread
         return await Task.Run(() =>
         {
@@ -23,6 +24,7 @@ public class LargeFileHunterService
                 ReturnSpecialDirectories = false
             };
 
+            // needs normalization of path to support linux 
             foreach (var filePath in Directory.EnumerateFiles(rootPath, "*", options))
             {
                 try
@@ -64,8 +66,12 @@ public class LargeFileHunterService
                 file.SizeFormatted = FormatSize(file.SizeBytes);
             }
 
+            stopwatch.Stop();
+            Console.WriteLine($"[PERF] Large File Scan Completed in: {stopwatch.ElapsedMilliseconds}ms");
+
             return result;
         });
+       
     }
 
     private string FormatSize(long bytes)

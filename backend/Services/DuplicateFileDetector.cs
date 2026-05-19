@@ -16,7 +16,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
         public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
         {
             // 1. Safely gather all files, ignoring protected system folders (This fixes the "Ghost Reading" crash)
-            var allFiles = SafeEnumerateFiles(rootPath);
+            var allFiles = SafeEnumerateFiles(rootPath, cancellationToken);
 
             // --- PASS 1: The O(n) Size Filter ---
             // Group files by size. If a size group only has 1 file, throw it away.
@@ -31,14 +31,14 @@ namespace GSInteractiveDeviceAnalyzer.Services
             var hashedFiles = new ConcurrentDictionary<string, ConcurrentBag<string>>();
 
             // Process the remaining files across all available CPU cores
-            await Parallel.ForEachAsync(filesToHash, async (file, cancellationToken) =>
+            await Parallel.ForEachAsync(filesToHash, async (file, ct) =>
             {
                 try
                 {
                     using var sha256 = SHA256.Create();
                     using var stream = File.OpenRead(file.FullName);
                     
-                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
+                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
                     string hashString = BitConverter.ToString(hashBytes).Replace("-", "");
 
                     hashedFiles.AddOrUpdate(
@@ -72,7 +72,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
         }
 
         /// Helper method to traverse directories without crashing on UnauthorizedAccessException.
-        private IEnumerable<FileInfo> SafeEnumerateFiles(string rootPath)
+        private IEnumerable<FileInfo> SafeEnumerateFiles(string rootPath, CancellationToken token)
         {
             var rootDir = new DirectoryInfo(rootPath);
 
@@ -104,7 +104,10 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
             foreach (var file in files)
             {
-                if (file.FullName.Contains("\\AppData\\", StringComparison.OrdinalIgnoreCase))
+                token.ThrowIfCancellationRequested();
+
+                string appDataSegment = $"{Path.DirectorySeparatorChar}AppData{Path.DirectorySeparatorChar}";
+                if (file.FullName.Contains("appDataSegment", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
