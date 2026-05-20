@@ -21,6 +21,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             // --- PASS 1: The O(n) Size Filter ---
             // Group files by size. If a size group only has 1 file, throw it away.
             var filesToHash = allFiles
+                .Where(f => f.Length > 0)
                 .GroupBy(f => f.Length)
                 .Where(group => group.Count() > 1)
                 .SelectMany(group => group)
@@ -63,11 +64,20 @@ namespace GSInteractiveDeviceAnalyzer.Services
             // 3. Final Cleanup: Convert back to standard collections and filter out unique files
             return hashedFiles
                 .Where(kvp => kvp.Value.Count > 1)
-                .Select(kvp => new DuplicateGroup
+                .Select(kvp =>
                 {
-                    FileHash = kvp.Key,
-                    FilePaths = kvp.Value.ToList()
+
+                    var paths = kvp.Value.ToList();
+                    long sizeBytes = new FileInfo(paths.First()).Length;
+
+                    return new DuplicateGroup
+                    {
+                        FileSizeBytes = sizeBytes,
+                        FileHash = kvp.Key,
+                        FilePaths = paths
+                    };
                 })
+                .OrderByDescending(d => d.WastedBytes)
                 .ToList();
         }
 
