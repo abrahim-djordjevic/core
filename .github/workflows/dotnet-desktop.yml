@@ -36,6 +36,6 @@ jobs:
     - name: Build C# Engine
       run: dotnet build --no-restore --configuration Release
 
-    # Step E: Run the Unit Tests (If you and Aleem wrote any!)
+    # Step E: Run the Unit Tests 
     - name: Run Unit Tests
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --configuration Release --no-build --verbosity normal
