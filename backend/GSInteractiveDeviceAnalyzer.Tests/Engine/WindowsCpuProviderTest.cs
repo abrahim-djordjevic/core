@@ -9,7 +9,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
     public class WindowsCpuProviderTest
     {
         private readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
+#if WINDOWS
         [Fact]
         public async Task WindowsProvider_GetNextSample_PopulatesSystemTools()
         {
@@ -97,19 +97,9 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
         }
 
         [Fact]
-        public void WindowsProvider_ForeignOS_ThrowsPlatformNotSupportedException()
-        {
-            if(_isWindows) return;
-
-            var exception = Record.Exception(() => new WindowsCpuProvider());
-            Assert.NotNull(exception);
-            Assert.IsType<PlatformNotSupportedException>(exception);
-        }
-
-        [Fact]
         public async Task WindowsProvider_CoreGroupingAndMathInvariants_ExecuteCleanly()
         {
-            if(!_isWindows) return;
+            if (!_isWindows) return;
 
             var provider = new WindowsCpuProvider();
             var result = await provider.GetNextSampleAsync();
@@ -120,6 +110,21 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
 
             Assert.Contains("CORE 0-", result.CoreGroups.Keys.GetEnumerator().Current ?? "CORE 0-3");
         }
+#endif
+
+        [Fact]
+        public void WindowsProvider_ForeignOS_ThrowsPlatformNotSupportedException()
+        {
+#if WINDOWS
+            return;
+#else
+
+            var exception = Record.Exception(() => new WindowsCpuProvider());
+            Assert.NotNull(exception);
+            Assert.IsType<PlatformNotSupportedException>(exception);
+#endif
+        }
+
     }
 }
         
