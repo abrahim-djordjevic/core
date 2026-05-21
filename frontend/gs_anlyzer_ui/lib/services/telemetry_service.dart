@@ -9,6 +9,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     Function(Map<String, dynamic>)? onRamUpdate;
     Function(String path, List<dynamic> chunk)? onDirectoryChunk;
     Function(String path)? onDirectoryStreamComplete;
+    Function(Map<String, dynamic>)? onCpuUpdate;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -28,7 +29,9 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('NukeAborted', _handleNukeAborted);
       _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
       _hubConnection.on('DirectoryChunk', _hadleDirectoryChunk);
-      _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
+      _hubConnection.on(
+          'DirectoryStreamComplete', _handleDirectoryStreamComplete);
+      _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
     }
 
     Future<void> startListening() async {
@@ -36,14 +39,15 @@ import 'package:signalr_netcore/signalr_client.dart';
         try {
           await _hubConnection.start();
           print('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
-        } catch(e) {
-          print('TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e');
+        } catch (e) {
+          print(
+              'TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e');
         }
       }
     }
 
     Future<void> stopListening() async {
-      if(_hubConnection.state == HubConnectionState.Connected) {
+      if (_hubConnection.state == HubConnectionState.Connected) {
         await _hubConnection.stop();
         print('TELEMETRY RADIO: DISCONNECTED FROM BASE STATION!');
       }
@@ -56,7 +60,8 @@ import 'package:signalr_netcore/signalr_client.dart';
         final status = data['status'] as String?;
         final completed = (data['completed'] as num?)?.toInt();
         final total = (data['total'] as num?)?.toInt();
-        final percentageComplete = (data['percentComplete'] as num?)?.toDouble();
+        final percentageComplete = (data['percentComplete'] as num?)
+            ?.toDouble();
         final target = data['currentTarget'] as String?;
 
         onProgressUpdate(status, completed, total, percentageComplete, target);
@@ -64,11 +69,11 @@ import 'package:signalr_netcore/signalr_client.dart';
     }
 
     void _handleSectorChanged(List<Object?>? arguments) {
-      if(arguments != null && arguments.isNotEmpty) {
+      if (arguments != null && arguments.isNotEmpty) {
         String changedFolder = arguments[0].toString();
         print('RADAR ALERT RECEIVED: Changes in $changedFolder');
 
-        if(onSectorChanged != null) {
+        if (onSectorChanged != null) {
           onSectorChanged!(changedFolder);
         }
       }
@@ -78,7 +83,7 @@ import 'package:signalr_netcore/signalr_client.dart';
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
 
-        final percentage = (data['percentage'] as num?) ?.toDouble() ?? 0.0;
+        final percentage = (data['percentage'] as num?)?.toDouble() ?? 0.0;
         final target = data['target'] as String? ?? '';
         final completed = (data['completed'] as num?)?.toInt() ?? 0;
         if (onNukeProgress != null) {
@@ -98,22 +103,23 @@ import 'package:signalr_netcore/signalr_client.dart';
       if (arguments == null && arguments!.isEmpty) return;
       try {
         final rawData = arguments[0];
-        
-        if(rawData is Map) {
+
+        if (rawData is Map) {
           final data = Map<String, dynamic>.from(rawData);
           if (onRamUpdate != null) {
             onRamUpdate!(data);
           }
         }
-        
+
         else if (rawData is List) {
-          print('ARCHITECT ALERT: The backend is still sending the old list! The C# engine needs to be rebuilt');
+          print(
+              'ARCHITECT ALERT: The backend is still sending the old list! The C# engine needs to be rebuilt');
         }
 
         else {
           print('UNKNOWN PAYLOAD TYPE: ${rawData.runtimeType}');
         }
-        } catch (e) {
+      } catch (e) {
         print('RAM PAYLOAD CRASH: $e');
       }
     }
@@ -132,6 +138,23 @@ import 'package:signalr_netcore/signalr_client.dart';
         if (onDirectoryStreamComplete != null) {
           onDirectoryStreamComplete!(arguments[0].toString());
         }
+      }
+    }
+
+    void _handleCpuUpdate(List<Object?>? arguments) {
+      if (arguments == null || arguments.isEmpty) return;
+
+      try {
+        final rawData = arguments[0];
+
+        if (rawData is Map) {
+          final data = Map<String, dynamic>.from(rawData);
+          if (onCpuUpdate != null) {
+            onCpuUpdate!(data);
+          }
+        }
+      } catch (e) {
+        print('CPU TELEMETRY CRASH: $e');
       }
     }
   }

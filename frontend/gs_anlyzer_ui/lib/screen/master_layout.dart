@@ -6,6 +6,8 @@ import 'package:gs_analyzer_ui/screen/ram_scannner_screen.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/global_sidebar_widget.dart';
 
+import 'cpu_metrics_screen.dart';
+
 class MasterLayout extends ConsumerWidget {
   const MasterLayout({super.key});
 
@@ -34,7 +36,7 @@ class MasterLayout extends ConsumerWidget {
         return const RamScannerScreen();
 
       case AppRoute.cpuMetics:
-        return const Center(child: Text('CPU MODULE OFFLINE', style: HudTheme.headerCyan,));
+        return const CpuMetricsScreen();
 
       case AppRoute.network:
         return const Center(child: Text('NETWORK MODULE OFFLINE', style: HudTheme.headerCyan,));
