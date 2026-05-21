@@ -1,6 +1,7 @@
 ﻿using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer.Controllers
 {
@@ -44,6 +45,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             try
             {
                 var telemetry = await _cpuProvider.GetNextSampleAsync();
+
 
                 return Ok(new
                 {

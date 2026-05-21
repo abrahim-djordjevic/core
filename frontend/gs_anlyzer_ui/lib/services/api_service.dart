@@ -4,10 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 
 class ApiService {
-  static  const String baseUrl = 'http://localhost:5200/api/storage';
+  static  const String storageUrl = 'http://localhost:5200/api/storage';
+  static const String telemetryUrl = 'http://localhost:5200/api/Telemetry';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
-    final uri = Uri.parse('$baseUrl/scan').replace(queryParameters: {
+    final uri = Uri.parse('$storageUrl/scan').replace(queryParameters: {
       'path': path
     });
     print('MATRIX BRIDGE FIRING TO: $uri');
@@ -31,7 +32,7 @@ class ApiService {
   }
 
   Future<DriveStats> getDriveTelemetry(String driveLetter) async {
-    final response = await http.get(Uri.parse('$baseUrl/drive-stats?driveLetter=$driveLetter'));
+    final response = await http.get(Uri.parse('$storageUrl/drive-stats?driveLetter=$driveLetter'));
 
     if(response.statusCode == 200) {
       final jsonBody = json.decode(response.body);
@@ -47,7 +48,7 @@ class ApiService {
   }
 
   Future<bool> nukeNode(List<String> paths) async {
-    final uri = Uri.parse('$baseUrl/nuke');
+    final uri = Uri.parse('$storageUrl/nuke');
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
     final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(paths));
@@ -67,7 +68,7 @@ class ApiService {
 
   Future<void> abortNuke() async {
     try {
-      await http.post(Uri.parse('$baseUrl/abort-nuke'));
+      await http.post(Uri.parse('$storageUrl/abort-nuke'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -76,14 +77,14 @@ class ApiService {
   Future<void> abortScan() async {
     try {
       print('SENDING SCAN ABORT SIGNAL...');
-      await http.post(Uri.parse('$baseUrl/abort-scan'));
+      await http.post(Uri.parse('$storageUrl/abort-scan'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
   }
   
   Future<bool> killRamProcesses(List<int> pids) async {
-    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/kill');
+    final uri = Uri.parse('$telemetryUrl/ram/kill');
     print('INITIATING ASSASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
     final response = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
@@ -96,7 +97,7 @@ class ApiService {
   }
 
   Future<void> startRamRadar() async {
-    final uri = Uri.parse('http://localhost:5200/api/Telemetry/ram/start');
+    final uri = Uri.parse('$telemetryUrl/ram/start');
     try {
       final response = await http.post(uri);
       if (response.statusCode == 200) {
@@ -107,15 +108,29 @@ class ApiService {
     }
   }
 
+  Future<void> startCpuRadar() async {
+    final uri = Uri.parse('$telemetryUrl/cpu-load');
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        print('FLUTTER COMMAND: CPU Radar Started Successfully!');
+      } else {
+        print('FLUTTER COMMAND: Backend returned ${response.statusCode}');
+      }
+    } catch (e) {
+      print('FLUTTER ERROR: Failed to start CPU Radar - $e');
+    }
+  }
+
   Future<void> requestDirectoryStream(String path) async {
-    final uri = Uri.parse('$baseUrl/stream-sector').replace(queryParameters: {
+    final uri = Uri.parse('$storageUrl/stream-sector').replace(queryParameters: {
       'path': path
     });
     await http.post(uri);
   }
 
   Future<List<dynamic>> scanForDuplicates(String path) async {
-    final uri = Uri.parse('$baseUrl/duplicates').replace(queryParameters: {
+    final uri = Uri.parse('$storageUrl/duplicates').replace(queryParameters: {
       'path': path
     });
 
@@ -137,7 +152,7 @@ class ApiService {
   }
 
   Future<List<dynamic>> scanForLargeFiles(String rootPath, int topN) async {
-    final uri = Uri.parse('$baseUrl/scan-largefiles').replace(queryParameters: {
+    final uri = Uri.parse('$storageUrl/scan-largefiles').replace(queryParameters: {
       'root': rootPath,
       'top': topN.toString(),
     });

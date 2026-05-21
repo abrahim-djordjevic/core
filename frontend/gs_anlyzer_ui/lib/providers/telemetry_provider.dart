@@ -5,6 +5,7 @@ import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 
+import 'cpu_provider.dart';
 import 'nuke_provider.dart';
 
 class TelemetryState {
@@ -51,6 +52,9 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       ref.read(ramProvider.notifier).updateProcesses(data);
     };
 
+    _telemetryService?.onCpuUpdate = (data) {
+      ref.read(cpuProvider.notifier).updateCpu(data);
+    };
     _telemetryService?.onDirectoryChunk = (path, chunk) {
       ref.read(directoryProvider.notifier).receiveStreamChunk(path, chunk);
     };
