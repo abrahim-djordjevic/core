@@ -1,11 +1,15 @@
+using GSInteractiveDeviceAnalyzer.Engine;
+using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Models;
+using GSInteractiveDeviceAnalyzer.Services;
+using Microsoft.AspNetCore.SignalR;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
 
 namespace GSInteractiveDeviceAnalyzer.Tests;
 
@@ -13,12 +17,18 @@ public class NukeProtocolServiceTests : IDisposable
 {
     private readonly string _sandboxRoot;
     private readonly NukeProtocolService _service;
+    private readonly Mock<DiskScannerEngine> _mockScanner;
+    private readonly Mock<IHubContext<SystemHub>> _mockHub;
 
     public NukeProtocolServiceTests()
     {
         _sandboxRoot = Path.Combine(Path.GetTempPath(), $"NukeTest_{Guid.NewGuid()}");
         Directory.CreateDirectory(_sandboxRoot);
-        _service = new NukeProtocolService();
+        _mockScanner = new Mock<DiskScannerEngine>(null); // Passing null for Hub if required
+        _mockHub = new Mock<IHubContext<SystemHub>>();
+
+        // Inject mocks into the service
+        _service = new NukeProtocolService(_mockScanner.Object, _mockHub.Object);
     }
 
     public void Dispose()
