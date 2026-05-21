@@ -39,6 +39,7 @@ else
 }
 builder.Services.AddHostedService<CpuSamplerEngine>();
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
+builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddSignalR();
