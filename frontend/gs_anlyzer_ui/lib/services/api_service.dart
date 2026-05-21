@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
+import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 
 class ApiService {
   static  const String storageUrl = 'http://localhost:5200/api/storage';
   static const String telemetryUrl = 'http://localhost:5200/api/Telemetry';
+  static const String nukeUrl = 'http://localhost:5200/api/nuke';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan').replace(queryParameters: {
@@ -47,10 +49,11 @@ class ApiService {
     }
   }
 
-  Future<bool> nukeNode(List<String> paths) async {
-    final uri = Uri.parse('$storageUrl/nuke');
+  Future<bool> executeNuke(List<String> paths) async {
+    final uri = Uri.parse('$nukeUrl/execute');
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
+
     final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(paths));
 
     if(response.statusCode == 200) {
@@ -68,7 +71,8 @@ class ApiService {
 
   Future<void> abortNuke() async {
     try {
-      await http.post(Uri.parse('$storageUrl/abort-nuke'));
+      print('SENDING NUKE ABORT SIGNAL....');
+      await http.post(Uri.parse('$nukeUrl/nuke'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -171,6 +175,29 @@ class ApiService {
       }
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode}');
+    }
+  }
+
+  Future<NukePreviewResponse> previewNuke(List<String> paths) async {
+    final uri = Uri.parse('$nukeUrl/preview');
+    print('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETs');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'paths': paths}),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return NukePreviewResponse.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
     }
   }
 }
