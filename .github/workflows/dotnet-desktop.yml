@@ -34,7 +34,7 @@ jobs:
 
     # Step D: Compile the Engine in Release mode to ensure it builds perfectly!
     - name: Build C# Engine
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --configuration Release
 
     # Step E: Run the Unit Tests 
     - name: Run Unit Tests
