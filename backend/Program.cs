@@ -53,6 +53,8 @@ else
     throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
 }
 builder.Services.AddHostedService<CpuSamplerEngine>();
+builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
+builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddHostedService<ThermalMonitoringEngine>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();

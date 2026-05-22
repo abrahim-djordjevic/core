@@ -121,65 +121,6 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             }
         }
 
-        [HttpDelete("nuke")]
-        public async Task<IActionResult> NukeNode([FromBody] List<string> paths)
-        {
-            try
-            {
-                foreach (var path in paths)
-                {
-                    if (path.StartsWith("C:\\Windows", StringComparison.OrdinalIgnoreCase))
-                        return BadRequest(new ApiResponse<object>
-                            { Success = false, Message = "CRITICAL OS FILES PROTECTED." });
-                }
-                var result = await _diskService.ObliterateNode(paths);
-
-                var response = new ApiResponse<NukeResultDto>
-                {
-                    Success = true,
-                    Message = "Target Nuked Successfully",
-                    Data = result
-                };
-
-                return Ok(response);
-            }
-            catch (FileNotFoundException ex)
-            {
-                return NotFound(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return StatusCode(403, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "ACCESS DENIED: OS level restricted"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Could not nuke target " + ex.Message
-                });
-            }
-        }
-
-        [HttpPost("abort-nuke")]
-        public IActionResult AbortNuke()
-        {
-            _diskService.TriggerNukeAbort();
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "Abort Signal received. Brakes applied."
-            });
-        }
 
         [HttpPost("abort-scan")]
         public IActionResult AbortScan()

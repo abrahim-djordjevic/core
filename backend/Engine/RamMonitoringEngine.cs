@@ -36,12 +36,12 @@ namespace GSInteractiveDeviceAnalyzer.Engine
 
         private async Task RadarLoopAsync(CancellationToken token)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             try
             {
                 while (await timer.WaitForNextTickAsync(token))
                 {
-                    var snapshot = GetTopProcesses(50);
+                    var snapshot = GetTopProcesses(30);
                     var globalMetrics = SystemMemoryMetrics.GetLiveMetrics();
 
                     var payload = new
@@ -98,10 +98,14 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                 }
             }
 
-            return telemetryList
-                .OrderByDescending(p => p.WorkingSetBytes)
+            var accurateList = telemetryList
+                .GroupBy(p => p.Name)
+                .OrderByDescending(g => g.Sum(p => p.WorkingSetBytes))
                 .Take(limit)
+                .SelectMany(g => g)
                 .ToList();
+
+            return accurateList;
         }
 
         public int ExecuteOrder66(List<int> processIds)
