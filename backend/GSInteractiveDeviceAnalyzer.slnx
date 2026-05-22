@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="GSInteractiveDeviceAnalyzer.csproj" />
-  <Project Path="GSInteractiveDeviceAnalyzer.Tests/GSInteractiveDeviceAnalyzer.Tests.csproj" />
+  <Project Path="GSInteractiveDeviceAnalyzer.Tests/GSInteractiveDeviceAnalyzer.Tests.csproj">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
 </Solution>
