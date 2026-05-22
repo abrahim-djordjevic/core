@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace GSInteractiveDeviceAnalyzer.Services
 {
+#if !WINDOWS
     public class LinuxThermalProvider : IThermalProvider
     {
         public async Task<ThermalTelemetryDto> GetThermalDataAsync()
@@ -162,4 +163,13 @@ namespace GSInteractiveDeviceAnalyzer.Services
             // No unmanaged resources to clean up for the Linux provider
         }
     }
+#else
+    public class LinuxThermalProvider : IThermalProvider
+    {
+        public Task<ThermalTelemetryDto> GetThermalDataAsync() =>
+            throw new PlatformNotSupportedException("LinuxThermalProvider is only supported on Linux.");
+
+        public void Dispose() { }
+    }
+#endif
 }

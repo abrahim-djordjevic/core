@@ -1,10 +1,13 @@
 ﻿using BlackSharp.Core.Extensions;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
+#if WINDOWS
 using LibreHardwareMonitor.Hardware;
+#endif
 
 namespace GSInteractiveDeviceAnalyzer.Services
 {
+#if WINDOWS
     public class UpdateVisitor : IVisitor
     {
         public void VisitComputer(IComputer computer) => computer.Traverse(this);
@@ -18,7 +21,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
                 subHardware.Accept(this);
             }
         }
-        
+
         public void VisitSensor(ISensor sensor) {}
 
         public void VisitParameter(IParameter parameter) { }
@@ -185,4 +188,13 @@ namespace GSInteractiveDeviceAnalyzer.Services
             _computer.Close();
         }
     }
+#else
+    public class LibreThermalProvider : IThermalProvider
+    {
+        public Task<ThermalTelemetryDto> GetThermalDataAsync() =>
+            throw new PlatformNotSupportedException("LibreThermalProvider is only supported on Windows.");
+
+        public void Dispose() { }
+    }
+#endif
 }
