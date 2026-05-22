@@ -1,9 +1,10 @@
-using System.Runtime.InteropServices;
 using GSInteractiveDeviceAnalyzer;
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Services;
+using LibreHardwareMonitor.Hardware;
+using System.Runtime.InteropServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,8 @@ builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<RamMonitoringEngine>();
 builder.Services.AddSingleton<DuplicateFileDetector>();
 builder.Services.AddSingleton<LargeFileHunterService>();
+builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
+builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<ICpuMetricsProvider, WindowsCpuProvider>();
@@ -37,8 +40,20 @@ else
 {
     throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
 }
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+{
+    builder.Services.AddSingleton<IThermalProvider, LibreThermalProvider>();
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Services.AddSingleton<IThermalProvider, LinuxThermalProvider>();
+}
+else
+{
+    throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
+}
 builder.Services.AddHostedService<CpuSamplerEngine>();
-builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
+builder.Services.AddHostedService<ThermalMonitoringEngine>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddSignalR();
