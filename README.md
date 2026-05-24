@@ -50,5 +50,5 @@ Real-time monitoring of drive space, allocation percentages, and system limits d
 4. Launch the application: `flutter run`
 
 ## 🗺️ Future Roadmap
-* **CPU Metrics (CPU Usage Monitor):** Build the CPU_LOAD [AVG] HUD card showing overall average CPU % with a delta, and grouped per-core bar charts matching the mockup (CORE 0–3, CORE 4–7, CORE 8–15).
-* **Dry Run Mode (Nuke Protocol)** Before any deletion, show the user exactly what will be deleted and how much space will be freed — with a mandatory confirmation step.
+* **THERMAL_SENSORS Panel:** Display real-time thermal and fan data in the THERMAL_SENSORS HUD card. Data is split into two tiers: Standard (ships in v2.0) and Advanced (GPU + extended sensors, deferred to v2.1 behind an ADVANCED expand button).
+* **Settings / Config Panel** Persist user preferences locally so the app remembers configuration across sessions. All scan, alert, and monitoring services must read their configuration from a single source of truth — never from hardcoded values. Settings must survive app restarts, backend restarts, and OS reboots.
