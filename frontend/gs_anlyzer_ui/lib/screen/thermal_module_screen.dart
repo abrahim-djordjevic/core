@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
 import 'package:gs_analyzer_ui/models/thermal_telemetry.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
@@ -18,6 +21,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
   @override
   Widget build(BuildContext context) {
     final telemetry = ref.watch(thermalProvider);
+    final cpuState = ref.watch(cpuProvider);
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -41,7 +45,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildCpuSection(telemetry),
+                  _buildCpuSection(telemetry, cpuState),
                   const SizedBox(height: 16),
 
                   if (telemetry.motherBoardCelsius != null || telemetry.chipsetCelsius != null) ... [
@@ -74,7 +78,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     return (t.cpuFanRpm ?? 0) > 0 || (t.chassisFan1Rpm ?? 0) > 0 || (t.chassisFan2Rpm ?? 0) > 0 || (t.pumpRpm ?? 0) > 0;
   }
 
-  Widget _buildCpuSection(ThermalTelemetry telemetry) {
+  Widget _buildCpuSection(ThermalTelemetry telemetry, dynamic cpuState) {
     return _ThermalSection(
       title: 'CPU',
       icon: Icons.memory_outlined,
@@ -94,8 +98,12 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                   decoration: BoxDecoration(color: HudTheme.accentRed.withValues(alpha: 0.2), border: Border.all(color: HudTheme.accentRed), borderRadius: BorderRadius.circular(4)),
                   child: const Text('THROTTLING', style: HudTheme.actionRed),
                 ),
-              Text(
-                'POWER: ${telemetry.cpuPowerWatts?.toStringAsFixed(1) ?? 'N/A'} W',
+              // Later is i can access the power directly from the hardware
+              // Text(
+              //   'POWER: ${telemetry.cpuPowerWatts?.toStringAsFixed(1) ?? 'N/A'} W',
+              //   style: HudTheme.statGreen,
+                Text(
+                'POWER: ${_getDisplayPower(telemetry, cpuState)}',
                 style: HudTheme.statGreen,
               ),
             ],
@@ -231,6 +239,40 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
         )
       ],
     );
+  }
+
+  String _getDisplayPower(ThermalTelemetry telemetry, dynamic cpuState) {
+    if (telemetry.cpuPowerWatts != null && telemetry.cpuPowerWatts! > 0) {
+      return '${telemetry.cpuPowerWatts!.toStringAsFixed(1)} W';
+    }
+
+    if (cpuState != null) {
+      const double maxTdp = 45.0;
+      const double idlePower = 5.0;
+      const double turboPower = 90.0;
+      const double baseFrequency = 2.6;
+
+      double loadFactor = cpuState.averageLoad / 100.0;
+      double currentGhz = cpuState.currentFrequencyGhz;
+
+      double freqFactor = 1.0;
+      if (currentGhz > 0) {
+        freqFactor = math.pow((currentGhz / baseFrequency), 2.5).toDouble();
+      }
+
+      double estimatePower = idlePower + ((maxTdp - idlePower) * loadFactor * freqFactor);
+
+      if (telemetry.isThermalThrottling) {
+        estimatePower *= 0.65;
+      }
+
+      if (estimatePower > turboPower) {
+        estimatePower = turboPower;
+      }
+      return '~${estimatePower.toStringAsFixed(1)} W';
+    }
+
+    return 'N/A W';
   }
 }
 
