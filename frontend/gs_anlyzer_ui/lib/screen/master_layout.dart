@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/navigation_provider.dart';
 import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
 import 'package:gs_analyzer_ui/screen/ram_scannner_screen.dart';
+import 'package:gs_analyzer_ui/screen/thermal_module_screen.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/global_sidebar_widget.dart';
 
@@ -40,6 +41,9 @@ class MasterLayout extends ConsumerWidget {
 
       case AppRoute.network:
         return const Center(child: Text('NETWORK MODULE OFFLINE', style: HudTheme.headerCyan,));
+
+        case AppRoute.thermal:
+        return const ThermalModuleScreen();
 
       case AppRoute.dashboard:
         default:

@@ -1,6 +1,7 @@
 ﻿using BlackSharp.Core.Extensions;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
+using System.Runtime.Versioning;
 #if WINDOWS
 using LibreHardwareMonitor.Hardware;
 #endif
