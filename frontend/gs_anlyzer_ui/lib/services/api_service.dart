@@ -8,6 +8,7 @@ class ApiService {
   static  const String storageUrl = 'http://localhost:5200/api/storage';
   static const String telemetryUrl = 'http://localhost:5200/api/Telemetry';
   static const String nukeUrl = 'http://localhost:5200/api/nuke';
+  static const String thermalUrl = 'http://localhost:5200/api/thermal';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan').replace(queryParameters: {
@@ -175,6 +176,32 @@ class ApiService {
       }
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getCurrentThermals() async {
+    final uri = Uri.parse('$thermalUrl/current');
+    print('MATRIX BRIDGE: Requesting Instant Thermal Snapshot...');
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(response.body);
+
+        if (jsonBody['success'] == true && jsonBody['data'] != null){
+          return jsonBody['data'] as Map<String, dynamic>;
+        } else {
+          print('THERMAL SNAPSHOT FAILED: ${jsonBody['message']}');
+          return null;
+        }
+      } else {
+        print('THERMAL SNAPSHOT FAILED: Status ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('THERMAL BRIDGE ERROR: $e');
+      return null;
     }
   }
 

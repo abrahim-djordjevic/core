@@ -1,0 +1,296 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
+import 'package:gs_analyzer_ui/models/thermal_telemetry.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/hud_label.dart';
+
+class ThermalModuleScreen extends ConsumerStatefulWidget {
+  const ThermalModuleScreen({super.key});
+
+  @override
+  ConsumerState<ThermalModuleScreen> createState() => _ThermalModuleScreenState();
+}
+
+class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
+  bool _isAdvancedExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final telemetry = ref.watch(thermalProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'THERMAL RADAR MODULE', style: HudTheme.headerCyan
+          ),
+          const SizedBox(height: 24),
+
+          if (telemetry == null)
+            const Expanded(
+              child: Center(
+                child: CircularProgressIndicator(color: HudTheme.accentAmber),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildCpuSection(telemetry),
+                  const SizedBox(height: 16),
+
+                  if (telemetry.motherBoardCelsius != null || telemetry.chipsetCelsius != null) ... [
+                    _buildBoardSection(telemetry),
+                    const SizedBox(height: 16,)
+                  ],
+
+                  if (telemetry.nvmeCelsius != null) ...[
+                    _buildStorageSection(telemetry),
+                    const SizedBox(height: 16),
+                  ],
+
+                  if (_hasActiveFans(telemetry)) ...[
+                    _buildFansSection(telemetry),
+                    const SizedBox(height: 16),
+                  ],
+
+                  _buildAdvancedSection(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            )
+          ),
+        ],
+      )
+    );
+  }
+
+  bool _hasActiveFans(ThermalTelemetry t) {
+    return (t.cpuFanRpm ?? 0) > 0 || (t.chassisFan1Rpm ?? 0) > 0 || (t.chassisFan2Rpm ?? 0) > 0 || (t.pumpRpm ?? 0) > 0;
+  }
+
+  Widget _buildCpuSection(ThermalTelemetry telemetry) {
+    return _ThermalSection(
+      title: 'CPU',
+      icon: Icons.memory_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PKG: ${telemetry.cpuPackageCelsius?.toStringAsFixed(1) ?? 'N/A'}°C',
+                style: const TextStyle(color: HudTheme.accentCyan, fontSize: 28, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore),
+              ),
+              if (telemetry.isThermalThrottling)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(color: HudTheme.accentRed.withValues(alpha: 0.2), border: Border.all(color: HudTheme.accentRed), borderRadius: BorderRadius.circular(4)),
+                  child: const Text('THROTTLING', style: HudTheme.actionRed),
+                ),
+              Text(
+                'POWER: ${telemetry.cpuPowerWatts?.toStringAsFixed(1) ?? 'N/A'} W',
+                style: HudTheme.statGreen,
+              ),
+            ],
+          ),
+
+          if (telemetry.coreCelsius.isNotEmpty) ... [
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: telemetry.coreCelsius.asMap().entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsetsGeometry.only(right: 8.0),
+                    child: _ThermalChip(label: 'C${entry.key}', celsius: entry.value),
+                  );
+                }).toList(),
+              ),
+            )
+          ]
+        ],
+      )
+    );
+  }
+
+  Widget _buildBoardSection(ThermalTelemetry telemetry) {
+    return _ThermalSection(
+      title: 'BOARD',
+      icon: Icons.developer_board_outlined,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (telemetry.motherBoardCelsius != null)
+            Text('MOBO: ${telemetry.motherBoardCelsius}°C', style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16)),
+
+          if (telemetry.chipsetCelsius != null)
+            Text('CHIPSET: ${telemetry.chipsetCelsius}°C', style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16)),
+        ],
+      )
+    );
+  }
+
+  Widget _buildStorageSection(ThermalTelemetry telemetry) {
+    return _ThermalSection(
+      title: 'STORAGE',
+      icon: Icons.storage_outlined,
+      child: Text(
+        'NAME: ${telemetry.nvmeCelsius}°C',
+        style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16),
+      )
+    );
+  }
+
+  Widget _buildFansSection(ThermalTelemetry telemetry) {
+    return _ThermalSection(
+      title: 'FANS',
+      icon: Icons.air_outlined,
+      child: Wrap(
+        spacing: 24,
+        runSpacing: 12,
+        children: [
+          if ((telemetry.cpuFanRpm ?? 0) > 0) _buildFanRow('CPU_FAN', telemetry.cpuFanRpm!),
+          if((telemetry.chassisFan1Rpm ?? 0) > 0) _buildFanRow('CHA_FAN1', telemetry.chassisFan1Rpm!),
+          if((telemetry.chassisFan2Rpm ?? 0) > 0) _buildFanRow('CHA_FAN2', telemetry.chassisFan2Rpm!),
+          if((telemetry.pumpRpm ?? 0) > 0) _buildFanRow('PUMP', telemetry.pumpRpm!)
+        ],
+      )
+    );
+  }
+
+  Widget _buildFanRow(String label, int rpm) {
+    Color rpmColor = HudTheme.accentGreen;
+    if (rpm > 3500) rpmColor = HudTheme.accentRed;
+    else if (rpm > 2000) rpmColor = HudTheme.accentAmber;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HudLabel('$label: '),
+        Text('$rpm RPM', style: HudTheme.statGreen.copyWith(color: rpmColor))
+      ],
+    );
+  }
+
+  Widget _buildAdvancedSection() {
+    return Container(
+      decoration: HudTheme.hudPanelDecoration,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          collapsedIconColor: HudTheme.textDim,
+          iconColor: HudTheme.accentCyan,
+          onExpansionChanged: (expanded) => setState(() =>
+            _isAdvancedExpanded = expanded),
+          title: Row(
+            children: [
+              Icon(Icons.tune_outlined, color: _isAdvancedExpanded ? HudTheme.accentCyan : HudTheme.textDim, size: 20),
+              const SizedBox(width: 12),
+              HudLabel('ADVANCED', textAlign: TextAlign.left),
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 8),
+              child: Wrap(
+                spacing: 32,
+                runSpacing: 16,
+                children: [
+                  _buildAdvancedRow('GPU_CORE', 'N/A'),
+                  _buildAdvancedRow('GPU_HOTSPOT', 'N/A'),
+                  _buildAdvancedRow('VRAM_TEMP', 'N/A'),
+                  _buildAdvancedRow('GPU_FAN', 'N/A'),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedRow(String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label: ', style: HudTheme.labelMuted,
+        ),
+        Text(
+          '$value ', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+        ),
+        const Text(
+          '[v3.0]', style: TextStyle(color: Colors.white24, fontSize: 10, fontFamily: HudTheme.fontCore)
+        )
+      ],
+    );
+  }
+}
+
+class _ThermalSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const _ThermalSection({required this.title, required this.icon, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: HudTheme.hudPanelDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: HudTheme.textDim, size: 20,),
+              const SizedBox(width: 12),
+              HudLabel(title)
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ThermalChip extends StatelessWidget {
+  final String label;
+  final double celsius;
+  const _ThermalChip({required this.label, required this.celsius});
+
+  @override
+  Widget build(BuildContext context) {
+    Color tempColor = HudTheme.accentGreen;
+    if (celsius > 85) tempColor = HudTheme.accentRed;
+    else if (celsius > 70) tempColor = HudTheme.accentAmber;
+    return  Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tempColor.withValues(alpha: 0.1),
+        border: Border.all(color: tempColor.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label:', style: HudTheme.labelMuted,),
+          const SizedBox(width: 4),
+          Text('${celsius.toStringAsFixed(0)}°', style: HudTheme.statGreen.copyWith(color: tempColor,),
+          )
+        ],
+      ),
+    );
+  }
+}
+
