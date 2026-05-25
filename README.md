@@ -52,3 +52,4 @@ Real-time monitoring of drive space, allocation percentages, and system limits d
 ## 🗺️ Future Roadmap
 * **THERMAL_SENSORS Panel:** Display real-time thermal and fan data in the THERMAL_SENSORS HUD card. Data is split into two tiers: Standard (ships in v2.0) and Advanced (GPU + extended sensors, deferred to v2.1 behind an ADVANCED expand button).
 * **Settings / Config Panel** Persist user preferences locally so the app remembers configuration across sessions. All scan, alert, and monitoring services must read their configuration from a single source of truth — never from hardcoded values. Settings must survive app restarts, backend restarts, and OS reboots.
+* **Multi-Drive Support** Allow the app to scan, monitor, and manage every mounted drive independently. The user can switch between drives with a single tap; all scan results, space metrics, and file operations are always scoped to the selected drive. No drive should be hard-coded anywhere in the codebase.
