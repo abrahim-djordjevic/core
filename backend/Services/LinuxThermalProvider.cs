@@ -3,7 +3,6 @@ using GSInteractiveDeviceAnalyzer.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace GSInteractiveDeviceAnalyzer.Services
@@ -11,19 +10,34 @@ namespace GSInteractiveDeviceAnalyzer.Services
 #if !WINDOWS
     public class LinuxThermalProvider : IThermalProvider
     {
+        private readonly IFileSystemProvider _fileSystem;
+
+        // 🚀 INJECT THE FILE SYSTEM (Defaults to real physical OS in production)
+        public LinuxThermalProvider(IFileSystemProvider? fileSystem = null)
+        {
+            _fileSystem = fileSystem ?? new PhysicalFileSystemProvider();
+        }
+
         public async Task<ThermalTelemetryDto> GetThermalDataAsync()
         {
-            var payload = new ThermalTelemetryDto();
+            var payload = new ThermalTelemetryDto
+            {
+                // 🚀 FIXED: Default missing fans to 0, just like we did for Windows!
+                CpuFanRpm = 0,
+                ChassisFan1Rpm = 0,
+                ChassisFan2Rpm = 0,
+                CoreCelsius = new List<double>(),
+                IsThermalThrottling = false
+            };
 
-            // Run in a background thread since we are hitting the file system
             await Task.Run(async () =>
             {
                 // THERMAL ZONES (Temperatures)
                 try
                 {
-                    if (Directory.Exists("/sys/class/thermal/"))
+                    if (_fileSystem.DirectoryExists("/sys/class/thermal/"))
                     {
-                        foreach (var dir in Directory.GetDirectories("/sys/class/thermal/", "thermal_zone*"))
+                        foreach (var dir in _fileSystem.GetDirectories("/sys/class/thermal/", "thermal_zone*"))
                         {
                             var type = ReadSysFsSafe(Path.Combine(dir, "type"));
                             var tempStr = ReadSysFsSafe(Path.Combine(dir, "temp"));
@@ -47,12 +61,12 @@ namespace GSInteractiveDeviceAnalyzer.Services
                 // FANS (RPM)
                 try
                 {
-                    if (Directory.Exists("/sys/class/hwmon/"))
+                    if (_fileSystem.DirectoryExists("/sys/class/hwmon/"))
                     {
                         int fanIndex = 0;
-                        foreach (var hwmon in Directory.GetDirectories("/sys/class/hwmon/"))
+                        foreach (var hwmon in _fileSystem.GetDirectories("/sys/class/hwmon/"))
                         {
-                            foreach (var fanFile in Directory.GetFiles(hwmon, "fan*_input"))
+                            foreach (var fanFile in _fileSystem.GetFiles(hwmon, "fan*_input"))
                             {
                                 var rpmStr = ReadSysFsSafe(fanFile);
                                 if (int.TryParse(rpmStr, out int rpm))
@@ -77,7 +91,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
                     if (double.TryParse(curFreqStr, out double cur) && double.TryParse(maxFreqStr, out double max))
                     {
-                        if (max > 0 && (cur / max) < 0.8) // More than 20% below max
+                        if (max > 0 && (cur / max) < 0.8) 
                         {
                             payload.IsThermalThrottling = true;
                         }
@@ -88,14 +102,14 @@ namespace GSInteractiveDeviceAnalyzer.Services
                 // NVMe TEMPERATURES
                 try
                 {
-                    if (Directory.Exists("/sys/class/nvme/"))
+                    if (_fileSystem.DirectoryExists("/sys/class/nvme/"))
                     {
-                        foreach (var nvmeDir in Directory.GetDirectories("/sys/class/nvme/"))
+                        foreach (var nvmeDir in _fileSystem.GetDirectories("/sys/class/nvme/"))
                         {
                             var hwmonPath = Path.Combine(nvmeDir, "hwmon");
-                            if (Directory.Exists(hwmonPath))
+                            if (_fileSystem.DirectoryExists(hwmonPath))
                             {
-                                foreach (var hwmon in Directory.GetDirectories(hwmonPath))
+                                foreach (var hwmon in _fileSystem.GetDirectories(hwmonPath))
                                 {
                                     var tempStr = ReadSysFsSafe(Path.Combine(hwmon, "temp1_input"));
                                     if (double.TryParse(tempStr, out double milliCelsius))
@@ -103,7 +117,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
                                         double celsius = Math.Round(milliCelsius / 1000.0, 1);
                                         if (payload.NvmeCelsius == null || celsius > payload.NvmeCelsius)
                                         {
-                                            payload.NvmeCelsius = celsius; // Keep the hottest drive
+                                            payload.NvmeCelsius = celsius;
                                         }
                                     }
                                 }
@@ -121,8 +135,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
                     if (long.TryParse(energy1Str, out long energy1))
                     {
-                        // Wait exactly 1 second as specified
-                        await Task.Delay(1000);
+                        await Task.Delay(1000); // 1-second delta Wait
 
                         var energy2Str = ReadSysFsSafe(raplPath);
                         if (long.TryParse(energy2Str, out long energy2))
@@ -141,14 +154,14 @@ namespace GSInteractiveDeviceAnalyzer.Services
             return payload;
         }
 
-        // Helper method to safely read sysfs files without crashing on locks/permissions
+        // 🚀 SAFE READ: Uses the injected File System so Moq can track it!
         private string? ReadSysFsSafe(string path)
         {
             try
             {
-                if (File.Exists(path))
+                if (_fileSystem.FileExists(path))
                 {
-                    return File.ReadAllText(path).Trim();
+                    return _fileSystem.ReadAllText(path).Trim();
                 }
                 return null;
             }
@@ -158,10 +171,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             }
         }
 
-        public void Dispose()
-        {
-            // No unmanaged resources to clean up for the Linux provider
-        }
+        public void Dispose() { }
     }
 #else
     public class LinuxThermalProvider : IThermalProvider
