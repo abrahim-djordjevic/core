@@ -161,7 +161,7 @@ This project is **open source** and currently **bootstrapped with no revenue**.
 ## Questions & Community
 
 - **GitHub Discussions** — open a discussion or comment on the relevant issue. Do not DM for questions that belong in public; public discussions help everyone.
-- **Discord** — join the contributor community at https://discord.gg/YOUR_INVITE_CODE for onboarding, dev chat, and release pings.
+- **Discord** — join the contributor community at https://discord.gg/FA8WsVXMx for onboarding, dev chat, and release pings.
 
 ---
 
