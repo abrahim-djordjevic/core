@@ -151,7 +151,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
         public async Task GetThermalData_WhenHardwareThrows_ReturnsLastGoodPayload()
         {
             var mockComputer = new Mock<IComputerEngine>();
-            var provider = new LibreThermalProvider(mockComputer.Object);
+            var provider = CreateProvider(mockComputer);
 
             var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor> {
                 CreateMockSensor(SensorType.Temperature, "CPU Package", 70.0f)
@@ -164,7 +164,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             var secondResult = await provider.GetThermalDataAsync();
 
             Assert.NotNull(secondResult);
-            Assert.Equal(25.1, secondResult.CpuPackageCelsius);
+            Assert.Equal(70.0, secondResult.CpuPackageCelsius);
         }
 
         [Fact]
