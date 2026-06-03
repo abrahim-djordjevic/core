@@ -32,14 +32,16 @@ namespace GSInteractiveDeviceAnalyzer.Services
         private readonly IComputerEngine _computer;
         private readonly UpdateVisitor _visitor;
         private readonly IWmiThermalFallback _wmiFallback;
+        private readonly IDellOemFanReader _dellOemFanReader;
 
         private ThermalTelemetryDto _lastGoodPayLoad = new ThermalTelemetryDto();
         private float _maxObservedClock = 0f;
 
-        public LibreThermalProvider(IComputerEngine? computer = null, IWmiThermalFallback? wmiFallback = null)
+        public LibreThermalProvider(IComputerEngine? computer = null, IWmiThermalFallback? wmiFallback = null, IDellOemFanReader? dellOemFanReader = null)
         {
             _visitor = new UpdateVisitor();
             _wmiFallback = wmiFallback ?? new WmiThermalFallback();
+            _dellOemFanReader = dellOemFanReader ?? new DellOemFanReader();
 
             if (computer != null)
             {
@@ -189,20 +191,66 @@ namespace GSInteractiveDeviceAnalyzer.Services
                         }
                     }
 
-                    // DELL VBS / WMI FALLBACK
-                    if (payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null)
-                    {
-                        payload.CpuPackageCelsius = _wmiFallback.GetCpuTemperatureCelsius();
-                    }
-
-                    _lastGoodPayLoad = payload;
-                    return payload;
                 }
                 catch (Exception )
                 {
-                    return _lastGoodPayLoad;
+                    payload.CpuFanRpm = _lastGoodPayLoad.CpuFanRpm;
+                    payload.ChassisFan1Rpm = _lastGoodPayLoad.ChassisFan1Rpm;
+                    payload.ChassisFan2Rpm = _lastGoodPayLoad.ChassisFan2Rpm;
+                    payload.CpuPowerWatts = _lastGoodPayLoad.CpuPowerWatts;
+                    payload.GpuCoreCelsius = _lastGoodPayLoad.GpuCoreCelsius;
+                    payload.GpuHotSpotCelsius = _lastGoodPayLoad.GpuHotSpotCelsius;
+                    payload.GpuVramCelsius = _lastGoodPayLoad.GpuVramCelsius;
+                    payload.GpuFanRpm = _lastGoodPayLoad.GpuFanRpm;
+                    payload.MotherboardCelsius = _lastGoodPayLoad.MotherboardCelsius;
+                    payload.ChipsetCelsius = _lastGoodPayLoad.ChipsetCelsius;
+                    payload.PumpRpm = _lastGoodPayLoad.PumpRpm;
+                    payload.NvmeCelsius = _lastGoodPayLoad.NvmeCelsius;
+                    payload.CoreCelsius = _lastGoodPayLoad.CoreCelsius;
+                    payload.CpuPackageCelsius = null;
                 }
-                
+
+                // DELL VBS / WMI FALLBACK
+                if (payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null)
+                {
+                    var wmiTemp = _wmiFallback.GetCpuTemperatureCelsius();
+
+                    if (wmiTemp != null)
+                    {
+                        payload.CpuPackageCelsius = wmiTemp;
+                    }
+                    else
+                    {
+                        payload.CpuPackageCelsius = _lastGoodPayLoad.CpuPackageCelsius;
+
+                    }
+                }
+
+                if (payload.CpuFanRpm == 0 || payload.CpuFanRpm == null)
+                {
+                    var dell = _dellOemFanReader.TryGetDellOemFans();
+
+                    if (dell?.CpuFanRpm != null)
+                    {
+                        payload.CpuFanRpm = dell.CpuFanRpm;
+                    }
+                    else if (dell?.GpuFanRpm != null)
+                    {
+                        payload.GpuFanRpm = dell.GpuFanRpm;
+                    }
+                    else if (dell?.ChassisFanRpm != null)
+                    {
+                        payload.ChassisFan1Rpm = dell.ChassisFanRpm;
+                    }
+                    else if (_lastGoodPayLoad.CpuFanRpm > 0)
+                    {
+                        payload.CpuFanRpm = _lastGoodPayLoad.CpuFanRpm;
+                    }
+                }
+
+                _lastGoodPayLoad = payload;
+                return payload;
+
             });
         }
 

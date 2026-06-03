@@ -2,7 +2,6 @@
 
 namespace GSInteractiveDeviceAnalyzer.Services
 {
-    // 1. The Interface we can Mock!
     public interface IWmiThermalFallback
     {
         double? GetCpuTemperatureCelsius();
@@ -14,26 +13,33 @@ namespace GSInteractiveDeviceAnalyzer.Services
         {
             try
             {
-#pragma warning disable CA1416 // Suppress OS warning since this only runs on Windows
+#pragma warning disable CA1416 
                 using var searcher = new System.Management.ManagementObjectSearcher("root\\wmi", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
                 foreach (System.Management.ManagementObject obj in searcher.Get())
                 {
                     var tempK = Convert.ToDouble(obj["CurrentTemperature"]);
-                    return ConvertKelvinToCelsius(tempK);
+                    var validTemp = ConvertKelvinToCelsius(tempK);
+
+                    if (validTemp.HasValue)
+                    {
+                        return validTemp;
+                    }
                 }
 #pragma warning restore CA1416
             }
-            catch { /* WMI is completely locked */ }
+            catch (Exception ex)
+            {
+                // 🚀 UNMASKING THE GHOST: Print the exact assassination report to the terminal!
+                Console.WriteLine($"\n[DEFENSE GRID WMI CRASH] -> {ex.GetType().Name}: {ex.Message}\n");
+            }
 
-            return null; // Returns null if no instances/locked
+            return null;
         }
 
-        // 🚀 2. Extracting the math so xUnit can test it securely!
         public static double? ConvertKelvinToCelsius(double tempK)
         {
             var celsius = (tempK / 10.0) - 273.15;
 
-            // Sanity check: ensure the ACPI zone is returning a real temperature
             if (celsius > 10 && celsius < 120)
             {
                 return Math.Round(celsius, 1);
