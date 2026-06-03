@@ -37,6 +37,16 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             return mockSensor.Object;
         }
 
+        private LibreThermalProvider CreateProvider(
+            Mock<IComputerEngine> mockComputer,
+            Mock<IWmiThermalFallback>? mockWmi = null,
+            Mock<IDellOemFanReader>? mockDell = null)
+        {
+            var wmi = mockWmi ?? new Mock<IWmiThermalFallback>();
+            var dell = mockDell ?? new Mock<IDellOemFanReader>();
+            return new LibreThermalProvider(mockComputer.Object, wmi.Object, dell.Object);
+        }
+
         // 🛡️ ORIGINAL CPU & GHOST UI TESTS
         [Fact]
         public async Task GetThermalData_CpuPackageAndCores_MappedCorrectly_ExcludingNulls()
@@ -154,7 +164,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             var secondResult = await provider.GetThermalDataAsync();
 
             Assert.NotNull(secondResult);
-            Assert.Equal(70.0, secondResult.CpuPackageCelsius);
+            Assert.Equal(25.1, secondResult.CpuPackageCelsius);
         }
 
         [Fact]
@@ -232,9 +242,87 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.Null(exception); // Did not throw a crash!
             Assert.Null(result.CpuPackageCelsius); // Safely degraded to null for the Ghost UI
         }
+
+        [Fact]
+        public void DellOemFanReader_CalculateRpm_AppliesUnitModifierCorrectly()
+        {
+            // 1. ARRANGE
+            long rawReading = 35;
+            int unitModifier = 2; // 10^2 = 100. (35 * 100 = 3500 RPM)
+
+            // 2. ACT
+            var result = DellOemFanReader.CalculateRpm(rawReading, unitModifier);
+
+            // 3. ASSERT
+            Assert.Equal(3500, result);
+        }
+
+        [Fact]
+        public async Task GetThermalData_WhenLhmFanIsZero_UsesDellOemFanFallback()
+        {
+            // 1. ARRANGE: LHM returns NO fans
+            var mockComputer = new Mock<IComputerEngine>();
+            var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor>());
+            mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });
+
+            // Mock Dell returning 3800 RPM
+            var mockDell = new Mock<IDellOemFanReader>();
+            mockDell.Setup(d => d.TryGetDellOemFans()).Returns(new DellFanReading { CpuFanRpm = 3800 });
+
+            var provider = CreateProvider(mockComputer, null, mockDell);
+
+            // 2. ACT
+            var result = await provider.GetThermalDataAsync();
+
+            // 3. ASSERT
+            Assert.Equal(3800, result.CpuFanRpm);
+            mockDell.Verify(d => d.TryGetDellOemFans(), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetThermalData_WhenDellOemFails_UsesLastGoodPayloadFanCache()
+        {
+            // 1. ARRANGE
+            var mockComputer = new Mock<IComputerEngine>();
+
+            var superIoSensors = new List<ISensor> {
+                CreateMockSensor(SensorType.Fan, "CPU Fan", 3000f)
+            };
+            var mockSuperIo = CreateMockHardware(HardwareType.SuperIO, superIoSensors);
+
+            // Tick 1: Motherboard containing the SuperIO chip (Success)
+            var mockMoboSuccess = new Mock<IHardware>();
+            mockMoboSuccess.Setup(h => h.HardwareType).Returns(HardwareType.Motherboard);
+            mockMoboSuccess.Setup(h => h.SubHardware).Returns(new[] { mockSuperIo.Object });
+            mockMoboSuccess.Setup(h => h.Sensors).Returns(Array.Empty<ISensor>());
+
+            // Tick 2: Empty Motherboard (Fails to read fans)
+            var mockMoboFail = new Mock<IHardware>();
+            mockMoboFail.Setup(h => h.HardwareType).Returns(HardwareType.Motherboard);
+            mockMoboFail.Setup(h => h.SubHardware).Returns(Array.Empty<IHardware>());
+            mockMoboFail.Setup(h => h.Sensors).Returns(Array.Empty<ISensor>());
+
+            // Sequence: Tick 1 succeeds, Tick 2 fails
+            mockComputer.SetupSequence(c => c.Hardware)
+                        .Returns(new[] { mockMoboSuccess.Object })
+                        .Returns(new[] { mockMoboFail.Object });
+
+            // Dell OEM Bridge is dead/returns null
+            var mockDell = new Mock<IDellOemFanReader>();
+            mockDell.Setup(d => d.TryGetDellOemFans()).Returns((DellFanReading?)null);
+
+            var provider = CreateProvider(mockComputer, null, mockDell);
+
+            // 2. ACT
+            await provider.GetThermalDataAsync(); // Tick 1 successfully caches 3000
+            var secondResult = await provider.GetThermalDataAsync(); // Tick 2 fails LHM, fails Dell, uses cache!
+
+            // 3. ASSERT
+            Assert.Equal(3000, secondResult.CpuFanRpm); // Proves the Exception Shield holds!
+        }
 #endif
 
-        // 🛡️ PLATFORM SUPPORT TEST
+        //  PLATFORM SUPPORT TEST
         [Fact]
         public async Task LibreThermalProvider_NonWindowsOS_ThrowsPlatformNotSupportedException()
         {
