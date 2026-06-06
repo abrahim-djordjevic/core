@@ -18,24 +18,32 @@ jobs:
         working-directory: ./backend
 
     steps:
-    # Step A: Download your code onto the cloud server
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      # Step A: Download your code onto the cloud server
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    # Step B: Install the modern .NET SDK
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x' # Uses the latest major .NET version
+      # Step B: Install the modern .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' # Uses the latest major .NET version
 
-    # Step C: Download all your NuGet packages (like SignalR)
-    - name: Restore Dependencies
-      run: dotnet restore 
+      # Step C: Download all your NuGet packages (like SignalR)
+      - name: Restore Dependencies
+        run: dotnet restore
 
-    # Step D: Compile the Engine in Release mode to ensure it builds perfectly!
-    - name: Build C# Engine
-      run: dotnet build --configuration Release
+      # Step D: Compile the Engine in Release mode to ensure it builds perfectly!
+      - name: Build C# Engine
+        run: dotnet build --configuration Release
 
-    # Step E: Run the Unit Tests 
-    - name: Run Unit Tests
-      run: dotnet test --configuration Release --no-build --verbosity normal
+      # Step E: Run the Unit Tests
+      - name: Run Unit Tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      # Step F: Tell Discord whether the build passed or failed
+      - name: Notify Discord
+        uses: sarisia/actions-status-discord@v1
+        if: always()        # runs even if the build or tests failed
+        with:
+          webhook: ${{secrets.CI_BUILD}}
+          title: "GS Engine Build & Test"
