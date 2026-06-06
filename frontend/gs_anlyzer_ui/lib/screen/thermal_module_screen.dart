@@ -48,7 +48,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                   _buildCpuSection(telemetry, cpuState),
                   const SizedBox(height: 16),
 
-                  if (telemetry.motherBoardCelsius != null || telemetry.chipsetCelsius != null) ... [
+                  if (telemetry.motherBoardCelsius != null || telemetry.chipsetCelsius != null || telemetry.ramCelsius != null || telemetry.ambientCelsius != null) ... [
                     _buildBoardSection(telemetry),
                     const SizedBox(height: 16,)
                   ],
@@ -130,18 +130,35 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
 
   Widget _buildBoardSection(ThermalTelemetry telemetry) {
     return _ThermalSection(
-      title: 'BOARD',
+      title: 'SYSTEM ENVIRONMENT',
       icon: Icons.developer_board_outlined,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        spacing: 32,
+        runSpacing: 16,
         children: [
           if (telemetry.motherBoardCelsius != null)
-            Text('MOBO: ${telemetry.motherBoardCelsius}°C', style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16)),
+            _buildEnvironmentRow('MOBO', telemetry.motherBoardCelsius!),
 
           if (telemetry.chipsetCelsius != null)
-            Text('CHIPSET: ${telemetry.chipsetCelsius}°C', style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16)),
+            _buildEnvironmentRow('CHIPSET', telemetry.chipsetCelsius!),
+
+          if (telemetry.ramCelsius != null)
+            _buildEnvironmentRow('RAM', telemetry.ramCelsius!),
+
+          if (telemetry.ambientCelsius != null)
+            _buildEnvironmentRow('AMBIENT', telemetry.ambientCelsius!),
         ],
       )
+    );
+  }
+
+  Widget _buildEnvironmentRow(String label, double temp) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HudLabel('$label: '),
+        Text('${temp.toStringAsFixed(1)}°C', style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16))
+      ],
     );
   }
 

@@ -7,6 +7,8 @@
         public double? MotherboardCelsius { get; set; }
         public double? ChipsetCelsius { get; set; }
         public double? NvmeCelsius { get; set; }
+        public double? RamCelsius { get; set; }
+        public double? AmbientCelsius { get; set; }
         public double? CpuPowerWatts { get; set; }
         public bool IsThermalThrottling { get; set; }
         public int? CpuFanRpm { get; set; }

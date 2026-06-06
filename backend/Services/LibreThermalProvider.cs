@@ -2,6 +2,7 @@
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using System.Runtime.Versioning;
+using GSInteractiveDeviceAnalyzer.Services.Oem.Dell;
 #if WINDOWS
 using LibreHardwareMonitor.Hardware;
 #endif
@@ -9,39 +10,21 @@ using LibreHardwareMonitor.Hardware;
 namespace GSInteractiveDeviceAnalyzer.Services
 {
 #if WINDOWS
-    public class UpdateVisitor : IVisitor
-    {
-        public void VisitComputer(IComputer computer) => computer.Traverse(this);
-
-        public void VisitHardware(IHardware hardware)
-        {
-            hardware.Update();
-
-            foreach (var subHardware in hardware.SubHardware)
-            {
-                subHardware.Accept(this);
-            }
-        }
-
-        public void VisitSensor(ISensor sensor) {}
-
-        public void VisitParameter(IParameter parameter) { }
-    }
     public class LibreThermalProvider : IThermalProvider
     {
         private readonly IComputerEngine _computer;
         private readonly UpdateVisitor _visitor;
         private readonly IWmiThermalFallback _wmiFallback;
-        private readonly IDellOemFanReader _dellOemFanReader;
+        private readonly IDellOemTelemetry _dellOemTelemetry;
 
         private ThermalTelemetryDto _lastGoodPayLoad = new ThermalTelemetryDto();
         private float _maxObservedClock = 0f;
 
-        public LibreThermalProvider(IComputerEngine? computer = null, IWmiThermalFallback? wmiFallback = null, IDellOemFanReader? dellOemFanReader = null)
+        public LibreThermalProvider(IComputerEngine? computer = null, IWmiThermalFallback? wmiFallback = null, IDellOemTelemetry? dellOemFanReader = null)
         {
             _visitor = new UpdateVisitor();
             _wmiFallback = wmiFallback ?? new WmiThermalFallback();
-            _dellOemFanReader = dellOemFanReader ?? new DellOemFanReader();
+            _dellOemTelemetry = dellOemFanReader ?? new DellOemTelemetry();
 
             if (computer != null)
             {
@@ -210,42 +193,42 @@ namespace GSInteractiveDeviceAnalyzer.Services
                     payload.CpuPackageCelsius = null;
                 }
 
-                // DELL VBS / WMI FALLBACK
-                if (payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null)
+                // Tier 2: DELL VBS
+                var dell = _dellOemTelemetry.TryGetDellOemTelemetry();
+
+                if (dell != null)
                 {
-                    var wmiTemp = _wmiFallback.GetCpuTemperatureCelsius();
+                    // Fans
+                    if ((payload.CpuFanRpm == 0 || payload.CpuFanRpm == null) && dell.CpuFanRpm.HasValue)
+                        payload.CpuFanRpm = dell.CpuFanRpm;
+                    if ((payload.ChassisFan1Rpm == 0 || payload.ChassisFan1Rpm == null) && dell.ChassisFanRpm.HasValue)
+                        payload.ChassisFan1Rpm = dell.ChassisFanRpm;
+                    if ((payload.GpuFanRpm == 0 || payload.GpuFanRpm == null) && dell.GpuFanRpm.HasValue)
+                        payload.GpuFanRpm = dell.GpuFanRpm;
 
-                    if (wmiTemp != null)
-                    {
-                        payload.CpuPackageCelsius = wmiTemp;
-                    }
-                    else
-                    {
-                        payload.CpuPackageCelsius = _lastGoodPayLoad.CpuPackageCelsius;
-
-                    }
+                    // Temps
+                    if ((payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null) &&
+                        dell.CpuTempCelsius.HasValue) payload.CpuPackageCelsius = dell.CpuTempCelsius;
+                    if ((payload.MotherboardCelsius == 0 || payload.MotherboardCelsius == null) &&
+                        dell.MotherboardCelsius.HasValue) payload.MotherboardCelsius = dell.MotherboardCelsius;
+                    if (payload.RamCelsius == null && dell.RamCelsius.HasValue) payload.RamCelsius = dell.RamCelsius;
+                    if (payload.AmbientCelsius == null && dell.AmbientCelsius.HasValue) payload.AmbientCelsius = dell.AmbientCelsius;
                 }
 
-                if (payload.CpuFanRpm == 0 || payload.CpuFanRpm == null)
+                // Tier 3: Standard WMI Fallback
+                if (payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null)
                 {
-                    var dell = _dellOemFanReader.TryGetDellOemFans();
+                    payload.CpuPackageCelsius = _wmiFallback.GetCpuTemperatureCelsius();
+                }
 
-                    if (dell?.CpuFanRpm != null)
-                    {
-                        payload.CpuFanRpm = dell.CpuFanRpm;
-                    }
-                    else if (dell?.GpuFanRpm != null)
-                    {
-                        payload.GpuFanRpm = dell.GpuFanRpm;
-                    }
-                    else if (dell?.ChassisFanRpm != null)
-                    {
-                        payload.ChassisFan1Rpm = dell.ChassisFanRpm;
-                    }
-                    else if (_lastGoodPayLoad.CpuFanRpm > 0)
-                    {
-                        payload.CpuFanRpm = _lastGoodPayLoad.CpuFanRpm;
-                    }
+                // Exception shield, in case everything falls(Cache restoration)
+                if (payload.CpuPackageCelsius == null && _lastGoodPayLoad.CpuPackageCelsius > 0)
+                {
+                    payload.CpuPackageCelsius = _lastGoodPayLoad.CpuPackageCelsius;
+                }
+                if (payload.CpuFanRpm == 0 && _lastGoodPayLoad.CpuFanRpm > 0)
+                {
+                    payload.CpuFanRpm = _lastGoodPayLoad.CpuFanRpm;
                 }
 
                 _lastGoodPayLoad = payload;

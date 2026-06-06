@@ -4,6 +4,8 @@ class ThermalTelemetry {
   final double? motherBoardCelsius;
   final double? chipsetCelsius;
   final double? nvmeCelsius;
+  final double? ramCelsius;
+  final double? ambientCelsius;
   final double? cpuPowerWatts;
   final bool isThermalThrottling;
   final int? cpuFanRpm;
@@ -21,6 +23,8 @@ class ThermalTelemetry {
     this.motherBoardCelsius,
     this.chipsetCelsius,
     this.nvmeCelsius,
+    this.ramCelsius,
+    this.ambientCelsius,
     this.cpuPowerWatts,
     this.isThermalThrottling = false,
     this.cpuFanRpm,
@@ -37,9 +41,11 @@ class ThermalTelemetry {
     return ThermalTelemetry(
       cpuPackageCelsius: (json['cpuPackageCelsius'] as num?)?.toDouble(),
       coreCelsius: (json['coreCelsius'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList() ?? [],
-      motherBoardCelsius: (json['motherBoardCelsius'] as num?)?.toDouble(),
+      motherBoardCelsius: (json['motherboardCelsius'] as num?)?.toDouble(),
       chipsetCelsius: (json['chipsetCelsius'] as num?)?.toDouble(),
       nvmeCelsius: (json['nvmeCelsius'] as num?)?.toDouble(),
+      ramCelsius: (json['ramCelsius'] as num?)?.toDouble(),
+      ambientCelsius: (json['ambientCelsius'] as num?)?.toDouble(),
       cpuPowerWatts: (json['cpuPowerWatts'] as num?)?.toDouble(),
       isThermalThrottling: json['isThermalThrottling'] as bool? ?? false,
       cpuFanRpm: json['cpuFanRpm'] as int?,
