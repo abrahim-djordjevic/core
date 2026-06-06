@@ -16,7 +16,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     }
 
     void _initRadio() {
-      final url = "http://localhost:5200/storageHub";
+      final url = "http://localhost:5200/systemHub";
 
       _hubConnection = HubConnectionBuilder()
           .withUrl(url)

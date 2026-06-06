@@ -64,7 +64,7 @@ var app = builder.Build();
 app.UseCors("AllowFlutterApp");
 app.UseAuthorization();
 app.MapControllers();
-app.MapHub<SystemHub>("/storageHub");
+app.MapHub<SystemHub>("/systemHub");
 
 // Health check endpoints
 app.MapGet("/", () => new { status = "Server is running", timestamp = DateTime.UtcNow });
