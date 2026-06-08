@@ -12,6 +12,12 @@ namespace GSInteractiveDeviceAnalyzer.Services
 {
     public class DuplicateFileDetector : IDuplicateFileDetector
     {
+        private readonly ISettingService _settings;
+
+        public DuplicateFileDetector(ISettingService settings)
+        {
+            _settings = settings;
+        }
         /// Scans a root directory and returns a dictionary of duplicate files grouped by their SHA256 hash.
         public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
         {
@@ -84,14 +90,20 @@ namespace GSInteractiveDeviceAnalyzer.Services
         /// Helper method to traverse directories without crashing on UnauthorizedAccessException.
         private IEnumerable<FileInfo> SafeEnumerateFiles(string rootPath, CancellationToken token)
         {
+            var config = _settings.Current.Scan;
+
             var rootDir = new DirectoryInfo(rootPath);
 
             var options = new EnumerationOptions
             {
                 IgnoreInaccessible = true,
                 RecurseSubdirectories = true,
-                ReturnSpecialDirectories = false
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = 0
             };
+
+            if (config.SkipHiddenFiles) options.AttributesToSkip |= FileAttributes.Hidden;
+            if (config.SkipSystemFiles) options.AttributesToSkip |= FileAttributes.System;
 
             var files = Enumerable.Empty<FileInfo>();
 

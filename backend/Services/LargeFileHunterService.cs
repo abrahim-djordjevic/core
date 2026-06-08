@@ -9,8 +9,16 @@ using System.Runtime.CompilerServices;
 namespace GSInteractiveDeviceAnalyzer.Services;
 public class LargeFileHunterService : ILargeFileHunterService
 {
+    private readonly ISettingService _settings;
+
+    public LargeFileHunterService(ISettingService settings)
+    {
+        _settings = settings;
+    }
+
     public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
     {
+        var config = _settings.Current.Scan;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         // To offload the heavy hardrive I/O to a background thread
         return await Task.Run(() =>
@@ -22,8 +30,12 @@ public class LargeFileHunterService : ILargeFileHunterService
             {
                 IgnoreInaccessible = true, // This silently skips locked system folders
                 RecurseSubdirectories = true,
-                ReturnSpecialDirectories = false
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = 0
             };
+
+            if (config.SkipHiddenFiles) options.AttributesToSkip |= FileAttributes.Hidden;
+            if (config.SkipSystemFiles) options.AttributesToSkip |= FileAttributes.System;
 
             // needs normalization of path to support linux 
             var directory = new DirectoryInfo(rootPath);

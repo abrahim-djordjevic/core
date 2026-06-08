@@ -8,11 +8,15 @@ namespace GSInteractiveDeviceAnalyzer.Engine
     {
         private readonly ICpuMetricsProvider _cpuProvider;
         private readonly IHubContext<SystemHub> _hubContext;
+        private TimeSpan _pollInterval;
 
-        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext)
+        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext, ISettingService settings)
         {
             _cpuProvider = cpuProvider;
             _hubContext = hubContext;
+
+            _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.CpuPollIntervalMs);
+            settings.OnSettingsChanged += (_, s) => _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.CpuPollIntervalMs);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,6 +34,8 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                 {
                     Console.WriteLine($"[CPU SAMPLER FAULT] {ex.Message}");
                 }
+
+                await Task.Delay(_pollInterval, stoppingToken);
             }
         }
     }

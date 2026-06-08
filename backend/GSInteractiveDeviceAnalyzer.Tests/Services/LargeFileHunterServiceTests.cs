@@ -1,8 +1,11 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
 using Xunit;
 using GSInteractiveDeviceAnalyzer.Services;
+using Moq;
 
 namespace GSInteractiveDeviceAnalyzer.Tests.Services;
 
@@ -13,11 +16,14 @@ public class LargeFileHunterServiceTests : IDisposable
 
     public LargeFileHunterServiceTests()
     {
-        // Global arrange
         _tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempRoot);
 
-        _hunterService = new LargeFileHunterService();
+        var mockSettings = new Mock<ISettingService>();
+        mockSettings.Setup(s => s.Current)
+            .Returns(AppSettingDto.GetFactoryDefaults());
+
+        _hunterService = new LargeFileHunterService(mockSettings.Object);
     }
 
     [Fact]

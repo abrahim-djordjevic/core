@@ -2,7 +2,10 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
 using GSInteractiveDeviceAnalyzer.Services;
+using Moq;
 using Xunit;
 
 namespace GSInteractiveDeviceAnalyzer.Tests.Services
@@ -16,7 +19,12 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Services
         {
             _testBaseDir = Path.Combine(Path.GetTempPath(), "GS_Duplicate_Tests_" + Guid.NewGuid().ToString().Substring(0, 8));
             Directory.CreateDirectory(_testBaseDir);
-            _detector = new DuplicateFileDetector();
+
+            var mockSettings = new Mock<ISettingService>();
+            mockSettings.Setup(s => s.Current)
+                .Returns(AppSettingDto.GetFactoryDefaults());
+
+            _detector = new DuplicateFileDetector(mockSettings.Object);
         }
 
         public void Dispose()
