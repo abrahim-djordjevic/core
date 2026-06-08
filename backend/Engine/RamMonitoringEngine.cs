@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,10 +11,16 @@ namespace GSInteractiveDeviceAnalyzer.Engine
         private CancellationTokenSource? _radarCts;
         private readonly IHubContext<SystemHub> _hub;
         private readonly object _lock = new object();
+        private TimeSpan _pollInterval;
 
-        public RamMonitoringEngine(IHubContext<SystemHub> hub)
+        public RamMonitoringEngine(IHubContext<SystemHub> hub, ISettingService settings)
         {
             _hub = hub;
+
+            _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.RamPollIntervalMs);
+
+            settings.OnSettingsChanged += (_, s) => _pollInterval =
+                TimeSpan.FromMilliseconds(s.Monitoring.RamPollIntervalMs);
         }
 
         public void StartRadar()
@@ -36,10 +43,9 @@ namespace GSInteractiveDeviceAnalyzer.Engine
 
         private async Task RadarLoopAsync(CancellationToken token)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             try
             {
-                while (await timer.WaitForNextTickAsync(token))
+                while (!token.IsCancellationRequested)
                 {
                     var snapshot = GetTopProcesses(30);
                     var globalMetrics = SystemMemoryMetrics.GetLiveMetrics();
@@ -59,6 +65,8 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                     await _hub.Clients.All.SendAsync("RamTelemetryUpdate", payload, cancellationToken: token);
 
                     Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
+
+                    await Task.Delay(_pollInterval, token);
                 }
             }
             catch (OperationCanceledException)

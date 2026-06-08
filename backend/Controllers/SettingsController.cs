@@ -1,0 +1,80 @@
+﻿using System.Configuration;
+using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GSInteractiveDeviceAnalyzer.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class SettingsController : ControllerBase
+    {
+        private readonly ISettingService _settingsService;
+
+        public SettingsController(ISettingService settingsService)
+        {
+            _settingsService = settingsService;
+        }
+
+        [HttpGet]
+        public IActionResult GetSettings()
+        {
+            return Ok(new { success = true, data = _settingsService.Current })
+                ;
+        }
+
+        [HttpGet("defaults")]
+        public IActionResult GetDefaults()
+        {
+            return Ok(new { success = true, data = AppSettingDto.GetFactoryDefaults() });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveSettings([FromBody] AppSettingDto settings)
+        {
+            var errors = settings.Validate();
+            if (errors.Any())
+            {
+                return BadRequest(new {success = false, message = "Validation failed" });
+            }
+
+            await _settingsService.SaveAsync(settings);
+
+            return Ok(new
+            {
+                success = true, message = "Settings saved & hot-reloaded Successfully", data = _settingsService.Current
+            });
+        }
+
+        [HttpPost("reset")]
+        public async Task<IActionResult> ResetSettings()
+        {
+            var defaults = AppSettingDto.GetFactoryDefaults();
+            await _settingsService.SaveAsync(defaults);
+
+            return Ok(new {success = true, message = "Restored to factory defaults", data = defaults });
+        }
+
+        [HttpPatch("partial")]
+        public async Task<IActionResult> PatchSettings([FromBody] System.Text.Json.JsonElement partialJson)
+        {
+            var currentJson = System.Text.Json.JsonSerializer.Serialize(_settingsService.Current);
+            var currentDoc = System.Text.Json.Nodes.JsonObject.Parse(currentJson)!.AsObject();
+
+            var incomingDoc = System.Text.Json.Nodes.JsonObject.Parse(partialJson.GetRawText())!.AsObject();
+
+            foreach (var prop in incomingDoc)
+            {
+                currentDoc[prop.Key] = prop.Value?.DeepClone();
+            }
+
+            var mergedSettings = System.Text.Json.JsonSerializer.Deserialize<AppSettingDto>(currentDoc.ToJsonString(), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+
+            var errors = mergedSettings!.Validate();
+            if (errors.Any()) return BadRequest(new { success = false, message = "Validation failed.", errors });
+
+            await _settingsService.SaveAsync(mergedSettings);
+            return Ok(new { success = true, data = _settingsService.Current });
+        }
+    }
+}

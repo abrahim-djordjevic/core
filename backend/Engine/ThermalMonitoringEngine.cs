@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models;
 using GSInteractiveDeviceAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,11 +11,16 @@ namespace GSInteractiveDeviceAnalyzer.Engine
     {
         private readonly IHubContext<SystemHub> _hubContext;
         private readonly IThermalProvider _thermalProvider;
+        private TimeSpan _pollInterval;
 
-        public ThermalMonitoringEngine(IHubContext<SystemHub> hubContext, IThermalProvider thermalProvider)
+        public ThermalMonitoringEngine(IHubContext<SystemHub> hubContext, IThermalProvider thermalProvider, ISettingService settings)
         {
             _hubContext = hubContext;
             _thermalProvider = thermalProvider;
+            
+            _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.ThermalPollIntervalMs);
+
+            settings.OnSettingsChanged += (_, s) => _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.ThermalPollIntervalMs);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,7 +31,7 @@ namespace GSInteractiveDeviceAnalyzer.Engine
             {
                 try
                 {
-                    Models.ThermalTelemetryDto payload = null;
+                    ThermalTelemetryDto payload = null;
 
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {
@@ -33,7 +39,7 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                     }
                     else
                     {
-                        payload = new Models.ThermalTelemetryDto();
+                        payload = new ThermalTelemetryDto();
                     }
 
                     if (payload != null)
@@ -46,7 +52,7 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                     Console.WriteLine($"[THERMAL ENGINE WARN] Radar Failure: {ex.Message}");
                 }
 
-                await Task.Delay(2000, stoppingToken);
+                await Task.Delay(_pollInterval, stoppingToken);
             }
         }
     }

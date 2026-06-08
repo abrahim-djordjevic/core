@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer.Engine;
@@ -25,13 +26,14 @@ public class DiskScannerEngine
     private readonly object _radarLock = new object();
     private DateTime _lastRadarAlert = DateTime.MinValue;
     private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(500);
-
+    private readonly ISettingService _settings;
     private readonly IHubContext<SystemHub> _hub;
     private int _scannedFilesCount = 0;
 
-    public DiskScannerEngine(IHubContext<SystemHub> hub)
+    public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings)
     {
         _hub = hub;
+        _settings = settings;
         if (File.Exists(_cacheFilePath))
         {
             try
@@ -194,6 +196,52 @@ public class DiskScannerEngine
             Size = size,
             LastUpdated = dir.LastWriteTimeUtc
         };
+
+        return size;
+    }
+
+    private long ScanDirectoryR(DirectoryInfo dir, CancellationToken token, int currentDepth = 1)
+    {
+        token.ThrowIfCancellationRequested();
+
+        var config = _settings.Current.Scan;
+
+        if (currentDepth > config.Depth) return 0;
+
+        var normalizedPath = dir.FullName.Replace("\\", "/");
+        if (config.ExcludedPaths.Any(p => normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+        {
+            return 0;
+        }
+
+        long size = 0;
+
+        var option = new EnumerationOptions
+        {
+            IgnoreInaccessible = true,
+            ReturnSpecialDirectories = false,
+            AttributesToSkip = 0
+        };
+
+        if (config.SkipHiddenFiles) option.AttributesToSkip |= FileAttributes.Hidden;
+        if (config.SkipSystemFiles) option.AttributesToSkip |= FileAttributes.System;
+
+        try
+        {
+            foreach (var file in dir.EnumerateFiles("*", option))
+            {
+                size += file.Length;
+                Interlocked.Increment(ref _scannedFilesCount);
+            }
+
+            foreach (var subDir in dir.EnumerateDirectories("*", option))
+            {
+                size += ScanDirectoryR(subDir, token, currentDepth + 1);
+            }
+        }
+        catch (UnauthorizedAccessException )
+        {
+        }
 
         return size;
     }

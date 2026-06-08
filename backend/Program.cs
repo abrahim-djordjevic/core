@@ -28,6 +28,7 @@ builder.Services.AddSingleton<DuplicateFileDetector>();
 builder.Services.AddSingleton<LargeFileHunterService>();
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
+builder.Services.AddSingleton<ISettingService, SettingsServices>();
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<ICpuMetricsProvider, WindowsCpuProvider>();

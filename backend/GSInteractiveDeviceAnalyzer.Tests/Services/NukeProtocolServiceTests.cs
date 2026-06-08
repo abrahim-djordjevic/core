@@ -1,5 +1,6 @@
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using GSInteractiveDeviceAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
 using Xunit;
 
 namespace GSInteractiveDeviceAnalyzer.Tests;
@@ -24,10 +26,18 @@ public class NukeProtocolServiceTests : IDisposable
     {
         _sandboxRoot = Path.Combine(Path.GetTempPath(), $"NukeTest_{Guid.NewGuid()}");
         Directory.CreateDirectory(_sandboxRoot);
-        _mockScanner = new Mock<DiskScannerEngine>(null); // Passing null for Hub if required
+
         _mockHub = new Mock<IHubContext<SystemHub>>();
 
-        // Inject mocks into the service
+        // 1. Create the Settings Mock
+        var mockSettings = new Mock<ISettingService>();
+
+        // 2. 🚀 CRITICAL: Mock the 'Current' property so the base constructor doesn't throw a NullReferenceException if it reads from it!
+        mockSettings.Setup(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
+
+        // 3. 🚀 CRITICAL: Pass exactly 2 arguments to match the real constructor, avoiding the runtime MissingMethodException!
+        _mockScanner = new Mock<DiskScannerEngine>(_mockHub.Object, mockSettings.Object);
+
         _service = new NukeProtocolService(_mockScanner.Object, _mockHub.Object);
     }
 
