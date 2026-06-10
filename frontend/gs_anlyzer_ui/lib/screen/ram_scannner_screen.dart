@@ -13,6 +13,15 @@ class RamScannerScreen extends ConsumerWidget {
 
     return Column(
       children: [
+        if (ramState.isCritical)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: HudTheme.accentRed.withValues(alpha: 0.2),
+            child: const Center(
+              child: Text('RAM CRITICAL ALERT: REDUCE SYSTEM LOAD', style: HudTheme.actionRed),
+            ),
+          ),
         // Top Dashboard Cards
         Container(
           padding: const EdgeInsets.all(24),

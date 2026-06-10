@@ -13,8 +13,8 @@ class NukeProgressDialog extends ConsumerWidget {
     final target = ref.watch(nukeTargetProvider);
     final completed = ref.watch(nukeCompletedProvider);
 
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: AlertDialog(
         backgroundColor: HudTheme.bgPanel,
         shape: RoundedRectangleBorder(

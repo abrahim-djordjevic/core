@@ -1,12 +1,18 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mock_factory.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+
   group('DirectoryNotifier Sorting Engine Tests', () {
     test ('Sorting by Size should put largest file at the top (Ascending = true)', () {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
 
       final fakeChunk = MockFactory.generateFakeChunk(4, 'C:/');
 
@@ -35,9 +41,11 @@ void main() {
   group('Enterprise First-Load Experience Tests', () {
 
     test('Test 1: No Forever Loading on First Load (isLoading must be false)', () async {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
 
       await notifier.scanDirectory('C:/TestSector');
+      notifier.finalizeStream('C:/TestSector');
 
       expect(
           notifier.state.isLoading,
@@ -47,7 +55,8 @@ void main() {
     });
 
     test('Test 2: Correct Info on First Load (Files show actual size, not 0 bytes)', () {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
 
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Downloads');
 
@@ -84,7 +93,8 @@ void main() {
     });
 
     test('Test 3: No Blank Screen on First Load (Data paints without needing a refresh)', () {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
 
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Documents');
 

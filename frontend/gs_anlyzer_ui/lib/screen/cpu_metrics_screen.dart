@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -12,15 +11,31 @@ class CpuMetricsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cpuState = ref.watch(cpuProvider);
+    final snapshot = cpuState.snapshot;
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('CPU TELEMETRY MODULE', style: HudTheme.headerCyan),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('CPU TELEMETRY MODULE', style: HudTheme.headerCyan),
+              if (cpuState.isCritical)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: HudTheme.accentRed.withValues(alpha: 0.2),
+                    border: Border.all(color: HudTheme.accentRed),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('CRITICAL LOAD', style: HudTheme.actionRed),
+                ),
+            ],
+          ),
           const SizedBox(height: 24),
-          if(cpuState == null)
+          if(snapshot == null)
             const Expanded(
               child: Center(
                 child: CircularProgressIndicator(color: HudTheme.primaryBorder),
@@ -28,7 +43,7 @@ class CpuMetricsScreen extends ConsumerWidget {
             )
           else
             Expanded(
-              child: _buildDashBoard(context, cpuState),
+              child: _buildDashBoard(context, snapshot),
             )
         ],
       )
@@ -36,10 +51,6 @@ class CpuMetricsScreen extends ConsumerWidget {
   }
 
   Widget _buildDashBoard(BuildContext context, CpuSnapshot snapshot) {
-    final isStable = snapshot.delta.abs() <= 5.0;
-    final deltaColor = isStable ? HudTheme.accentGreen : HudTheme.accentAmber;
-    final detalPrefix = snapshot.delta > 0 ? '+' : '';
-
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: HudTheme.hudPanelDecoration,

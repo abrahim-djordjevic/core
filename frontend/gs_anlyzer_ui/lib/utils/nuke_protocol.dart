@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,7 +63,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
     }
 
     ref.invalidate(rootTreeProvider);
-    ref.invalidate(driveStatsProvider);
+    ref.read(driveStatsProvider.notifier).refresh();
 
     snackbarKey.currentState?.showSnackBar(SnackBar(
       behavior: SnackBarBehavior.floating,

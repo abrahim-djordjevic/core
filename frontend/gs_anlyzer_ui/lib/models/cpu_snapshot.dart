@@ -1,5 +1,3 @@
-import 'package:gs_analyzer_ui/utils/globals.dart';
-
 class CpuSnapshot {
   final double averageLoad;
   final double delta;

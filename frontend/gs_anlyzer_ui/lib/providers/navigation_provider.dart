@@ -7,6 +7,7 @@ enum AppRoute {
   storage,
   network,
   thermal,
+  settings,
 }
 
 final navigationProvider = StateProvider<AppRoute>((ref) => AppRoute.storage);

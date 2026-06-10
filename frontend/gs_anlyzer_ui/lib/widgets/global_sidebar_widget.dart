@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/navigation_provider.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 
@@ -57,6 +58,8 @@ class GlobalSidebarWidget extends ConsumerWidget {
 
           const Spacer(),
 
+          _buildSettingsNavItem(context, ref),
+
           _buildNavItem(ref, null, 'HELP', Icons.help_outline_outlined, currentRoute, isAction: true),
           const SizedBox(height: 24),
         ],
@@ -103,6 +106,51 @@ class GlobalSidebarWidget extends ConsumerWidget {
         )
       ),
     );
+  }
 
+  Widget _buildSettingsNavItem(BuildContext context, WidgetRef ref) {
+    final currentRoute = ref.watch(navigationProvider);
+    final bool isSelected = currentRoute == AppRoute.settings;
+
+    final bool hasUnsavedChanges = ref.watch(settingsProvider).hasUnsavedChanges;
+
+    return InkWell(
+      onTap: () => ref.read(navigationProvider.notifier).state = AppRoute.settings,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+        decoration: BoxDecoration(
+          color: isSelected ? HudTheme.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? HudTheme.accentCyan : Colors.transparent,
+              width: 4,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Badge(
+              isLabelVisible: hasUnsavedChanges,
+              smallSize: 8,
+              backgroundColor: Colors.amber, // Warning dot!
+              child: Icon(
+                Icons.settings_outlined,
+                color: isSelected ? HudTheme.accentCyan : Colors.white54,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              'SETTINGS',
+              style: TextStyle(
+                color: isSelected ? HudTheme.accentCyan : Colors.white54,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                letterSpacing: 2.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
