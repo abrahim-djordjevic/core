@@ -9,6 +9,7 @@ class ApiService {
   static const String telemetryUrl = 'http://localhost:5200/api/Telemetry';
   static const String nukeUrl = 'http://localhost:5200/api/nuke';
   static const String thermalUrl = 'http://localhost:5200/api/thermal';
+  static const String settingsUrl = 'http://localhost:5200/api/settings';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan').replace(queryParameters: {
@@ -207,7 +208,7 @@ class ApiService {
 
   Future<NukePreviewResponse> previewNuke(List<String> paths) async {
     final uri = Uri.parse('$nukeUrl/preview');
-    print('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETs');
+    print('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETTs');
 
     final response = await http.post(
       uri,
@@ -226,5 +227,34 @@ class ApiService {
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
     }
+  }
+
+  Future<Map<String, dynamic>?> getSettings() async {
+    try {
+      final response = await http.get(Uri.parse(settingsUrl));
+      if (response.statusCode == 200) return jsonDecode(response.body)['data'];
+    } catch (e) {
+      print('[API] Settings Fetch Error: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> saveSettings(Map<String, dynamic> payload) async {
+    try {
+      final response = await http.post(Uri.parse(settingsUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Network Error'};
+    }
+  }
+
+  Future<Map<String, dynamic>?> resetSettings() async {
+    try {
+      final response = await http.delete(Uri.parse('$settingsUrl/reset'));
+      if (response.statusCode == 200) return jsonDecode(response.body)['data'];
+    } catch (e) {
+      print('[API] Reset Error: $e');
+    }
+    return null;
   }
 }

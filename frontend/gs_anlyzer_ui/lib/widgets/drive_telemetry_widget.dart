@@ -21,50 +21,55 @@ class DriveTelemetryWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final driveStatsAsync = ref.watch(driveStatsProvider);
+    final driveState = ref.watch(driveStatsProvider);
+    final stats = driveState.stats;
 
-    return driveStatsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (err, stack) => const SizedBox.shrink(),
-      data: (stats) {
-        final double usageFraction = stats.usedBytes / stats.totalBytes;
+    if (stats == null) {
+      return const SizedBox(
+        height: 60,
+        child: Center(child: LinearProgressIndicator(color: HudTheme.accentCyan)),
+      );
+    }
 
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: HudTheme.bgBase,
-            border: Border(top: BorderSide(color: Colors.white10, width: 1)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final double usageFraction = stats.usedBytes / stats.totalBytes;
+    final isCritical = driveState.isCritical;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: HudTheme.bgBase,
+        border: Border(top: BorderSide(color: isCritical ? HudTheme.accentRed : Colors.white10, width: 1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  HudLabel('CAPACITY (C:)'),
-                  Text('${stats.percentageFree}% FREE', style: HudTheme.statGreen,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: usageFraction,
-                backgroundColor: Colors.white10,
-                color: HudTheme.accentGreen,
-                minHeight: 6,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  HudLabel('${formatBytes(stats.usedBytes)} USED'),
-                  HudLabel('${formatBytes(stats.totalBytes)} TOTAL'),
-                ],
+              HudLabel('CAPACITY (C:)'),
+              if (isCritical)
+                const Text('LOW SPACE ALERT', style: HudTheme.actionRed),
+              Text('${stats.percentageFree}% FREE', style: isCritical ? HudTheme.actionRed : HudTheme.statGreen,
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: usageFraction,
+            backgroundColor: Colors.white10,
+            color: isCritical ? HudTheme.accentRed : HudTheme.accentGreen,
+            minHeight: 6,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              HudLabel('${formatBytes(stats.usedBytes)} USED'),
+              HudLabel('${formatBytes(stats.totalBytes)} TOTAL'),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

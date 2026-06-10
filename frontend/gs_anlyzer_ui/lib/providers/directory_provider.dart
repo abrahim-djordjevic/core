@@ -1,5 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
 enum SortMethod {
@@ -19,6 +21,8 @@ class DirectoryState {
   final bool isLoading;
   final bool isSelectionMode;
   final String? errorMessage;
+  final bool skipHiddenFiles;
+  final bool skipSystemFiles;
 
   const DirectoryState({
     this.currentPath = 'C:/',
@@ -31,6 +35,8 @@ class DirectoryState {
     this.isLoading = true,
     this.isSelectionMode = false,
     this.errorMessage,
+    this.skipHiddenFiles = true,
+    this.skipSystemFiles = true,
 });
 
   DirectoryState copyWith({
@@ -44,6 +50,8 @@ class DirectoryState {
   bool? isLoading,
   bool? isSelectionMode,
   String? errorMessage,
+  bool? skipHiddenFiles,
+  bool? skipSystemFiles,
 }) {
     return DirectoryState(
       currentPath: currentPath ?? this.currentPath,
@@ -56,6 +64,8 @@ class DirectoryState {
       isLoading: isLoading ?? this.isLoading,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
       errorMessage: errorMessage ?? this.errorMessage,
+      skipHiddenFiles: skipHiddenFiles ?? this.skipHiddenFiles,
+      skipSystemFiles: skipSystemFiles ?? this.skipSystemFiles,
     );
   }
 }
@@ -63,9 +73,28 @@ class DirectoryState {
 class DirectoryNotifier extends StateNotifier<DirectoryState> {
   final ApiService _apiService = ApiService();
   final Map<String, List<StorageNode>> _sectorCache ={};
+  final Ref ref;
 
-  DirectoryNotifier() : super(const DirectoryState()) {
+  DirectoryNotifier(this.ref) : super(const DirectoryState()) {
     scanDirectory('C:/');
+    _listenToSettings();
+  }
+
+  void _listenToSettings() {
+    ref.listen(settingsProvider, (previous, next) {
+      final scanSettings = next.currentSettings?.scan;
+      if (scanSettings != null) {
+        if (scanSettings.skipHiddenFiles != state.skipHiddenFiles ||
+            scanSettings.skipSystemFiles != state.skipSystemFiles) {
+          state = state.copyWith(
+            skipHiddenFiles: scanSettings.skipHiddenFiles,
+            skipSystemFiles: scanSettings.skipSystemFiles,
+          );
+          // Refresh current directory to apply visibility filters
+          scanDirectory(state.currentPath, forceRefresh: true);
+        }
+      }
+    }, fireImmediately: true);
   }
   
   void _applyFiltersAndSort({
@@ -244,7 +273,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 }
 
 final directoryProvider = StateNotifierProvider<DirectoryNotifier, DirectoryState>((ref) {
-  return DirectoryNotifier();
+  return DirectoryNotifier(ref);
 });
 
 final treeExpandedProvider = StateProvider<bool>((ref) => true);

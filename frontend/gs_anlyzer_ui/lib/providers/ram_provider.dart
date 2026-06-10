@@ -1,7 +1,7 @@
-import 'dart:io';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/process_telemetry.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 
 import '../services/api_service.dart';
 
@@ -13,6 +13,7 @@ class RamState {
   final double swapGb;
   final double totalGb;
   final List<double> usageHistory;
+  final int ramThresholdPercent;
 
   const RamState({
     this.groupedProcesses = const [],
@@ -22,13 +23,23 @@ class RamState {
     this.swapGb = 0.0,
     this.totalGb = 16.0, // fix: hard coded total ram size
     this.usageHistory = const [],
+    this.ramThresholdPercent = 85,
   });
 
   double get usedPercentage => totalGb > 0 ? activeGb / totalGb : 0.0;
   String get displayedString => '${activeGb.toStringAsFixed(2)} GB / ${totalGb.toStringAsFixed(2)} GB';
-  bool get isCritical => totalGb > 0 && (activeGb / totalGb) >= 0.90;
+  bool get isCritical => totalGb > 0 && (activeGb / totalGb) >= (ramThresholdPercent / 100.0);
 
-  RamState copyWith({List<ProcessGroup>? groupedProcesses, bool? isLoading, double? activeGb, double? cacheGb, double? swapGb, double? totalGb, List<double>? usageHistory,}) {
+  RamState copyWith({
+    List<ProcessGroup>? groupedProcesses,
+    bool? isLoading,
+    double? activeGb,
+    double? cacheGb,
+    double? swapGb,
+    double? totalGb,
+    List<double>? usageHistory,
+    int? ramThresholdPercent,
+  }) {
     return RamState(
       groupedProcesses: groupedProcesses ?? this.groupedProcesses,
       isLoading: isLoading ?? this.isLoading,
@@ -37,16 +48,28 @@ class RamState {
       swapGb: swapGb ?? this.swapGb,
       totalGb: totalGb ?? this.totalGb,
       usageHistory: usageHistory ?? this.usageHistory,
+      ramThresholdPercent: ramThresholdPercent ?? this.ramThresholdPercent,
     );
   }
 }
 
 class RamNotifier extends StateNotifier<RamState> {
   final ApiService _apiService = ApiService();
+  final Ref ref;
 
-  RamNotifier() : super(const RamState())
+  RamNotifier(this.ref) : super(const RamState())
   {
     _apiService.startRamRadar();
+    _listenToSettings();
+  }
+
+  void _listenToSettings() {
+    ref.listen(settingsProvider, (previous, next) {
+      final newThreshold = next.currentSettings?.alerts.ramThresholdPercent;
+      if (newThreshold != null && newThreshold != state.ramThresholdPercent) {
+        state = state.copyWith(ramThresholdPercent: newThreshold);
+      }
+    }, fireImmediately: true);
   }
 
   void updateProcesses(Map<String, dynamic> payload) {
@@ -135,5 +158,5 @@ class RamNotifier extends StateNotifier<RamState> {
 }
 
 final ramProvider = StateNotifierProvider<RamNotifier, RamState>((ref) {
-  return RamNotifier();
+  return RamNotifier(ref);
 });

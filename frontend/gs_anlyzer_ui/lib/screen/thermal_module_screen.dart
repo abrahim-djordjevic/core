@@ -20,16 +20,32 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final telemetry = ref.watch(thermalProvider);
-    final cpuState = ref.watch(cpuProvider);
+    final thermalState = ref.watch(thermalProvider);
+    final telemetry = thermalState.telemetry;
+    final cpuState = ref.watch(cpuProvider).snapshot;
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'THERMAL RADAR MODULE', style: HudTheme.headerCyan
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'THERMAL RADAR MODULE', style: HudTheme.headerCyan
+              ),
+              if (thermalState.isCritical)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: HudTheme.accentRed.withValues(alpha: 0.2),
+                    border: Border.all(color: HudTheme.accentRed),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('OVERHEAT ALERT', style: HudTheme.actionRed),
+                ),
+            ],
           ),
           const SizedBox(height: 24),
 

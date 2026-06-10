@@ -1,5 +1,3 @@
-import 'package:gs_analyzer_ui/models/storage_node.dart';
-
 class MockFactory {
   static Map<String, dynamic> createFakeNodeMap({
     required String name,

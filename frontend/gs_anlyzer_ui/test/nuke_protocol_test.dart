@@ -1,13 +1,17 @@
-import 'dart:math';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'mock_factory.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+
   group('Nuke Operation Safety Test', () {
     test('Nuke Targeter should correctly identify all items for destruction', () {
-     final notifier = DirectoryNotifier();
+     final container = ProviderContainer();
+     final notifier = container.read(directoryProvider.notifier);
 
      notifier.state = notifier.state.copyWith(currentPath: 'C:/Downloads');
 
@@ -24,17 +28,13 @@ void main() {
 
   group('Nuclear Clearance (Recursive Delete', () {
     test('Nuke Targeter should identify a full directory for total removal', () {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
 
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Downloads');
 
       final folderPath = 'C:/Downloads/OldProject';
       final rootFolder = MockFactory.createFakeNodeMap(name: 'OldProject', path: folderPath, isDirectory: true);
-
-      final folderContents = [
-        MockFactory.createFakeNodeMap(name: 'file1.doc', path: '$folderPath/file1.doc'),
-      MockFactory.createFakeNodeMap(name: 'subFolder', path: '$folderPath/subFolder', isDirectory: true),
-      ];
 
       notifier.receiveStreamChunk('c:/Downloads', [rootFolder]);
 
@@ -47,7 +47,8 @@ void main() {
 
   group('Multi-Select Nuke Protocol Tests', () {
     test('Nuke Targeter isolates multiple selected items while keeping unselected items safe', () {
-      final notifier = DirectoryNotifier();
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
       notifier.state = notifier.state.copyWith(currentPath: 'C:/Downloads');
 
       final mixedChunk = [

@@ -88,7 +88,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
         print('LIVE UPDATE: REFRESHING UI FOR $currentPath');
         ref.read(directoryProvider.notifier).scanDirectory(currentPath);
       }
-      ref.invalidate(driveStatsProvider);
+      ref.read(driveStatsProvider.notifier).refresh();
     };
     _telemetryService?.startListening();
   }

@@ -5,7 +5,6 @@ import 'package:gs_analyzer_ui/utils/globals.dart';
 import '../providers/directory_provider.dart';
 import '../services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
-import 'package:gs_analyzer_ui/utils/hud_label.dart';
 
 class TelemetryHudWidget extends ConsumerWidget {
   const TelemetryHudWidget({super.key});

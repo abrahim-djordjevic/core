@@ -1,0 +1,517 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/models/app_settings.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/hud_label.dart';
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(settingsProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+
+    if (state.isLoading && state.currentSettings == null) {
+      return Scaffold(
+        backgroundColor: HudTheme.bgBase,
+        body: Center(child: CircularProgressIndicator(color: HudTheme.accentCyan)),
+      );
+    }
+
+    if (state.currentSettings == null) {
+      return Scaffold(
+        backgroundColor: HudTheme.bgBase,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const SizedBox(height: 16),
+              Text('FAILED TO LOAD CONFIGURATION', style: HudTheme.headerCyan.copyWith(color: Colors.redAccent)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => notifier.resetToDefaults(),
+                child: const Text('RETRY / RESET TO DEFAULTS'),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    final settings = state.currentSettings!;
+
+    return Scaffold(
+      backgroundColor: HudTheme.bgBase,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text('DEFENSE GRID CONFIG', style: HudTheme.headerCyan),
+        actions: [
+          if (state.hasUnsavedChanges)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Text('● UNSAVED CHANGES',
+                    style: HudTheme.bodyText.copyWith(
+                        color: Colors.amber, fontWeight: FontWeight.bold)),
+              ),
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              _buildScanSection(settings.scan, state, notifier, context),
+              const SizedBox(height: 16),
+              _buildAlertsSection(settings.alerts, state, notifier),
+              const SizedBox(height: 16),
+              _buildMonitoringSection(settings.monitoring, state, notifier),
+              const SizedBox(height: 16),
+              _buildCacheSection(settings.cache, state, notifier),
+              const SizedBox(height: 16),
+              _buildAppearanceSection(settings.appearance, state, notifier),
+              const SizedBox(height: 16),
+              _buildAdvancedSection(settings.advanced, state, notifier),
+              const SizedBox(height: 32),
+              _buildActionButtons(context, state, notifier),
+              const SizedBox(height: 64), // Bottom scroll clearance
+            ],
+          ),
+
+          if (state.isLoading)
+            Container(
+              color: Colors.black54,
+              child: Center(child: CircularProgressIndicator(color: HudTheme.accentCyan)),
+            )
+        ],
+      ),
+    );
+  }
+
+  // SECTION BUILDERS
+
+  Widget _buildScanSection(ScanSettings scan, SettingsState state, SettingsNotifier notifier, BuildContext context) {
+    return _SettingsSection(
+      title: 'SCAN PARAMETERS',
+      errorFilter: 'Scan',
+      state: state,
+      child: Column(
+        children: [
+          _buildSlider('DEPTH', scan.depth.toDouble(), 1, 50, '', (val) {
+            scan.depth = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildToggle('FOLLOW SYMLINKS', scan.followSymlinks, (val) {
+            scan.followSymlinks = val;
+            notifier.updateUI();
+          }),
+          _buildToggle('SKIP HIDDEN', scan.skipHiddenFiles, (val) {
+            scan.skipHiddenFiles = val;
+            notifier.updateUI();
+          }),
+          _buildToggle('SKIP SYSTEM', scan.skipSystemFiles, (val) {
+            scan.skipSystemFiles = val;
+            notifier.updateUI();
+          }),
+          const SizedBox(height: 16),
+          Align(alignment: Alignment.centerLeft, child: HudLabel('EXCLUDED PATHS')),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ...scan.excludedPaths.map((path) => Chip(
+                label: Text(path, style: HudTheme.bodyText),
+                backgroundColor: Colors.white10,
+                deleteIcon: const Icon(Icons.close, size: 16, color: Colors.white70),
+                onDeleted: () {
+                  scan.excludedPaths.remove(path);
+                  notifier.updateUI();
+                },
+              )),
+              ActionChip(
+                label: Text('+ ADD', style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan)),
+                backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
+                side: BorderSide(color: HudTheme.accentCyan),
+                onPressed: () => _showAddPathDialog(context, scan, notifier),
+              )
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertsSection(AlertSettings alerts, SettingsState state, SettingsNotifier notifier) {
+    return _SettingsSection(
+      title: 'ALERTS & THRESHOLDS',
+      errorFilter: 'Threshold',
+      state: state,
+      child: Column(
+        children: [
+          _buildSlider('DISK THRESHOLD', alerts.diskThresholdPercent.toDouble(), 1, 100, '%', (val) {
+            alerts.diskThresholdPercent = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('RAM THRESHOLD', alerts.ramThresholdPercent.toDouble(), 1, 100, '%', (val) {
+            alerts.ramThresholdPercent = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('CPU THRESHOLD', alerts.cpuThresholdPercent.toDouble(), 1, 100, '%', (val) {
+            alerts.cpuThresholdPercent = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('THERMAL LIMIT', alerts.thermalThresholdCelsius.toDouble(), 40, 110, '°C', (val) {
+            alerts.thermalThresholdCelsius = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildToggle('DESKTOP NOTIFS', alerts.enableDesktopNotifications, (val) {
+            alerts.enableDesktopNotifications = val;
+            notifier.updateUI();
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonitoringSection(MonitoringSettings mon, SettingsState state, SettingsNotifier notifier) {
+    return _SettingsSection(
+      title: 'RADAR MONITORING',
+      errorFilter: 'Poll',
+      state: state,
+      child: Column(
+        children: [
+          _buildSlider('CPU POLL', mon.cpuPollIntervalMs.toDouble(), 500, 60000, ' ms', (val) {
+            mon.cpuPollIntervalMs = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('RAM POLL', mon.ramPollIntervalMs.toDouble(), 500, 60000, ' ms', (val) {
+            mon.ramPollIntervalMs = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('THERMAL POLL', mon.thermalPollIntervalMs.toDouble(), 500, 60000, ' ms', (val) {
+            mon.thermalPollIntervalMs = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildToggle('SCHEDULED SCANS', mon.enableScheduledScans, (val) {
+            mon.enableScheduledScans = val;
+            notifier.updateUI();
+          }),
+          if (mon.enableScheduledScans)
+            _buildSlider('SCAN INTERVAL', mon.scheduledScanIntervalMinutes.toDouble(), 1, 1440, ' min', (val) {
+              mon.scheduledScanIntervalMinutes = val.toInt();
+              notifier.updateUI();
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCacheSection(CacheSettings cache, SettingsState state, SettingsNotifier notifier) {
+    return _SettingsSection(
+      title: 'MEMORY & CACHE',
+      errorFilter: 'Cache',
+      state: state,
+      child: Column(
+        children: [
+          _buildSlider('SCAN CACHE TTL', cache.scanCacheTtlMinutes.toDouble(), 1, 1440, ' min', (val) {
+            cache.scanCacheTtlMinutes = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('MAX CACHED SCANS', cache.maxCacheScans.toDouble(), 1, 50, '', (val) {
+            cache.maxCacheScans = val.toInt();
+            notifier.updateUI();
+          }),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: () {
+                // Future Implementation: Clear local storage cache
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.amber),
+                foregroundColor: Colors.amber,
+              ),
+              child: const Text('CLEAR CACHE NOW', style: TextStyle(letterSpacing: 1)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppearanceSection(AppearanceSettings app, SettingsState state, SettingsNotifier notifier) {
+    return _SettingsSection(
+      title: 'APPEARANCE',
+      errorFilter: 'Appearance',
+      state: state,
+      child: Column(
+        children: [
+          _buildToggle('COMPACT MODE', app.compactMode, (val) {
+            app.compactMode = val;
+            notifier.updateUI();
+          }),
+          _buildToggle('ANIMATIONS', app.showAnimations, (val) {
+            app.showAnimations = val;
+            notifier.updateUI();
+          }),
+          const SizedBox(height: 16),
+          Align(alignment: Alignment.centerLeft, child: HudLabel('ACCENT COLOR')),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _colorSwatch('cyan', Colors.cyan, app, notifier),
+              _colorSwatch('green', Colors.greenAccent, app, notifier),
+              _colorSwatch('amber', Colors.amber, app, notifier),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedSection(AdvancedSettings adv, SettingsState state, SettingsNotifier notifier) {
+    return Container(
+      decoration: HudTheme.hudPanelDecoration,
+      child: Theme(
+        data: ThemeData(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          title: Text('ADVANCED ▾', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
+          childrenPadding: const EdgeInsets.all(16),
+          children: [
+            if (_hasError(state, 'Port') || _hasError(state, 'SignalR'))
+              _buildErrorMessage(state, 'Port'), // Catchall for advanced errors
+            _buildSlider('BACKEND PORT', adv.backendPort.toDouble(), 1024, 65535, '', (val) {
+              adv.backendPort = val.toInt();
+              notifier.updateUI();
+            }),
+            _buildSlider('RECONNECT DELAY', adv.signalrReconnectDelaysMs.toDouble(), 500, 30000, ' ms', (val) {
+              adv.signalrReconnectDelaysMs = val.toInt();
+              notifier.updateUI();
+            }),
+            _buildSlider('MAX RETRIES', adv.maxSignalrRetries.toDouble(), 1, 100, '', (val) {
+              adv.maxSignalrRetries = val.toInt();
+              notifier.updateUI();
+            }),
+            _buildToggle('DEBUG LOGS', adv.enableDebugLogs, (val) {
+              adv.enableDebugLogs = val;
+              notifier.updateUI();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // HELPER WIDGETS
+  Widget _buildActionButtons(BuildContext context, SettingsState state, SettingsNotifier notifier) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 45,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: state.hasUnsavedChanges ? HudTheme.accentCyan : Colors.white10,
+              foregroundColor: state.hasUnsavedChanges ? Colors.black : Colors.white54,
+            ),
+            onPressed: state.hasUnsavedChanges ? () => notifier.saveChanges() : null,
+            child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 45,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.redAccent),
+                foregroundColor: Colors.redAccent
+            ),
+            onPressed: () => _confirmReset(context, notifier),
+            child: const Text('RESET TO DEFAULTS', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmReset(BuildContext context, SettingsNotifier notifier) {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      backgroundColor: HudTheme.bgBase,
+      title: Text('INITIATE RESET?', style: HudTheme.headerCyan.copyWith(color: Colors.redAccent)),
+      content: Text('This will wipe all configurations and restore factory defaults', style: HudTheme.bodyText),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx)  , child: Text('CANCEL', style: HudTheme.bodyText)),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent,),
+          onPressed: () {
+            notifier.resetToDefaults();
+            Navigator.pop(ctx);
+          },
+          child: const Text('CONFIRM OVERWRITE ', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    )
+    );
+  }
+
+  void _showAddPathDialog(BuildContext context, ScanSettings scan, SettingsNotifier notifier) {
+    String input = '';
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: HudTheme.bgBase,
+          title: Text('ADD EXCLUSION PATH', style: HudTheme.headerCyan),
+          content: TextField(
+            style: HudTheme.bodyText,
+            decoration: InputDecoration(
+                hintText: 'C:/My/Secret/Folder',
+                hintStyle: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: HudTheme.accentCyan)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: HudTheme.accentCyan))
+            ),
+            onChanged: (v) => input = v,
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('CANCEL', style: HudTheme.bodyText)),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: HudTheme.accentCyan),
+              onPressed: () {
+                if (input.isNotEmpty && !scan.excludedPaths.contains(input)) {
+                  scan.excludedPaths.add(input.replaceAll('\\', '/'));
+                  notifier.updateUI();
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('ADD', style: TextStyle(color: Colors.black)),
+            )
+          ],
+        )
+    );
+  }
+
+  Widget _colorSwatch(String id, Color color, AppearanceSettings app, SettingsNotifier notifier) {
+    bool isSelected = app.accentColor == id;
+    return GestureDetector(
+        onTap: () {
+          app.accentColor = id;
+          notifier.updateUI();
+        },
+        child: Container(
+          margin: const EdgeInsets.only(right: 12),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
+            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)] : null,
+          ),
+        )
+    );
+  }
+
+  Widget _buildSlider(String label, double value, double min, double max, String unit, Function(double) onChanged) {
+    return Row(
+      children: [
+        SizedBox(width: 140, child: HudLabel(label)),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            activeColor: HudTheme.accentCyan,
+            inactiveColor: Colors.white12,
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 70,
+          child: Text('${value.toInt()}$unit', style: TextStyle(fontSize: 14)),
+        )
+      ],
+    );
+  }
+
+  Widget _buildToggle(String label, bool value, Function(bool) onChanged) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            HudLabel(label),
+            Switch(
+              value: value,
+              activeThumbColor: HudTheme.accentCyan,
+              onChanged: onChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _hasError(SettingsState state, String keyword) {
+    return state.validationErrors.any((e) => e.toLowerCase().contains(keyword.toLowerCase()));
+  }
+
+  Widget _buildErrorMessage(SettingsState state, String keyword) {
+    var errors = state.validationErrors.where((e) => e.toLowerCase().contains(keyword.toLowerCase())).toList();
+    if (errors.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: errors.map((e) => Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: Text(e, style: HudTheme.bodyText.copyWith(color: Colors.redAccent, fontSize: 12)),
+      )).toList(),
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+  final String errorFilter;
+  final SettingsState state;
+
+  const _SettingsSection({
+    required this.title,
+    required this.child,
+    required this.errorFilter,
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: HudTheme.hudPanelDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: HudTheme.headerCyan.copyWith(letterSpacing: 2)),
+          const Divider(color: Colors.white10, height: 24, thickness: 1),
+
+          if (state.validationErrors.any((e) => e.toLowerCase().contains(errorFilter.toLowerCase())))
+            ...state.validationErrors.where((e) => e.toLowerCase().contains(errorFilter.toLowerCase())).map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 12), child: Text(e, style: HudTheme.bodyText.copyWith(color: Colors.redAccent, fontSize: 12)),
+            )),
+          child,
+        ],
+      ),
+    );
+  }
+}
