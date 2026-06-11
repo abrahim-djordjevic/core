@@ -1,4 +1,5 @@
 using GSInteractiveDeviceAnalyzer;
+using GSInteractiveDeviceAnalyzer.BackgroundWorkers;
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
@@ -28,6 +29,7 @@ builder.Services.AddSingleton<DuplicateFileDetector>();
 builder.Services.AddSingleton<LargeFileHunterService>();
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
+builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
@@ -57,6 +59,7 @@ builder.Services.AddHostedService<CpuSamplerEngine>();
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddHostedService<ThermalMonitoringEngine>();
+builder.Services.AddHostedService<DriveMonitorService>();
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddSignalR();

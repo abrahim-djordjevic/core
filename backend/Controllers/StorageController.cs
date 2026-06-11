@@ -66,12 +66,39 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             });
         }
 
-        [HttpGet("scan")]
-        public async Task<IActionResult> ScanDirectory([FromQuery] string path)
+        [HttpPost("scan")]
+        public async Task<IActionResult> ScanDirectory(
+            [FromBody] ScanRequest request, 
+            [FromServices] IDriveDetectionService driveService)
         {
             try
             {
-                var result = _diskService.ScanDirectory(path);
+                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
+                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
+                    : request.Root;
+                
+                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
+
+                var readyDrives = driveService.GetReadyDrives();
+                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not ready or found: {normalizedRoot}"
+                    });
+                }
+
+                if (!System.IO.Directory.Exists(targetPath))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Scan failed: Invalid or missing target directory."
+                    });
+                }
+
+                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
 
                 var response = new ApiResponse<IEnumerable<StorageNode>>
                 {
@@ -134,23 +161,52 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
             });
         }
 
-        [HttpGet("duplicates")]
-        public async Task<IActionResult> ScanForDuplicates([FromQuery] string path, [FromServices] DiskScannerEngine engine)
+        [HttpPost("duplicates")]
+        public async Task<IActionResult> ScanForDuplicates(
+            [FromBody] ScanRequest request,
+            [FromServices] DiskScannerEngine engine,
+            [FromServices] IDriveDetectionService driveService)
         {
             try
             {
-                var cancelToken = engine.ScanToken();
-                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(path);
+                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
+                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
+                    : request.Root;
+                
+                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
 
-                return Ok(new
+                var readyDrives = driveService.GetReadyDrives();
+                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
                 {
-                    success = true,
-                    data = duplicateGroups
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not ready or not found: {normalizedRoot}"
+                    });
+                }
+
+                if (!System.IO.Directory.Exists(targetPath))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Scan failed: Invalid or missing target directory."
+                    });
+                }
+
+                var cancelToken = engine.ScanToken();
+                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath);
+
+                return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
+                {
+                    Success = true,
+                    Message = "Duplicates scanned successfully.",
+                    Data = duplicateGroups
                 });
             }
             catch (OperationCanceledException)
             {
-                return BadRequest(new ApiResponse<object>
+                return StatusCode(499, new ApiResponse<object>
                 {
                     Success = false,
                     Message = "Duplicate Scan Aborted by User."
@@ -161,22 +217,39 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                 return BadRequest(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = ex.Message
+                    Message = $"Scan failed: {ex.Message}"
                 });
             }
-            { }
         }
 
         [HttpGet("scan-largefiles")]
         public async Task<IActionResult> GetLargeFiles(
-            [FromQuery] string root,
             [FromServices] ILargeFileHunterService hunter,
+            [FromServices] IDriveDetectionService driveService,
             CancellationToken cancellationToken,
+            [FromQuery] string? root = null,
             [FromQuery] int top = 20)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(root) || !System.IO.Directory.Exists(root))
+                if (string.IsNullOrWhiteSpace(root))
+                {
+                    root = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+                }
+
+                var normalizedRoot = Path.GetPathRoot(root)?.ToUpperInvariant() ?? root.ToUpperInvariant();
+
+                var readyDrives = driveService.GetReadyDrives();
+                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not ready or not found: {normalizedRoot}"
+                    });
+                }
+
+                if (!System.IO.Directory.Exists(root))
                 {
                     return BadRequest( new ApiResponse<object>
                     {
@@ -185,7 +258,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
                     });
                 }
 
-                var result = await hunter.GetTopLargeFilesAsync(root, top);
+                var result = await hunter.GetTopLargeFilesAsync(root, top, cancellationToken);
 
                 var response = new ApiResponse<IEnumerable<LargeFile>>
                 {
