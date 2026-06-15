@@ -26,9 +26,9 @@ The core engine is stable and the primary telemetry panels are live. We are now 
 
 | Milestone | Target | State |
 | --- | --- | --- |
-| **Public Beta** | June 2026 (before summer) | 🟡 In progress — feature freeze approaching |
-| **v2.0 Official Release** | July 2026 | ⏳ Planned |
-| **v2.1** | Aug – Oct 2026 | 🗒️ Backlog |
+| **Public Beta** | Aug 2026 (summer) | 🟡 In progress — feature freeze approaching |
+| **v2.0 Official Release** | Sept 2026 | ⏳ Planned |
+| **v2.1** | Oct – Dec 2026 | 🗒️ Backlog |
 | **v3.0** | Q1 2027 | 🔭 Future |
 
 What's working today vs. what's still being built is tracked in the **Feature Status** section below.
@@ -142,13 +142,13 @@ The server initializes the Disk Scanner Engine and awaits WebSocket connections 
 
 ## 🗺️ Roadmap
 
-### 🔜 Beta — June 2026
+### 🔜 Beta — Aug 2026
 Feature-complete v2.0 candidate. Public beta ships **before summer**. Focus: finishing the Thermal panel, Settings persistence, and the Temp Cleaner; full platform-matrix validation (Windows 10/11 + Ubuntu 22.04).
 
-### 🎯 v2.0 — July 2026 (Official Release)
+### 🎯 v2.0 — Sept 2026 (Official Release)
 Stable cross-platform release of the full telemetry + disk-intelligence suite described above.
 
-### 🟣 v2.1 — Aug – Oct 2026
+### 🟣 v2.1 — Oct – Dec 2026
 - Advanced thermals (GPU core/hotspot/VRAM, GPU fan)
 - Multi-Drive support (per-drive scan, monitor, and manage)
 - Behavioural baselines & anomaly detection
@@ -175,4 +175,4 @@ Contributions are welcome from developers with Flutter/Dart, C#/ASP.NET Core, or
 
 ---
 
-*Engineered by G00dS0ul — contributions welcome.*
+*Contributions welcome.*

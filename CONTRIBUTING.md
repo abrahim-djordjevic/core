@@ -1,6 +1,6 @@
 # Contributing to GS System Analyzer
 
-Thanks for your interest in contributing. This is an active open source project and contributions are welcome from developers with experience in Flutter/Dart, C#/[ASP.NET](http://ASP.NET) Core, or C++.
+Thanks for your interest in contributing. This is an active open source project and contributions are welcome from developers with experience in Flutter/Dart, C#/ASP.NET Core, or C++.
 
 Read this document fully before opening a pull request.
 
@@ -13,7 +13,7 @@ Read this document fully before opening a pull request.
 
 **Stage: Pre-Beta (v2.0 finalizing).** Core engine and most v2.0 panels are shipped. We're finishing the remaining panels and hardening before the public beta.
 
-**Beta — June 2026** (before summer)  ·  **v2.0 official release — July 2026.**
+**Beta — Aug 2026** (summer)  ·  **v2.0 official release — Sept 2026.**
 
 Active focus right now: `THERMAL_SENSORS`, Settings/Config, Temp Cleaner, `NET_IO`, and `ACTIVE_PROCESS_TREE`.
 
@@ -21,8 +21,8 @@ Active focus right now: `THERMAL_SENSORS`, Settings/Config, Temp Cleaner, `NET_I
 
 **Roadmap at a glance:**
 
-- **v2.0 (now → July 2026)** — Finish thermal, settings, temp cleaner, network I/O, process tree.
-- **v2.1 (Aug–Oct 2026)** — Advanced GPU thermals, multi-drive support, behavioural baselines.
+- **v2.0 (now → Sept 2026)** — Finish thermal, settings, temp cleaner, network I/O, process tree.
+- **v2.1 (Oct–Dec 2026)** — Advanced GPU thermals, multi-drive support, behavioural baselines.
 - **v3.0 (Q1 2027)** — Historical telemetry, predictive alerts, cross-platform (macOS).
 
 ---
@@ -31,15 +31,43 @@ Active focus right now: `THERMAL_SENSORS`, Settings/Config, Temp Cleaner, `NET_I
 
 GS System Analyzer is a cross-platform desktop application for real-time system telemetry, disk intelligence, and high-performance file management. It combines CPU/RAM/thermal monitoring, visual disk analysis, and a bulk file operations engine — all in a single Cyber-HUD interface built with Flutter and a C# backend.
 
-The repo is structured as:
+The repo is a **monorepo** with two top-level projects — a C# backend and a Flutter desktop client:
 
 ```
-/lib       → Flutter frontend (Dart, Riverpod)
-/backend   → ASP.NET Core 10 backend (C#, SignalR)
-/test      → Flutter widget + unit tests
+core/
+├── backend/                                ASP.NET Core 10 backend (C#, SignalR)
+│   ├── Controllers/                        REST endpoints
+│   ├── Engine/                             Core analysis engine
+│   ├── Hubs/                               SignalR hubs (e.g. TelemetryHub)
+│   ├── Interfaces/                         Service contracts (ISensorProvider, etc.)
+│   ├── Models/                             Backend data models
+│   ├── Services/                           Sensor, scan, nuke, telemetry services
+│   ├── Properties/                         launchSettings.json
+│   ├── Program.cs                          App startup / DI registration
+│   ├── InteractiveAnalyzer.cs
+│   ├── GSInteractiveDeviceAnalyzer.csproj  Main backend project
+│   ├── GSInteractiveDeviceAnalyzer.slnx    Solution file
+│   └── GSInteractiveDeviceAnalyzer.Tests/  xUnit backend tests
+│
+└── frontend/
+    └── gs_anlyzer_ui/                       Flutter app (Dart, Riverpod)
+        ├── lib/
+        │   ├── models/                      Immutable data structures (StorageNode, DriveStats)
+        │   ├── providers/                   Riverpod state notifiers / providers
+        │   ├── screen/                      Main layout canvases (AnalyzerDashboard)
+        │   ├── services/                    External comms (ApiService, TelemetryService)
+        │   ├── utils/                        Global keys + operational logic (NukeProtocol)
+        │   ├── widgets/                      Modular UI components (Nodes, HUDs, Headers)
+        │   └── main.dart                     App entry point + ProviderScope wrapper
+        ├── test/                             Flutter widget + unit tests
+        ├── integration_test/                 End-to-end integration tests
+        ├── android/ ios/ linux/ macos/ web/ windows/   Platform runners
+        ├── pubspec.yaml                      Dart dependencies
+        └── pubspec.lock
 ```
 
-Backend unit tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests`.
+- **Backend** lives at `/backend` → ASP.NET Core 10, C#, SignalR. Main project: `GSInteractiveDeviceAnalyzer.csproj`. Backend unit tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests`.
+- **Frontend** lives at `/frontend/gs_anlyzer_ui` → Flutter + Dart with Riverpod state management. Flutter widget/unit tests live in `/frontend/gs_anlyzer_ui/test`.
 
 ---
 
@@ -59,21 +87,44 @@ Backend unit tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests`.
 - .NET 10.0 SDK
 - Git
 
-**Running locally**
+**1. Fork & clone**
 
 ```bash
-# Backend
-cd backend
-dotnet restore
-dotnet run
-
-# Frontend (in a separate terminal)
-cd lib
-flutter pub get
-flutter run
+git clone https://github.com/GS-SystemAnalyzer/core.git
+cd core
 ```
 
-The backend serves on `http://localhost:5200` by default — make sure `ApiService` in the Flutter project points to it before running. Thermal/sensor reads require running the backend with Administrator privileges.
+**2. Start the backend (Terminal 1)**
+
+```bash
+cd backend
+dotnet restore
+dotnet run            # serves on http://localhost:5200
+```
+
+- Run your terminal **as Administrator** — thermal/sensor reads require elevated privileges. Without it, thermal and several telemetry panels will show empty or ghost data.
+- Alternatively, open `backend/GSInteractiveDeviceAnalyzer.slnx` in Visual Studio / Rider and run from there.
+
+**3. Start the frontend (Terminal 2)**
+
+```bash
+cd frontend/gs_anlyzer_ui
+flutter pub get
+flutter run -d windows      # or: -d macos / -d linux
+```
+
+- Before running, confirm `ApiService` (in `lib/services/`) points at `http://localhost:5200`.
+- The Flutter client is a reactive shell — it shows no real data unless the backend is running, because all OS-level telemetry arrives via SignalR/REST.
+
+**4. Iterate with hot reload**
+
+With `flutter run` active, edit any Dart file and:
+
+- Press **`r`** → **hot reload**: pushes UI changes in ~1s and preserves current app state. Use this for widget, layout, and styling tweaks.
+- Press **`R`** → **hot restart**: full state rebuild. Use this when you change providers, `main.dart`, or the shape of your state.
+- Most IDEs (VS Code, Android Studio) hot-reload automatically on save.
+
+The backend serves on `http://localhost:5200` by default — make sure `ApiService` in the Flutter project points to it before running.
 
 ---
 
@@ -107,7 +158,19 @@ Text('58.6 GB', style: TextStyle(color: Colors.white))
 - Every new backend service must include at least **one xUnit test** covering the happy path and **one edge case**.
 - File deletion tests must use a **temp directory only** — never real paths.
 - Every new Flutter widget must include at least **one widget test** covering the empty/loading state.
-- Tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests` (C#) and `/test/widget/` (Flutter).
+- Tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests` (C#, xUnit) and `/frontend/gs_anlyzer_ui/test` (Flutter widget/unit tests). Integration tests live in `/frontend/gs_anlyzer_ui/integration_test`.
+
+Run the full suite before opening a PR:
+
+```bash
+# Backend (from /backend)
+dotnet test
+
+# Frontend (from /frontend/gs_anlyzer_ui)
+flutter analyze
+flutter test
+flutter test integration_test
+```
 
 ```csharp
 // ✅ Always use temp directories for file tests
@@ -161,8 +224,8 @@ This project is **open source** and currently **bootstrapped with no revenue**.
 ## Questions & Community
 
 - **GitHub Discussions** — open a discussion or comment on the relevant issue. Do not DM for questions that belong in public; public discussions help everyone.
-- **Discord** — join the contributor community at https://discord.gg/FA8WsVXMx for onboarding, dev chat, and release pings.
+- **Discord** — join the contributor community at https://discord.gg/CTqvqZEy6 for onboarding, dev chat, and release pings.
 
 ---
 
-*Engineered by G00dS0ul — contributions welcome.*
+*Contributions welcome.*
