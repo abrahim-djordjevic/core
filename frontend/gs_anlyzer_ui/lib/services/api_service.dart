@@ -74,7 +74,7 @@ class ApiService {
   Future<void> abortNuke() async {
     try {
       print('SENDING NUKE ABORT SIGNAL....');
-      await http.post(Uri.parse('$nukeUrl/nuke'));
+      await http.post(Uri.parse('$nukeUrl/abort'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -250,7 +250,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> resetSettings() async {
     try {
-      final response = await http.delete(Uri.parse('$settingsUrl/reset'));
+      final response = await http.post(Uri.parse('$settingsUrl/reset'));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
       print('[API] Reset Error: $e');

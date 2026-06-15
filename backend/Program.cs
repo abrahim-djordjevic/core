@@ -10,8 +10,6 @@ using System.Runtime.InteropServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<DiskScannerEngine>();
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutterApp", policy =>
@@ -23,14 +21,18 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+
+// Engine singletons
 builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<RamMonitoringEngine>();
-builder.Services.AddSingleton<DuplicateFileDetector>();
-builder.Services.AddSingleton<LargeFileHunterService>();
+
+// Service singletons (interface → implementation)
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();
+
+// Platform-specific CPU provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<ICpuMetricsProvider, WindowsCpuProvider>();
@@ -43,6 +45,8 @@ else
 {
     throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
 }
+
+// Platform-specific thermal provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<IThermalProvider, LibreThermalProvider>();
@@ -53,15 +57,18 @@ else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 }
 else
 {
-    throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
+    throw new PlatformNotSupportedException("OS not supported for thermal telemetry");
 }
+
+// Background services
 builder.Services.AddHostedService<CpuSamplerEngine>();
-builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
-builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddHostedService<ThermalMonitoringEngine>();
 builder.Services.AddHostedService<DriveMonitorService>();
+
+// Scoped services (per-request)
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
+
 builder.Services.AddSignalR();
 var app = builder.Build();
 

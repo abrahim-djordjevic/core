@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
@@ -21,7 +21,9 @@ public class DiskScannerEngine
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
     private int _deepScanThrottle = 0;
-    private readonly string _cacheFilePath = "scanner_memory.json";
+    private readonly string _cacheFilePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "GSAnalyzer", "scanner_memory.json");
     private FileSystemWatcher? _liveRader;
     private readonly object _radarLock = new object();
     private DateTime _lastRadarAlert = DateTime.MinValue;
@@ -159,7 +161,7 @@ public class DiskScannerEngine
                 IgnoreInaccessible = true,
                 AttributesToSkip = 0
             };
-            var files = dir.GetFiles();
+            var files = dir.GetFiles("*", option);
             size += files.Sum(f => f.Length);
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);
@@ -253,6 +255,7 @@ public class DiskScannerEngine
             try
             {
                 string json = JsonSerializer.Serialize(DirectorySizeCache);
+                Directory.CreateDirectory(Path.GetDirectoryName(_cacheFilePath)!);
                 File.WriteAllText(_cacheFilePath, json);
                 Console.WriteLine($"MEMORY SAVED: {DirectorySizeCache.Count} folders saved to disk!");
             }

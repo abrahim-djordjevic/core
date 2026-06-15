@@ -1,4 +1,4 @@
-﻿using GSInteractiveDeviceAnalyzer.Engine;
+using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
@@ -45,8 +45,6 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
                         await Task.Delay(10);
                     }
-
-                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
                 }
                 catch (Exception ex)
                 {

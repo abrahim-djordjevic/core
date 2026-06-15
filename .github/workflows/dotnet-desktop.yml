@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Uses the latest major .NET version
+          dotnet-version: '10.0.x' # Matches the project's TargetFramework (net10.0)
 
       # Step C: Download all your NuGet packages (like SignalR)
       - name: Restore Dependencies
