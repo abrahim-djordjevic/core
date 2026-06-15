@@ -100,7 +100,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     }
 
     void _handleRamUpdate(List<Object?>? arguments) {
-      if (arguments == null && arguments!.isEmpty) return;
+      if (arguments == null || arguments.isEmpty) return;
       try {
         final rawData = arguments[0];
 

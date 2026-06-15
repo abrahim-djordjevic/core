@@ -12,18 +12,19 @@ class ApiService {
   static const String settingsUrl = 'http://localhost:5200/api/settings';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
-    final uri = Uri.parse('$storageUrl/scan').replace(queryParameters: {
-      'path': path
-    });
-    print('MATRIX BRIDGE FIRING TO: $uri');
+    final uri = Uri.parse('$storageUrl/scan');
+    print('MATRIX BRIDGE FIRING TO: $uri (root: $path)');
 
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'Root': path}),
+    );
 
-    final response = await http.get(uri);
-
-    if(response.statusCode == 200) {
+    if (response.statusCode == 200) {
       final jsonBody = jsonDecode(response.body);
 
-      if(jsonBody['success'] == true) {
+      if (jsonBody['success'] == true) {
         print('FEDEX BOX OPENED! Data is: ${jsonBody['data']}');
         List<dynamic> data = jsonBody['data'];
         return data.map((json) => StorageNode.fromJson(json)).toList();
@@ -74,7 +75,7 @@ class ApiService {
   Future<void> abortNuke() async {
     try {
       print('SENDING NUKE ABORT SIGNAL....');
-      await http.post(Uri.parse('$nukeUrl/nuke'));
+      await http.post(Uri.parse('$nukeUrl/abort'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -136,13 +137,14 @@ class ApiService {
   }
 
   Future<List<dynamic>> scanForDuplicates(String path) async {
-    final uri = Uri.parse('$storageUrl/duplicates').replace(queryParameters: {
-      'path': path
-    });
+    final uri = Uri.parse('$storageUrl/duplicates');
+    print('INITIATING DUPLICATE HUNTER ON: $uri (root: $path)');
 
-    print('INITIATING DUPLICATE HUNTER ON: $uri');
-
-    final response = await http.get(uri);
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'Root': path}),
+    );
 
     if (response.statusCode == 200) {
       final jsonBody = jsonDecode(response.body);
@@ -152,6 +154,9 @@ class ApiService {
       } else {
         throw Exception(jsonBody['message']);
       }
+    } else if (response.statusCode == 499) {
+      // Backend signalled the duplicate scan was cancelled by the user — not an error.
+      return <dynamic>[];
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
     }
@@ -250,7 +255,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> resetSettings() async {
     try {
-      final response = await http.delete(Uri.parse('$settingsUrl/reset'));
+      final response = await http.post(Uri.parse('$settingsUrl/reset'));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
       print('[API] Reset Error: $e');
