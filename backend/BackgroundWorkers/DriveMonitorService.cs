@@ -22,6 +22,9 @@ public class DriveMonitorService : BackgroundService
     private int _secondsSincelastSpaceCheck = 0;
 
     private const double AlertThresholdPercent = 90.0;
+    private readonly HashSet<string> _alertedDrives = new();
+    private readonly Dictionary<string, DateTime> _lastAlertUtc = new();
+    private static readonly TimeSpan AlertReArmInterval = TimeSpan.FromMinutes(30);
 
     public DriveMonitorService(
         IDriveDetectionService driveService,
@@ -55,24 +58,62 @@ public class DriveMonitorService : BackgroundService
                     _lastHardwareSignature = currentSignature;
                 }
 
-                // Checkinmg for space thresholds (every 60 seconds)
+                // Checking for space thresholds (every 60 seconds)
                 if (_secondsSincelastSpaceCheck >= 60)
                 {
                     foreach (var drive in drives)
                     {
-                        if (drive.UsedPercent >= AlertThresholdPercent)
-                        {
-                            _logger.LogWarning($"Disk Alert: {drive.Name} is critially full ({drive.UsedPercent}%).");
+                        var isOverThreshold = drive.UsedPercent >= AlertThresholdPercent;
+                        var alreadyAlerted = _alertedDrives.Contains(drive.Name);
 
-                            await _hubContext.Clients.All.SendAsync("DiskAlert", new
+                        if (isOverThreshold)
+                        {
+                            var dueForReminder =
+                                _lastAlertUtc.TryGetValue(drive.Name, out var last) &&
+                                (DateTime.UtcNow - last) >= AlertReArmInterval;
+
+                            // Fire only on the first crossing, or once the re-arm window has elapsed.
+                            if (!alreadyAlerted || dueForReminder)
+                            {
+                                _logger.LogWarning(
+                                    "Disk Alert: {DriveName} is critically full ({UsedPercent}%).",
+                                    drive.Name, drive.UsedPercent);
+
+                                await _hubContext.Clients.All.SendAsync("DiskAlert", new
+                                {
+                                    driveName = drive.Name,
+                                    label = drive.Label,
+                                    usedPercent = drive.UsedPercent,
+                                    freeFormatted = FormatSize(drive.FreeBytes)
+                                }, stoppingToken);
+
+                                _alertedDrives.Add(drive.Name);
+                                _lastAlertUtc[drive.Name] = DateTime.UtcNow;
+                            }
+                        }
+                        else if (alreadyAlerted)
+                        {
+                            // Drive recovered below the threshold — clear state and let the HUD dismiss it.
+                            _alertedDrives.Remove(drive.Name);
+                            _lastAlertUtc.Remove(drive.Name);
+
+                            await _hubContext.Clients.All.SendAsync("DiskAlertCleared", new
                             {
                                 driveName = drive.Name,
                                 label = drive.Label,
-                                usedPercent = drive.UsedPercent,
-                                freeFormatted = FormatSize(drive.FreeBytes)
+                                usedPercent = drive.UsedPercent
                             }, stoppingToken);
                         }
                     }
+
+                    // Prune state for drives that have been removed/unmounted.
+                    var presentNames = drives.Select(d => d.Name).ToHashSet();
+                    _alertedDrives.RemoveWhere(name => !presentNames.Contains(name));
+                    foreach (var stale in _lastAlertUtc.Keys.Where(k => !presentNames.Contains(k)).ToList())
+                    {
+                        _lastAlertUtc.Remove(stale);
+                    }
+
                     _secondsSincelastSpaceCheck = 0;
                 }
             }
@@ -88,10 +129,11 @@ public class DriveMonitorService : BackgroundService
 
     private string FormatSize(long bytes)
     {
-        string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
+        string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
         int counter = 0;
         decimal number = bytes;
-        while (Math.Round(number / 1024) >= 1)
+        // Stop at the largest known suffix so we can never index past the array.
+        while (Math.Round(number / 1024) >= 1 && counter < suffixes.Length - 1)
         {
             number /= 1024;
             counter++;
