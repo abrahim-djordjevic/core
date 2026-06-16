@@ -101,18 +101,32 @@ public class NukeProtocolService : INukeProtocolService
         var processedNodes = 0;
         var cancelToken = _scanner.NukeToken();
 
+        // Throttle progress so we don't await a hub round-trip per file.
+        var lastProgressSent = DateTime.MinValue;
+        var progressInterval = TimeSpan.FromMilliseconds(150);
+
+        // Track what we actually removed so the cache is invalidated in ONE pass at the end.
+        var nukedPaths = new List<string>();
+        var aborted = false;
+
         foreach (var path in paths)
         {
             if (cancelToken.IsCancellationRequested)
             {
-                await _hubContext.Clients.All.SendAsync("NukeAborted", "OPERATION ABORTED BY USER");
-                return new NukeResultDto { Message = "PARTIAL NUKE: ABORTED" };
+                aborted = true;
+                break;
             }
+
             try
             {
                 if (File.Exists(path))
                 {
-                    File.SetAttributes(path, FileAttributes.Normal);
+                    // Only clear attributes when needed — skip a syscall on normal files.
+                    var attributes = File.GetAttributes(path);
+                    if ((attributes & FileAttributes.ReadOnly) != 0)
+                    {
+                        File.SetAttributes(path, FileAttributes.Normal);
+                    }
                     File.Delete(path);
                 }
                 else if (Directory.Exists(path))
@@ -121,26 +135,42 @@ public class NukeProtocolService : INukeProtocolService
                 }
                 else
                 {
-                    continue;
-                }
-
-                InvalidateCache(path);
+                    continue; // ghost path
+                } 
+                
+                
+                InvalidateCacheBatch(new List<string> { path });
 
                 processedNodes++;
+
                 var percentage = Math.Round(((double)processedNodes / totalNodes) * 100, 1);
 
-                await _hubContext.Clients.All.SendAsync("NukeProgress", new
+                // Emit at most every 150ms, but always emit the final tick.
+                if (DateTime.UtcNow - lastProgressSent >= progressInterval || processedNodes == totalNodes)
                 {
-                    completed = processedNodes,
-                    total = totalNodes,
-                    percentage = percentage,
-                    currentTarget = Path.GetFileName(path)
-                });
+                    lastProgressSent = DateTime.UtcNow;
+                    await _hubContext.Clients.All.SendAsync("NukeProgress", new
+                    {
+                        completed = processedNodes,
+                        total = totalNodes,
+                        percentage = percentage,
+                        currentTarget = Path.GetFileName(path)
+                    });
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[NUKE ERROR] Failed to Nuke {path}: {ex.Message}");
             }
+        }
+
+        // Invalidate everything we removed in a single cache pass, then persist to disk ONCE.
+        InvalidateCacheBatch(nukedPaths);
+
+        if (aborted)
+        {
+            await _hubContext.Clients.All.SendAsync("NukeAborted", "OPERATION ABORTED BY USER");
+            return new NukeResultDto { Message = "PARTIAL NUKE: ABORTED" };
         }
 
         return new NukeResultDto { Message = "CARPET BOMBING COMPLETE" };
@@ -159,14 +189,43 @@ public class NukeProtocolService : INukeProtocolService
         dir.Delete(true);
     }
 
-    private void InvalidateCache(string path)
+    private void InvalidateCacheBatch(IEnumerable<string> paths)
     {
-        var normalizedPath = Path.GetFullPath(path);
+        var nukedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var parentsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var subtreePrefixes = new List<string>();
 
-        var pathWithSlash = normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString()) ? normalizedPath : normalizedPath + Path.DirectorySeparatorChar;
+        foreach (var path in paths)
+        {
+            var normalizedPath = Path.GetFullPath(path);
+            nukedSet.Add(normalizedPath);
 
+            subtreePrefixes.Add(
+                normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString())
+                    ? normalizedPath
+                    : normalizedPath + Path.DirectorySeparatorChar);
+
+            // Every ancestor's cached size is now stale.
+            var parent = Path.GetDirectoryName(normalizedPath);
+            while (!string.IsNullOrEmpty(parent))
+            {
+                parentsToRemove.Add(parent);
+                parent = Path.GetDirectoryName(parent);
+            }
+        }
+
+        if (nukedSet.Count == 0)
+        {
+            return;
+        }
+
+        // ONE pass over the cache: drop nuked nodes, anything under a nuked directory,
+        // and every affected ancestor directory.
         var keysToRemove = _scanner.DirectorySizeCache.Keys
-            .Where(k => k.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase) || k.StartsWith(pathWithSlash, StringComparison.OrdinalIgnoreCase))
+            .Where(k =>
+                nukedSet.Contains(k) ||
+                parentsToRemove.Contains(k) ||
+                subtreePrefixes.Any(prefix => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
         foreach (var key in keysToRemove)
@@ -174,13 +233,7 @@ public class NukeProtocolService : INukeProtocolService
             _scanner.DirectorySizeCache.TryRemove(key, out _);
         }
 
-        var parent = Path.GetDirectoryName(normalizedPath);
-        while (!string.IsNullOrEmpty(parent))
-        {
-            _scanner.DirectorySizeCache.TryRemove(parent, out _);
-            parent = Path.GetDirectoryName(parent);
-        }
-
+        // Persist the cache to disk exactly once for the whole batch.
         _scanner.SaveMemoryToDisk();
     }
 
