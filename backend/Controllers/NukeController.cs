@@ -21,7 +21,7 @@ public class NukeController : ControllerBase
 
     [HttpPost("preview")]
     public async Task<IActionResult> GetNukePreview(
-        [FromBody] NukePreviewRequest request,
+        [FromBody] NukePreviewRequest request, [FromServices] IDriveDetectionService driveService,
         CancellationToken cancellationToken)
     {
         try
@@ -33,6 +33,20 @@ public class NukeController : ControllerBase
                     Success = false,
                     Message = "Preview failed: No target paths were specified."
                 });
+            }
+
+            var readyDrives = driveService.GetReadyDrives();
+            foreach (var path in request.Paths)
+            {
+                var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+                if (!readyDrives.Any(driveService => driveService.Name.ToUpperInvariant() == normalizedRoot))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not ready or not found: {normalizedRoot}"
+                    });
+                }
             }
 
             var previewData = await _nukeService.PreviewNukeAsync(request.Paths, cancellationToken);
@@ -65,12 +79,25 @@ public class NukeController : ControllerBase
     }
 
     [HttpDelete("execute")]
-    public async Task<IActionResult> NukeNode([FromBody] List<string> paths)
+    public async Task<IActionResult> NukeNode([FromBody] List<string> paths, [FromServices] IDriveDetectionService driveService)
     {
         try
         {
+            var readyDrives = driveService.GetReadyDrives();
+
             foreach (var path in paths)
             {
+                var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not ready or not found: {normalizedRoot}"
+                    });
+                }
+
+
                 if (path.StartsWith("C:\\Windows", StringComparison.OrdinalIgnoreCase))
                     return BadRequest(new ApiResponse<object>
                         { Success = false, Message = "CRITICAL OS FILES PROTECTED." });

@@ -10,6 +10,7 @@ import 'package:signalr_netcore/signalr_client.dart';
     Function(String path, List<dynamic> chunk)? onDirectoryChunk;
     Function(String path)? onDirectoryStreamComplete;
     Function(Map<String, dynamic>)? onCpuUpdate;
+    Function(List<dynamic>)? onDriveUpdate;
 
     TelemetryService({required this.onProgressUpdate}) {
       _initRadio();
@@ -28,10 +29,15 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('NukeProgress', _handleNukeProgress);
       _hubConnection.on('NukeAborted', _handleNukeAborted);
       _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
-      _hubConnection.on('DirectoryChunk', _hadleDirectoryChunk);
+      _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
       _hubConnection.on(
           'DirectoryStreamComplete', _handleDirectoryStreamComplete);
       _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
+      _hubConnection.on('DriveListUpdate', _handleDriveUpdate);
+
+      _hubConnection.start()?.catchError((err) {
+        print('TELEMETRY RADIO ERROR: $err');
+      });
     }
 
     Future<void> startListening() async {
@@ -124,7 +130,7 @@ import 'package:signalr_netcore/signalr_client.dart';
       }
     }
 
-    void _hadleDirectoryChunk(List<Object?>? arguments) {
+    void _handleDirectoryChunk(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
         if (onDirectoryChunk != null) {
@@ -156,5 +162,22 @@ import 'package:signalr_netcore/signalr_client.dart';
       } catch (e) {
         print('CPU TELEMETRY CRASH: $e');
       }
+    }
+
+    void _handleDriveUpdate(List<Object?>? arguments) {
+        if (arguments != null && arguments.isNotEmpty) return;
+        try {
+          final rawData = arguments?[0];
+
+          if (rawData is List) {
+            if (onDriveUpdate != null) {
+              onDriveUpdate!(rawData);
+            }
+          } else {
+            print('UNKNOWN DRIVE PAYLOAD TYPE: ${rawData.runtimeType}');
+          }
+        } catch (e) {
+          print('DRIVE TELEMETRY CRASH: $e');
+        }
     }
   }

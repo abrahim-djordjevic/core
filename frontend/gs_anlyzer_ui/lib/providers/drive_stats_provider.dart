@@ -1,46 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:gs_analyzer_ui/models/drive_stats.dart';
-import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/models/drive_info.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
-class DriveStatsState {
-  final DriveStats? stats;
-  final int diskThresholdPercent;
+final drivesProvider = NotifierProvider<DrivesNotifier, List<DriveInfo>>(() {
+  return DrivesNotifier();
+});
 
-  DriveStatsState({this.stats, this.diskThresholdPercent = 90});
-
-  bool get isCritical => stats != null && (stats!.usedBytes / stats!.totalBytes) >= (diskThresholdPercent / 100.0);
-}
-
-class DriveStatsNotifier extends StateNotifier<DriveStatsState> {
-  final Ref ref;
-  DriveStatsNotifier(this.ref) : super(DriveStatsState()) {
-    _fetchStats();
-    _listenToSettings();
+class DrivesNotifier extends Notifier<List<DriveInfo>> {
+  @override
+  List<DriveInfo> build() {
+    Future.microtask(() => refresh());
+    return [];
   }
-
-  void _listenToSettings() {
-    ref.listen(settingsProvider, (previous, next) {
-      final newThreshold = next.currentSettings?.alerts.diskThresholdPercent;
-      if (newThreshold != null && newThreshold != state.diskThresholdPercent) {
-        state = DriveStatsState(stats: state.stats, diskThresholdPercent: newThreshold);
+  Future<void> refresh() async {
+    final api = ApiService();
+    final initialData = await api.getDrives();
+    if (initialData != null) {
+      state = initialData.map((item) {
+        return DriveInfo.fromJson(Map<String, dynamic>.from(item as Map));
+      }).toList();
       }
-    }, fireImmediately: true);
-  }
-
-  Future<void> _fetchStats() async {
-    try {
-      final stats = await ApiService().getDriveTelemetry('C');
-      state = DriveStatsState(stats: stats, diskThresholdPercent: state.diskThresholdPercent);
-    } catch (e) {
-      print('Failed to fetch drive stats: $e');
     }
-  }
 
-  void refresh() => _fetchStats();
+    void updateFromTelemetry(List<dynamic> data) {
+    state = data.map((item) {
+      return DriveInfo.fromJson(Map<String, dynamic>.from(item as Map));
+    }).toList();
+  }
 }
 
-final driveStatsProvider = StateNotifierProvider<DriveStatsNotifier, DriveStatsState>((ref) {
-  return DriveStatsNotifier(ref);
+
+
+final selectedDriveNameProvider = StateProvider<String?>((ref) => null);
+
+final currentDriveProvider = Provider<DriveInfo?>((ref) {
+  final drives = ref.watch(drivesProvider);
+  if (drives.isEmpty) return null;
+
+  final selectedName = ref.watch(selectedDriveNameProvider);
+
+  if (selectedName == null) {
+    return drives.firstWhere((d) => d.type == 'fixed', orElse: () => drives.first);
+  }
+
+  return drives.firstWhere((d) => d.name == selectedName, orElse: () => drives.first);
 });
