@@ -63,7 +63,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
     }
 
     ref.invalidate(rootTreeProvider);
-    ref.read(driveStatsProvider.notifier).refresh();
+    ref.read(drivesProvider.notifier).refresh();
 
     snackbarKey.currentState?.showSnackBar(SnackBar(
       behavior: SnackBarBehavior.floating,

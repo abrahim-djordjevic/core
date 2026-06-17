@@ -10,6 +10,7 @@ class ApiService {
   static const String nukeUrl = 'http://localhost:5200/api/nuke';
   static const String thermalUrl = 'http://localhost:5200/api/thermal';
   static const String settingsUrl = 'http://localhost:5200/api/settings';
+  static const String driveUrl = 'http://localhost:5200/api/drives';
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan');
@@ -259,6 +260,22 @@ class ApiService {
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
       print('[API] Reset Error: $e');
+    }
+    return null;
+  }
+
+  Future<List<dynamic>?> getDrives() async {
+    try {
+      final response = await http.get(Uri.parse(driveUrl));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        if (decoded is List) return decoded;
+        if (decoded['data'] != null) return decoded['data'];
+      }
+    } catch (e) {
+      print("[Api] Drives Fetch Error: $e");
     }
     return null;
   }

@@ -22,8 +22,29 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine, [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine,[FromServices] IDriveDetectionService driveService, [FromQuery] string path)
         {
+            var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+
+            var readyDrives = driveService.GetReadyDrives();
+
+            if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Drive not ready or not found: {normalizedRoot}"
+                });
+            }
+
+            if (!Directory.Exists(path))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid or missing target directory."
+                });
+            }
             var cancelToken = engine.ScanToken();
 
             _ = Task.Run(async () =>
@@ -120,10 +141,27 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
         }
 
         [HttpGet("drive-stats")]
-        public IActionResult GetDriveStats([FromQuery] string driveLetter)
+        public IActionResult GetDriveStats([FromQuery] string driveLetter, [FromServices] IDriveDetectionService driveService)
         {
             try
             {
+                var normalizedRoot = driveLetter.ToUpperInvariant();
+                if (!normalizedRoot.EndsWith(":\\"))
+                {
+                    normalizedRoot = normalizedRoot.TrimEnd('\\', ':') + ":\\";
+                }
+
+                var readyDrives = driveService.GetReadyDrives();
+
+                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Drive not reaady or not found: {normalizedRoot}"
+                    });
+                }
+
                 var stats = _diskService.GetDriveTelemetry(driveLetter);
 
                 var response = new ApiResponse<DriveTelemetryDto>
@@ -136,6 +174,7 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
                 return Ok(response);
             }
+
             catch (Exception ex)
             {
                 return BadRequest(new ApiResponse<object>

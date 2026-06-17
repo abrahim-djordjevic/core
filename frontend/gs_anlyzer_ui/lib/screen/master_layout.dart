@@ -7,6 +7,8 @@ import 'package:gs_analyzer_ui/screen/settings_screen.dart';
 import 'package:gs_analyzer_ui/screen/thermal_module_screen.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/global_sidebar_widget.dart';
+import 'package:gs_analyzer_ui/screen/storage_screen.dart';
+import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 
 import 'cpu_metrics_screen.dart';
 
@@ -16,6 +18,12 @@ class MasterLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentRoute = ref.watch(navigationProvider);
+
+    ref.listen<AppRoute>(navigationProvider, (prev, next) {
+      if (next == AppRoute.storage && prev != AppRoute.storage) {
+        ref.read(storageViewProvider.notifier).state = StorageView.drivePicker;
+      }
+    });
 
     return Scaffold(
       backgroundColor: HudTheme.bgBase,
@@ -32,7 +40,7 @@ class MasterLayout extends ConsumerWidget {
   Widget _buildActiveScreen(AppRoute route) {
     switch (route) {
       case AppRoute.storage:
-        return const AnalyzerDashboard();
+        return const StorageRouter();
 
       case AppRoute.memory:
         return const RamScannerScreen();
@@ -52,5 +60,17 @@ class MasterLayout extends ConsumerWidget {
       case AppRoute.dashboard:
         return const Center(child: Text('MAIN DASHBOARD OFFLINE', style: HudTheme.headerCyan));
     }
+  }
+}
+
+class StorageRouter extends ConsumerWidget {
+  const StorageRouter({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(storageViewProvider);
+    return view == StorageView.analyzer
+        ? const AnalyzerDashboard()
+        : const StorageScreen();
   }
 }
