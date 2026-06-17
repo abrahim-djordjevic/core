@@ -9,6 +9,7 @@ import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/global_sidebar_widget.dart';
 import 'package:gs_analyzer_ui/screen/storage_screen.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
+import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 
 import 'cpu_metrics_screen.dart';
 
@@ -18,6 +19,7 @@ class MasterLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentRoute = ref.watch(navigationProvider);
+    ref.watch(telemetryProvider);
 
     ref.listen<AppRoute>(navigationProvider, (prev, next) {
       if (next == AppRoute.storage && prev != AppRoute.storage) {
