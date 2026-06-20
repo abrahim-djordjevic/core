@@ -75,7 +75,7 @@ namespace GSInteractiveDeviceAnalyzer.Engine
                         Processes = snapshot
                     };
 
-                    await _hub.Clients.All.SendAsync("RamTelemetryUpdate", payload, cancellationToken: token);
+                    await _hub.Clients.All.SendAsync("RamUpdate", payload, cancellationToken: token);
 
                     Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
 

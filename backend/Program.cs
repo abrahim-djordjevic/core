@@ -31,6 +31,7 @@ builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>()
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();
+builder.Services.AddSingleton<IProcessOwnerResolver, ProcessOwnerResolver>();
 
 // Platform-specific CPU provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
