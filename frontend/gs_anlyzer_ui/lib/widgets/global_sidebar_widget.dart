@@ -55,6 +55,7 @@ class GlobalSidebarWidget extends ConsumerWidget {
           _buildNavItem(ref, AppRoute.storage, 'STORAGE', Icons.storage_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.network, 'NETWORK', Icons.account_tree_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.thermal, 'THERMAL', Icons.thermostat_outlined, currentRoute),
+          _buildNavItem(ref, AppRoute.process, 'PROCESSES', Icons.monitor_heart_outlined, currentRoute),
 
           const Spacer(),
 

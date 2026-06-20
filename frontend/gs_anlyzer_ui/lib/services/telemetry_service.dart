@@ -28,10 +28,9 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('SectorChanged', _handleSectorChanged);
       _hubConnection.on('NukeProgress', _handleNukeProgress);
       _hubConnection.on('NukeAborted', _handleNukeAborted);
-      _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
+      _hubConnection.on('RamUpdate', _handleRamUpdate);
       _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
-      _hubConnection.on(
-          'DirectoryStreamComplete', _handleDirectoryStreamComplete);
+      _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
       _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
       _hubConnection.on('DriveListUpdate', _handleDriveUpdate);
 

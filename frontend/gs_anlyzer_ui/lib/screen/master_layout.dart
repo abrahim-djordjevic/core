@@ -56,6 +56,9 @@ class MasterLayout extends ConsumerWidget {
       case AppRoute.thermal:
         return const ThermalModuleScreen();
 
+      case AppRoute.process:
+        return const ProcessExplorerScreen();
+
       case AppRoute.settings:
         return const SettingsScreen();
 

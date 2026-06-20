@@ -7,6 +7,7 @@ enum AppRoute {
   storage,
   network,
   thermal,
+  process,
   settings,
 }
 
