@@ -1,4 +1,5 @@
 import 'package:signalr_netcore/signalr_client.dart';
+import 'package:gs_analyzer_ui/services/api_service.dart';
 
   class TelemetryService {
     late HubConnection _hubConnection;
@@ -28,16 +29,11 @@ import 'package:signalr_netcore/signalr_client.dart';
       _hubConnection.on('SectorChanged', _handleSectorChanged);
       _hubConnection.on('NukeProgress', _handleNukeProgress);
       _hubConnection.on('NukeAborted', _handleNukeAborted);
-      _hubConnection.on('RamTelemetryUpdate', _handleRamUpdate);
+      _hubConnection.on('RamUpdate', _handleRamUpdate);
       _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
-      _hubConnection.on(
-          'DirectoryStreamComplete', _handleDirectoryStreamComplete);
+      _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
       _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
       _hubConnection.on('DriveListUpdate', _handleDriveUpdate);
-
-      _hubConnection.start()?.catchError((err) {
-        print('TELEMETRY RADIO ERROR: $err');
-      });
     }
 
     Future<void> startListening() async {
@@ -45,6 +41,12 @@ import 'package:signalr_netcore/signalr_client.dart';
         try {
           await _hubConnection.start();
           print('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
+          
+          // Explicitly start the engines once the connection is established
+          // so the default Process Explorer screen receives data immediately.
+          final api = ApiService();
+          api.startRamRadar();
+          api.startCpuRadar();
         } catch (e) {
           print(
               'TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e');

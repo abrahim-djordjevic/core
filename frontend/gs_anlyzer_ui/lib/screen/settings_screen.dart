@@ -4,6 +4,7 @@ import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/models/app_settings.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/utils/globals.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -322,7 +323,16 @@ class SettingsScreen extends ConsumerWidget {
               backgroundColor: state.hasUnsavedChanges ? HudTheme.accentCyan : Colors.white10,
               foregroundColor: state.hasUnsavedChanges ? Colors.black : Colors.white54,
             ),
-            onPressed: state.hasUnsavedChanges ? () => notifier.saveChanges() : null,
+            onPressed: state.hasUnsavedChanges ? () async {
+              final success = await notifier.saveChanges();
+              if (success) {
+                snackbarKey.currentState?.showSnackBar(SnackBar(
+                  content: Text('SETTINGS SAVED SUCESSFULLY', style: HudTheme.bodyText.copyWith(color: Colors.black)),
+                  backgroundColor: HudTheme.accentCyan,
+                  duration: const Duration(seconds: 2),
+                ));
+              }
+            } : null,
             child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
           ),
         ),
@@ -352,9 +362,16 @@ class SettingsScreen extends ConsumerWidget {
         TextButton(onPressed: () => Navigator.pop(ctx)  , child: Text('CANCEL', style: HudTheme.bodyText)),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent,),
-          onPressed: () {
-            notifier.resetToDefaults();
+          onPressed: () async {
             Navigator.pop(ctx);
+            final success = await notifier.resetToDefaults();
+            if (success) {
+              snackbarKey.currentState?.showSnackBar(SnackBar(
+                content: Text('RESTORED TO FACTORY DEFAULTS', style: HudTheme.bodyText.copyWith(color: Colors.white)),
+                backgroundColor: Colors.redAccent,
+                duration: const Duration(seconds: 2),
+              ));
+            }
           },
           child: const Text('CONFIRM OVERWRITE ', style: TextStyle(color: Colors.white)),
         ),

@@ -1,17 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Xunit;
-using GSInteractiveDeviceAnalyzer.Models;
 using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Services;
 using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models;
 using GSInteractiveDeviceAnalyzer.Tests.Fakes;
+using Microsoft.AspNetCore.Mvc;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controllers;
+namespace GSInteractiveDeviceAnalyzer.Tests.Controller;
 
 public class ScanControllerMultiDriveTests
 {

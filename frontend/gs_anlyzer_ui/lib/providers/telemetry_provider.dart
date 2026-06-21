@@ -80,24 +80,6 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
         return;
       }
       final currentPath = ref.read(directoryProvider).currentPath;
-
-      final normalizedCurrent = currentPath.replaceAll('\\', '/').toLowerCase();
-      final normalizedChanged = changedFolder.replaceAll('\\', '/').toLowerCase();
-
-      if(normalizedCurrent == normalizedChanged) {
-        print('LIVE UPDATE: REFRESHING UI FOR $currentPath');
-        ref.read(directoryProvider.notifier).scanDirectory(currentPath);
-      }
-      _telemetryService?.onDriveUpdate = (data) {
-        ref.read(drivesProvider.notifier).updateFromTelemetry(data);
-      };
-    };
-    _telemetryService?.onSectorChanged = (changedFolder) {
-      final currentProgress = ref.read(nukeProgressProvider);
-      if (currentProgress > 0.0 && currentProgress < 100.0) {
-        return;
-      }
-      final currentPath = ref.read(directoryProvider).currentPath;
       final normalizedCurrent = currentPath.replaceAll('\\\\', '/').toLowerCase();
       final normalizedChanged = changedFolder.replaceAll('\\\\', '/').toLowerCase();
 
