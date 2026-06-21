@@ -5,6 +5,7 @@ import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 
@@ -14,22 +15,22 @@ class ProcessExplorerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Keeps ramProvider alive (starts RAM radar if not already running)
-    final ramState     = ref.watch(ramProvider);
-    final cpuState     = ref.watch(cpuProvider);
-    final processes    = ref.watch(filteredProcessesProvider);
-    final selectedPid  = ref.watch(selectedProcessPidProvider);
-    final showAll      = ref.watch(showAllProcessesProvider);
-    final totalCount   = ramState.groupedProcesses.length;
+    final ramState = ref.watch(ramProvider);
+    final CpuState cpuState = ref.watch(cpuProvider);
+    final processes = ref.watch(filteredProcessesProvider);
+    final selectedPid = ref.watch(selectedProcessPidProvider);
+    final showAll = ref.watch(showAllProcessesProvider);
+    final totalCount = ramState.groupedProcesses.length;
 
     return Column(
       children: [
-        // ── System Load Summary ──────────────────────────────────────────
+        // System Load Summary
         _SystemLoadBar(ramState: ramState, cpuState: cpuState),
 
-        // ── Toolbar ──────────────────────────────────────────────────────
+        //  Toolbar
         _Toolbar(),
 
-        // ── Table ────────────────────────────────────────────────────────
+        // Table
         Expanded(
           child: ramState.isLoading && ramState.groupedProcesses.isEmpty
               ? const Center(
@@ -66,17 +67,21 @@ class ProcessExplorerScreen extends ConsumerWidget {
   }
 }
 
-// ── System Load Bar ──────────────────────────────────────────────────────────
+//  System Load Bar
 class _SystemLoadBar extends StatelessWidget {
   final RamState ramState;
-  final dynamic cpuState;   // your CpuState type
+  final CpuState cpuState;
 
   const _SystemLoadBar({required this.ramState, required this.cpuState});
 
   @override
   Widget build(BuildContext context) {
-    final cpuPct = (cpuState.averageLoad ?? 0.0) / 100.0;
-    final ramPct = ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0;
+    final load    = cpuState.snapshot?.averageLoad ?? 0.0;
+    final cpuPct  = load / 100.0;
+    final ramPct  = ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0;
+    final cpuText = cpuState.snapshot != null
+        ? '${load.toStringAsFixed(1)}%'
+        : '--';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -84,9 +89,16 @@ class _SystemLoadBar extends StatelessWidget {
           border: Border(bottom: BorderSide(color: Colors.white10))),
       child: Row(
         children: [
-          Expanded(child: _LoadMetric('CPU', '${cpuState.averageLoad?.toStringAsFixed(1) ?? '--'}%', cpuPct, HudTheme.accentCyan)),
+          Expanded(child: _LoadMetric(
+            'CPU', cpuText, cpuPct.clamp(0.0, 1.0), HudTheme.accentCyan,
+          )),
           const SizedBox(width: 16),
-          Expanded(child: _LoadMetric('RAM', '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB', ramPct, HudTheme.accentGreen)),
+          Expanded(child: _LoadMetric(
+            'RAM',
+            '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
+            ramPct.clamp(0.0, 1.0),
+            HudTheme.accentGreen,
+          )),
           const SizedBox(width: 24),
           HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
         ],
@@ -130,18 +142,22 @@ class _Toolbar extends ConsumerWidget {
     final sort   = ref.watch(processSortModeProvider);
     final status = ref.watch(processStatusFilterProvider);
 
-    final sortLabel = switch (sort) {
-      ProcessSortMode.cpu  => '% CPU',
-      ProcessSortMode.ram  => '% MEM',
-      ProcessSortMode.pid  => 'PID',
-      ProcessSortMode.name => 'NAME',
-    };
+    String sortLabel;
+    switch (sort) {
+      case ProcessSortMode.cpu:  sortLabel = '% CPU';    break;
+      case ProcessSortMode.ram:  sortLabel = '% MEM';    break;
+      case ProcessSortMode.pid:  sortLabel = 'PID';      break;
+      case ProcessSortMode.name: sortLabel = 'NAME';     break;
+      default:                   sortLabel = '% CPU';
+    }
 
-    final statusLabel = switch (status) {
-      ProcessStatusFilter.all      => 'ALL',
-      ProcessStatusFilter.running  => 'RUNNING',
-      ProcessStatusFilter.sleeping => 'SLEEPING',
-    };
+    String statusLabel;
+    switch (status) {
+      case ProcessStatusFilter.all:      statusLabel = 'ALL';      break;
+      case ProcessStatusFilter.running:  statusLabel = 'RUNNING';  break;
+      case ProcessStatusFilter.sleeping: statusLabel = 'SLEEPING'; break;
+      default:                           statusLabel = 'ALL';
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -152,7 +168,8 @@ class _Toolbar extends ConsumerWidget {
           // Filter
           Expanded(
             flex: 3,
-            child: TextField(
+            child: TextFormField(
+              initialValue: ref.read(processFilterProvider),
               style: HudTheme.bodyText,
               cursorColor: HudTheme.accentCyan,
               decoration: InputDecoration(
@@ -245,13 +262,13 @@ class _TableHeader extends StatelessWidget {
           color: HudTheme.bgPanel,
           border: const Border(bottom: BorderSide(color: Colors.white10))),
       child: const Row(children: [
-        Expanded(flex: 2, child: HudLabel('PID')),
-        Expanded(flex: 4, child: HudLabel('COMMAND')),
-        Expanded(flex: 3, child: HudLabel('USER')),
-        Expanded(flex: 2, child: HudLabel('%CPU',  textAlign: TextAlign.right)),
-        Expanded(flex: 2, child: HudLabel('%MEM',  textAlign: TextAlign.right)),
-        Expanded(flex: 3, child: HudLabel('STATUS')),
-        Expanded(flex: 1, child: SizedBox()),
+        Expanded(flex: 2, child: HudLabel('PID', textAlign: TextAlign.center)),
+        Expanded(flex: 4, child: HudLabel('COMMAND', textAlign: TextAlign.center)),
+        Expanded(flex: 3, child: HudLabel('USER', textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: HudLabel('%CPU',  textAlign: TextAlign.center)),
+        Expanded(flex: 2, child: HudLabel('%MEM',  textAlign: TextAlign.center)),
+        Expanded(flex: 3, child: HudLabel('STATUS', textAlign: TextAlign.center)),
+        Expanded(flex: 1, child: HudLabel('ACTION', textAlign: TextAlign.center)),
       ]),
     );
   }
@@ -271,7 +288,8 @@ class _ProcessRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isCpuHot = group.totalCpuPercent > 20.0;
+    final settings = ref.watch(settingsProvider);
+    final isCpuHot = group.totalCpuPercent > 10.0;
     final isMemHot = group.totalPercentMem > 10.0;
     final isHot    = isCpuHot || isMemHot;
     final rowColor = isSelected
@@ -305,28 +323,31 @@ class _ProcessRow extends ConsumerWidget {
               Expanded(flex: 2, child: Text(
                 group.count > 1 ? 'GRP' : group.primaryPid.toString(),
                 style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                textAlign: TextAlign.center,
               )),
               Expanded(flex: 4, child: Text(
                 displayName,
                 style: HudTheme.bodyText.copyWith(color: isSelected ? HudTheme.accentCyan : textColor, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               )),
               Expanded(flex: 3, child: Text(
                 group.primaryUser,
                 style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               )),
               Expanded(flex: 2, child: Text(
                 '${group.totalCpuPercent.toStringAsFixed(1)}%',
                 style: HudTheme.statGreen.copyWith(color: isCpuHot ? HudTheme.accentAmber : HudTheme.accentCyan),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
               )),
               Expanded(flex: 2, child: Text(
                 '${group.totalPercentMem.toStringAsFixed(1)}%',
                 style: HudTheme.statGreen.copyWith(color: textColor),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
               )),
-              Expanded(flex: 3, child: _StatusBadge(group.dominantStatus)),
+              Expanded(flex: 3, child: Center(child: _StatusBadge(group.dominantStatus))),
               Expanded(flex: 1, child: IconButton(
                 icon: const Icon(Icons.cancel_outlined, color: HudTheme.accentRed, size: 18),
                 tooltip: group.count > 1 ? 'Kill all ${group.name}' : 'Kill PID ${group.primaryPid}',

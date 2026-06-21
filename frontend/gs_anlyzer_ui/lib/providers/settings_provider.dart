@@ -108,7 +108,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     }
   }
 
-  Future<void> resetToDefaults() async {
+  Future<bool> resetToDefaults() async {
     state = state.copyWith(isLoading: true);
 
     final defaultData = await _api.resetSettings();
@@ -124,8 +124,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
       final prefs = await SharedPreferences.getInstance();
       prefs.setString('gs_settings_cache', jsonEncode(defaultData));
+      return true;
     } else {
       state = state.copyWith(isLoading: false);
+      return false;
     }
   }
 }

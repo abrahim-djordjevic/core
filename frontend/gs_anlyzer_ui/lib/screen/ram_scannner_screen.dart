@@ -13,7 +13,7 @@ class RamScannerScreen extends ConsumerWidget {
 
     return Column(
       children: [
-        // ── Critical banner ──────────────────────────────────────────────
+        // Critical banner
         if (ramState.isCritical)
           Container(
             width: double.infinity,
@@ -27,7 +27,7 @@ class RamScannerScreen extends ConsumerWidget {
             ),
           ),
 
-        // ── Allocation cards ─────────────────────────────────────────────
+        // Allocation cards
         Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -63,7 +63,7 @@ class RamScannerScreen extends ConsumerWidget {
           ),
         ),
 
-        // ── Process table ────────────────────────────────────────────────
+        // Process table
         Expanded(
           child: ramState.isLoading && ramState.groupedProcesses.isEmpty
               ? const Center(
@@ -75,9 +75,8 @@ class RamScannerScreen extends ConsumerWidget {
                     if (index == 0) return _buildTableHeader();
 
                     final group = ramState.groupedProcesses[index - 1];
-                    final isCpuHot = group.totalCpuPercent > 20.0;
                     final isMemHot = group.totalPercentMem > 10.0;
-                    final isHot    = isCpuHot || isMemHot;
+                    final isHot    = isMemHot;
                     final textColor = isHot ? HudTheme.accentAmber : HudTheme.textMain;
                     final displayName = group.count > 1
                         ? '${group.name} (x${group.count})'
@@ -95,15 +94,14 @@ class RamScannerScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          // PID
                           Expanded(
                             flex: 2,
                             child: Text(
                               group.count > 1 ? 'GRP' : group.primaryPid.toString(),
                               style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          // COMMAND
                           Expanded(
                             flex: 4,
                             child: Text(
@@ -113,51 +111,34 @@ class RamScannerScreen extends ConsumerWidget {
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          // USER — live from backend
                           Expanded(
                             flex: 3,
                             child: Text(
                               group.primaryUser,
                               style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
                               overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          // %CPU — NEW
                           Expanded(
                             flex: 2,
                             child: Text(
-                              '${group.totalCpuPercent.toStringAsFixed(1)}%',
-                              style: HudTheme.statGreen.copyWith(
-                                color: isCpuHot ? HudTheme.accentAmber : HudTheme.accentCyan,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          // %MEM
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              '${group.totalPercentMem.toStringAsFixed(1)}%',
+                              '${group.totalRamMb.toStringAsFixed(1)} MB',
                               style: HudTheme.statGreen.copyWith(color: textColor),
-                              textAlign: TextAlign.right,
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          // STATUS — NEW
                           Expanded(
                             flex: 3,
-                            child: _StatusBadge(group.dominantStatus),
+                            child: Center(child: _StatusBadge(group.dominantStatus)),
                           ),
-                          // ACTION — kill logic fixed
                           Expanded(
                             flex: 1,
                             child: IconButton(
-                              icon: const Icon(
-                                Icons.cancel_outlined,
-                                color: HudTheme.accentRed,
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.cancel_outlined, color: HudTheme.accentRed, size: 20),
                               tooltip: 'Kill Process',
                               onPressed: () {
                                 if (group.count > 1) {
@@ -173,9 +154,9 @@ class RamScannerScreen extends ConsumerWidget {
                     );
                   },
                 ),
-        ),
-      ],
-    );
+              ),
+            ],
+          );
   }
 
   Widget _buildTableHeader() {
@@ -187,13 +168,12 @@ class RamScannerScreen extends ConsumerWidget {
       ),
       child: const Row(
         children: [
-          Expanded(flex: 2, child: HudLabel('PID')),
-          Expanded(flex: 4, child: HudLabel('COMMAND')),
-          Expanded(flex: 3, child: HudLabel('USER')),
-          Expanded(flex: 2, child: HudLabel('%CPU',    textAlign: TextAlign.right)),
-          Expanded(flex: 2, child: HudLabel('%MEM',    textAlign: TextAlign.right)),
-          Expanded(flex: 3, child: HudLabel('STATUS')),
-          Expanded(flex: 1, child: HudLabel('ACTION',  textAlign: TextAlign.right)),
+          Expanded(flex: 2, child: HudLabel('PID', textAlign: TextAlign.center)),
+          Expanded(flex: 4, child: HudLabel('COMMAND', textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: HudLabel('USER', textAlign: TextAlign.center)),
+          Expanded(flex: 2, child: HudLabel('MB', textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: HudLabel('STATUS', textAlign: TextAlign.center)),
+          Expanded(flex: 1, child: HudLabel('ACTION', textAlign: TextAlign.center)),
         ],
       ),
     );

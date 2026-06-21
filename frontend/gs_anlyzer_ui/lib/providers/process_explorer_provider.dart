@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 enum ProcessSortMode { cpu, ram, pid, name }
 

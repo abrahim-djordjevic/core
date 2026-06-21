@@ -2,13 +2,13 @@ import 'package:flutter_riverpod/legacy.dart';
 
 enum AppRoute {
   dashboard,
+  process,
   cpuMetics,
   memory,
   storage,
   network,
   thermal,
-  process,
   settings,
 }
 
-final navigationProvider = StateProvider<AppRoute>((ref) => AppRoute.storage);
+final navigationProvider = StateProvider<AppRoute>((ref) => AppRoute.process);

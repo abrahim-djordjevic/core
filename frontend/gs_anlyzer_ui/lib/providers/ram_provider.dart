@@ -99,8 +99,7 @@ class RamNotifier extends StateNotifier<RamState> {
         .map((e) => ProcessGroup(name: e.key, processes: e.value)).toList();
 
     groupedList.sort((a, b) {
-      final cpuCmp = b.totalCpuPercent.compareTo(a.totalCpuPercent);
-      return cpuCmp != 0 ? cpuCmp : b.totalRamMb.compareTo(a.totalRamMb);
+      return b.totalRamMb.compareTo(a.totalRamMb);
     });
 
     final parsedActiveGb = (global['activeGb'] ?? 0.0).toDouble();

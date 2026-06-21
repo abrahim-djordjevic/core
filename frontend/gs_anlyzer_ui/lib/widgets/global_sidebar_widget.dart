@@ -50,12 +50,12 @@ class GlobalSidebarWidget extends ConsumerWidget {
           const SizedBox(height: 16),
 
           _buildNavItem(ref, AppRoute.dashboard, 'DASHBOARD', Icons.dashboard_outlined, currentRoute),
+          _buildNavItem(ref, AppRoute.process, 'PROCESS EXPLORER', Icons.monitor_heart_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.cpuMetics, 'CPU METRICS', Icons.memory_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.memory, 'MEMORY', Icons.bar_chart_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.storage, 'STORAGE', Icons.storage_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.network, 'NETWORK', Icons.account_tree_outlined, currentRoute),
           _buildNavItem(ref, AppRoute.thermal, 'THERMAL', Icons.thermostat_outlined, currentRoute),
-          _buildNavItem(ref, AppRoute.process, 'PROCESSES', Icons.monitor_heart_outlined, currentRoute),
 
           const Spacer(),
 
