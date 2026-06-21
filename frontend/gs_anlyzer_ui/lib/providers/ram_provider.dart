@@ -154,6 +154,11 @@ class RamNotifier extends StateNotifier<RamState> {
       print('Failed to kill process group: $e');
     }
   }
+
+  void debugSetGroupsForTest(List<ProcessGroup> groups) {
+    assert(() { return true; }(), 'debug only');
+    state = state.copyWith(groupedProcesses: groups);
+  }
 }
 
 final ramProvider = StateNotifierProvider<RamNotifier, RamState>((ref) {
