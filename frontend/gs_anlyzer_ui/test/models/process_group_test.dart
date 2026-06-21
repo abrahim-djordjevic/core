@@ -69,9 +69,9 @@ void main() {
       expect(g.primaryUser, 'G00dS0ul');
     });
 
-    test('primaryUser is SYSTEM when processes is empty', () {
+    test('primaryUser is UNKNOWN when processes is empty', () {
       final g = ProcessGroup(name: 'empty', processes: []);
-      expect(g.primaryUser, 'SYSTEM');
+      expect(g.primaryUser, 'UNKNOWN');
     });
 
     test('dominantStatus is RUNNING when any process is RUNNING', () {

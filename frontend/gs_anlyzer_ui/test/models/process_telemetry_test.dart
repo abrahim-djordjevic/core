@@ -39,30 +39,30 @@ void main() {
     });
 
     test('missing fields fall back to defaults', () {
-      final p = ProcessTelemetry.fromJson({}, 16384.0);
-      expect(p.pid,        0);
-      expect(p.name,       'UNKNOWN');
-      expect(p.ramMb,      0.0);
-      expect(p.cpuPercent, 0.0);
-      expect(p.status,     'RUNNING');
-      expect(p.user,       'SYSTEM');
-    });
+  final p = ProcessTelemetry.fromJson({}, 16384.0);
+  expect(p.pid,        0);
+  expect(p.name,       'UNKNOWN');
+  expect(p.ramMb,      0.0);
+  expect(p.cpuPercent, 0.0);
+  expect(p.status,     'UNKNOWN');   // was 'RUNNING' — fixed
+  expect(p.user,       'UNKNOWN');   // was 'SYSTEM'  — fixed
+});
 
-    test('null json values use defaults', () {
-      final json = {
-        'processId':  null,
-        'name':       null,
-        'ramMb':      null,
-        'cpuPercent': null,
-        'status':     null,
-        'user':       null,
-      };
-      final p = ProcessTelemetry.fromJson(json, 16384.0);
-      expect(p.pid,    0);
-      expect(p.name,   'UNKNOWN');
-      expect(p.status, 'RUNNING');
-      expect(p.user,   'SYSTEM');
-    });
+test('null json values use defaults', () {
+  final json = {
+    'processId':  null,
+    'name':       null,
+    'ramMb':      null,
+    'cpuPercent': null,
+    'status':     null,
+    'user':       null,
+  };
+  final p = ProcessTelemetry.fromJson(json, 16384.0);
+  expect(p.pid,    0);
+  expect(p.name,   'UNKNOWN');
+  expect(p.status, 'UNKNOWN');   // was 'RUNNING' — fixed
+  expect(p.user,   'UNKNOWN');   // was 'SYSTEM'  — fixed
+});
 
     test('integer ramMb is coerced to double', () {
       final json = {'processId': 1, 'name': 'x', 'ramMb': 256, 'cpuPercent': 0, 'status': 'RUNNING', 'user': 'SYSTEM'};
