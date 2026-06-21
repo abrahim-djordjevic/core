@@ -8,6 +8,7 @@ import '../utils/hud_label.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
+import 'package:gs_analyzer_ui/widgets/file_type_analyzer_panel.dart';
 
 class StorageScreen extends ConsumerWidget {
   const StorageScreen({Key? key}) : super(key: key);
@@ -33,30 +34,34 @@ class StorageScreen extends ConsumerWidget {
           _DriveSelectorBar(drives: drives, selectedDrive: currentDrive),
           const Divider(color: Colors.white10, height: 1),
 
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _DriveDetailCard(drive: currentDrive),
-          ),
-
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: ListView(
-                children: [
-                  _ScanLaunchTile(
-                    title: 'DIRECTORY SCANNER',
-                    subtitle: 'Index every sector on ${currentDrive.name}',
-                    icon: Icons.account_tree_outlined,
-                    onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.diskAnalyzer),
+            child: ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _DriveDetailCard(drive: currentDrive),
+                ),
+                FileTypeAnalyzerPanel(driveName: currentDrive.name),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    children: [
+                      _ScanLaunchTile(
+                        title: 'DIRECTORY SCANNER',
+                        subtitle: 'Index every sector on ${currentDrive.name}',
+                        icon: Icons.account_tree_outlined,
+                        onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.diskAnalyzer),
+                      ),
+                      _ScanLaunchTile(
+                        title: 'DUPLICATE HUNTER',
+                        subtitle: 'Scan for duplicate files on ${currentDrive.name}',
+                        icon: Icons.copy_all_outlined,
+                        onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.duplicateScanner),
+                      ),
+                    ],
                   ),
-                  _ScanLaunchTile(
-                    title: 'DUPLICATE HUNTER',
-                    subtitle: 'Scan for duplicate files on ${currentDrive.name}',
-                    icon: Icons.copy_all_outlined,
-                    onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.duplicateScanner),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           )
         ],
@@ -75,13 +80,12 @@ class StorageScreen extends ConsumerWidget {
   }
 
   void _enterAnalyzer(WidgetRef ref, DriveInfo drive, StorageMode mode) {
-
     ref.read(selectedDriveNameProvider.notifier).state = drive.name;
-
     ref.read(storageModeProvider.notifier).state = mode;
 
     if (mode == StorageMode.diskAnalyzer) {
-      ref.read(directoryProvider.notifier).scanDirectory(drive.name);
+      // Force refresh so the TelemetryHudWidget tracks the exact duration of the real scan.
+      ref.read(directoryProvider.notifier).scanDirectory(drive.name, forceRefresh: true);
     }
 
     ref.read(storageViewProvider.notifier).state = StorageView.analyzer;

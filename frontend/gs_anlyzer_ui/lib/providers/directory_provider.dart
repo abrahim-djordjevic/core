@@ -135,6 +135,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     );
   }
 
+  DateTime? _scanStartTime;
+  bool _wasForceRefresh = false;
+
   Future<void> scanDirectory(String targetPath, {bool forceRefresh = false}) async {
     String safePath = targetPath.replaceAll('\\', '/');
 
@@ -154,6 +157,8 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     }
 
     _sectorCache[safePath] = [];
+    _scanStartTime = DateTime.now();
+    _wasForceRefresh = forceRefresh;
 
     state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
@@ -184,9 +189,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     state = state.copyWith(allNodes: updatedList, displayNodes: updatedList);
   }
 
-  void finalizeStream(String path) {
+  void finalizeStream(String path) async {
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
-    String currentPath = path.replaceAll('\\', '/').toLowerCase();
+    String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
 
     if (incomingPath.endsWith('/')) incomingPath = incomingPath.substring(0, incomingPath.length - 1);
     if (currentPath.endsWith('/')) currentPath = currentPath.substring(0, currentPath.length - 1);
@@ -194,6 +199,14 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 
     if (incomingPath == currentPath) {
       _applyFiltersAndSort();
+
+      if (_wasForceRefresh && _scanStartTime != null) {
+        final elapsed = DateTime.now().difference(_scanStartTime!);
+        if (elapsed.inMilliseconds < 2500) {
+          await Future.delayed(Duration(milliseconds: 2500 - elapsed.inMilliseconds));
+        }
+      }
+
       state = state.copyWith(isLoading: false);
     }
 
