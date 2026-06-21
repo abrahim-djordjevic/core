@@ -106,8 +106,10 @@ public class FileTypeScanner : IFileTypeScanner
         if (_cache.TryGetValue(cacheKey, out FileTypeScanResult? hit))
             return hit;
 
+        var normalizedNoSlash = normalized.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var wasScanned = _engine.DirectorySizeCache.Keys
-            .Any(k => k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
+            .Any(k => k.Equals(normalizedNoSlash, StringComparison.OrdinalIgnoreCase) ||
+                      k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
 
         if (!wasScanned) return null;
 
@@ -202,10 +204,16 @@ public class FileTypeScanner : IFileTypeScanner
     }
 
 
-    private static string NormalizeRoot(string root) =>
-        Path.GetFullPath(
-            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-        + Path.DirectorySeparatorChar;
+    private static string NormalizeRoot(string root)
+    {
+        var fullPath = Path.GetFullPath(root);
+        if (!fullPath.EndsWith(Path.DirectorySeparatorChar) && 
+            !fullPath.EndsWith(Path.AltDirectorySeparatorChar))
+        {
+            fullPath += Path.DirectorySeparatorChar;
+        }
+        return fullPath;
+    }
 
     public static string FormatBytes(long bytes) => bytes switch
     {
