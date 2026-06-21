@@ -3,6 +3,8 @@ import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
+import 'package:gs_analyzer_ui/models/file_type_model.dart';
+import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 
 class ApiService {
   static  const String storageUrl = 'http://localhost:5200/api/storage';
@@ -11,6 +13,7 @@ class ApiService {
   static const String thermalUrl = 'http://localhost:5200/api/thermal';
   static const String settingsUrl = 'http://localhost:5200/api/settings';
   static const String driveUrl = 'http://localhost:5200/api/drives';
+
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan');
@@ -278,5 +281,26 @@ class ApiService {
       print("[Api] Drives Fetch Error: $e");
     }
     return null;
+  }
+
+  Future<FileTypeResult> getFileTypes(String root) async {
+  final uri = Uri.parse('$storageUrl/scan/filetypes')
+      .replace(queryParameters: {'root': root});
+
+  final response = await http.get(uri);
+
+  if (response.statusCode == 409) {
+    throw FileTypeNoScanException();
+  }
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      'FileTypes fetch failed [${response.statusCode}]: ${response.body}',
+    );
+  }
+
+  return FileTypeResult.fromJson(
+    jsonDecode(response.body) as Map<String, dynamic>
+    );
   }
 }

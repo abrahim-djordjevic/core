@@ -16,6 +16,8 @@ public class CacheEntry
 public class DiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
+    public ConcurrentDictionary<string, ConcurrentDictionary<string, (int Count, long Bytes)>>
+        FileTypeAccumulator = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _nukeCts;
     private CancellationTokenSource? _scanCts;
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
@@ -97,6 +99,12 @@ public class DiskScannerEngine
 
                 await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
 
+                foreach (var dir in directoriesToScan)
+                {
+                    var root = dir.FullName.Split(Path.DirectorySeparatorChar)[0] + Path.DirectorySeparatorChar;
+                    FileTypeAccumulator.TryRemove(root, out _);
+                }
+
                 await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
                 {
                     if (token.IsCancellationRequested) return;
@@ -162,6 +170,23 @@ public class DiskScannerEngine
                 AttributesToSkip = 0
             };
             var files = dir.GetFiles("*", option);
+
+            var root = dir.FullName.Split(Path.DirectorySeparatorChar)[0] + Path.DirectorySeparatorChar;
+
+            var extMap = FileTypeAccumulator.GetOrAdd(
+                root,
+                _ => new ConcurrentDictionary<string, (int Count, long Bytes)>(
+                    StringComparer.OrdinalIgnoreCase));
+
+            foreach (var f in files)
+            {
+                var ext = f.Extension.ToLowerInvariant();
+                if (string.IsNullOrEmpty(ext)) ext = "no extension";
+                extMap.AddOrUpdate(
+                    ext,
+                    _ => (1, f.Length),
+                    (_, prev) => (prev.Count + 1, prev.Bytes + f.Length));
+            }
             size += files.Sum(f => f.Length);
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);

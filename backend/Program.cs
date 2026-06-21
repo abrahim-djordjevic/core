@@ -21,6 +21,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 
 // Engine singletons
 builder.Services.AddSingleton<DiskScannerEngine>();
@@ -32,6 +33,7 @@ builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();
 builder.Services.AddSingleton<IProcessOwnerResolver, ProcessOwnerResolver>();
+builder.Services.AddSingleton<IFileTypeScanner, FileTypeScanner>();
 
 // Platform-specific CPU provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
