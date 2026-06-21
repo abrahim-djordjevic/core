@@ -80,13 +80,12 @@ class StorageScreen extends ConsumerWidget {
   }
 
   void _enterAnalyzer(WidgetRef ref, DriveInfo drive, StorageMode mode) {
-
     ref.read(selectedDriveNameProvider.notifier).state = drive.name;
-
     ref.read(storageModeProvider.notifier).state = mode;
 
     if (mode == StorageMode.diskAnalyzer) {
-      ref.read(directoryProvider.notifier).scanDirectory(drive.name);
+      // Force refresh so the TelemetryHudWidget tracks the exact duration of the real scan.
+      ref.read(directoryProvider.notifier).scanDirectory(drive.name, forceRefresh: true);
     }
 
     ref.read(storageViewProvider.notifier).state = StorageView.analyzer;

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
 
 namespace GSInteractiveDeviceAnalyzer.Engine;
@@ -10,14 +11,13 @@ public class CacheEntry
 {
     public long Size { get; set; }
     public DateTime LastUpdated { get; set; }
+    public Dictionary<string, FileTypeEntry>? Extensions { get; set; }
 }    
 
 
 public class DiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
-    public ConcurrentDictionary<string, ConcurrentDictionary<string, (int Count, long Bytes)>>
-        FileTypeAccumulator = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _nukeCts;
     private CancellationTokenSource? _scanCts;
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
@@ -99,12 +99,6 @@ public class DiskScannerEngine
 
                 await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
 
-                foreach (var dir in directoriesToScan)
-                {
-                    var root = dir.FullName.Split(Path.DirectorySeparatorChar)[0] + Path.DirectorySeparatorChar;
-                    FileTypeAccumulator.TryRemove(root, out _);
-                }
-
                 await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
                 {
                     if (token.IsCancellationRequested) return;
@@ -156,12 +150,16 @@ public class DiskScannerEngine
 
         if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))
         {
-            if(dir.LastWriteTimeUtc <= entry.LastUpdated)
+            if (dir.LastWriteTimeUtc <= entry.LastUpdated)
+            {
                 return entry.Size;
-
+            }
             Console.WriteLine("CACHE STALE: Rescanning Directory....");
         }
+
         long size = 0;
+        var extMap = new Dictionary<string, FileTypeEntry>(StringComparer.OrdinalIgnoreCase);
+
         try
         {
             var option = new EnumerationOptions
@@ -171,23 +169,22 @@ public class DiskScannerEngine
             };
             var files = dir.GetFiles("*", option);
 
-            var root = dir.FullName.Split(Path.DirectorySeparatorChar)[0] + Path.DirectorySeparatorChar;
-
-            var extMap = FileTypeAccumulator.GetOrAdd(
-                root,
-                _ => new ConcurrentDictionary<string, (int Count, long Bytes)>(
-                    StringComparer.OrdinalIgnoreCase));
+            size += files.Sum(f => f.Length);
 
             foreach (var f in files)
             {
                 var ext = f.Extension.ToLowerInvariant();
                 if (string.IsNullOrEmpty(ext)) ext = "no extension";
-                extMap.AddOrUpdate(
-                    ext,
-                    _ => (1, f.Length),
-                    (_, prev) => (prev.Count + 1, prev.Bytes + f.Length));
+                
+                if (!extMap.TryGetValue(ext, out var fileTypeEntry))
+                {
+                    fileTypeEntry = new FileTypeEntry { Count = 0, Bytes = 0 };
+                    extMap[ext] = fileTypeEntry;
+                }
+                
+                fileTypeEntry.Count++;
+                fileTypeEntry.Bytes += f.Length;
             }
-            size += files.Sum(f => f.Length);
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);
 
@@ -221,7 +218,8 @@ public class DiskScannerEngine
         DirectorySizeCache[dir.FullName] = new CacheEntry
         {
             Size = size,
-            LastUpdated = dir.LastWriteTimeUtc
+            LastUpdated = dir.LastWriteTimeUtc,
+            Extensions = extMap
         };
 
         return size;
@@ -279,17 +277,17 @@ public class DiskScannerEngine
         {
             try
             {
-                string json = JsonSerializer.Serialize(DirectorySizeCache);
+                // Existing — save directory sizes
+                var dirJson = JsonSerializer.Serialize(
+                    new Dictionary<string, CacheEntry>(DirectorySizeCache));
                 Directory.CreateDirectory(Path.GetDirectoryName(_cacheFilePath)!);
-                File.WriteAllText(_cacheFilePath, json);
-                Console.WriteLine($"MEMORY SAVED: {DirectorySizeCache.Count} folders saved to disk!");
+                File.WriteAllText(_cacheFilePath, dirJson);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ERROR SAVING MEMORY: {ex.Message}");
+                Console.WriteLine($"MEMORY SAVE ERROR: {ex.Message}");
             }
         }
-        
     }
 
     public void MoveRadarToSector(string targetPath)

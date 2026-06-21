@@ -1,5 +1,10 @@
 ﻿namespace GSInteractiveDeviceAnalyzer.Models;
 
+public class FileTypeEntry
+{
+    public int Count { get; set; }
+    public long Bytes { get; set; }
+}
 public class FileTypeExtensionEntry
 {
     public string Ext { get; set; } = string.Empty;

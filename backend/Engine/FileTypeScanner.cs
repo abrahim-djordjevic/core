@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models;
 using Microsoft.Extensions.Caching.Memory;
@@ -125,14 +125,10 @@ public class FileTypeScanner : IFileTypeScanner
     {
         var normalizedRoot = NormalizeRoot(root);
 
-        var driveRoot = Path.GetPathRoot(normalizedRoot) ?? normalizedRoot;
+        var extMap = BuildFromMemory(normalizedRoot);
 
-        if (!_engine.FileTypeAccumulator.TryGetValue(driveRoot, out var extMap) || extMap.IsEmpty)
-        {
-            extMap = BuildFromCacheIndex(normalizedRoot);
-        }
-
-        var totalBytes = extMap.Values.Sum(v => (long)v.Bytes);
+        var realEntries = extMap.Where(kvp => !kvp.Key.StartsWith("__visited__")).ToList();
+        var totalBytes = realEntries.Sum(v => v.Value.Bytes);
 
         var categories = extMap
             .GroupBy(kvp =>
@@ -179,35 +175,28 @@ public class FileTypeScanner : IFileTypeScanner
         };
     }
 
-    private ConcurrentDictionary<string, (int Count, long Bytes)> BuildFromCacheIndex(string root)
+    private ConcurrentDictionary<string, FileTypeEntry> BuildFromMemory(string root)
     {
-        var extMap = new ConcurrentDictionary<string, (int Count, long Bytes)>(
-            StringComparer.OrdinalIgnoreCase);
+        var extMap = new ConcurrentDictionary<string, FileTypeEntry>(StringComparer.OrdinalIgnoreCase);
 
-        var cachedDirs = _engine.DirectorySizeCache.Keys
-            .Where(k => k.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var rootNoSlash = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var cachedDirs = _engine.DirectorySizeCache
+            .Where(kvp => kvp.Key.Equals(rootNoSlash, StringComparison.OrdinalIgnoreCase) || 
+                          kvp.Key.StartsWith(root, StringComparison.OrdinalIgnoreCase));
 
-        Parallel.ForEach(cachedDirs, dir =>
+        foreach (var kvp in cachedDirs)
         {
-            try
+            if (kvp.Value.Extensions != null)
             {
-                foreach (var fi in new DirectoryInfo(dir).GetFiles())
+                foreach (var ext in kvp.Value.Extensions)
                 {
-                    try
-                    {
-                        var ext = fi.Extension.ToLowerInvariant();
-                        if (string.IsNullOrEmpty(ext)) ext = "no extension";
-                        extMap.AddOrUpdate(
-                            ext,
-                            _ => (1, fi.Length),
-                            (_, prev) => (prev.Count + 1, prev.Bytes + fi.Length));
-                    }
-                    catch { }
+                    extMap.AddOrUpdate(
+                        ext.Key,
+                        _ => new FileTypeEntry { Count = ext.Value.Count, Bytes = ext.Value.Bytes },
+                        (_, prev) => { prev.Count += ext.Value.Count; prev.Bytes += ext.Value.Bytes; return prev; });
                 }
             }
-            catch { }
-        });
+        }
 
         return extMap;
     }
