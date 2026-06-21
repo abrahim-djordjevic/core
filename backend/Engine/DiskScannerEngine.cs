@@ -106,10 +106,12 @@ public class DiskScannerEngine
                     {
                         var size = await Task.Run(() => GetDirectorySize(dir, token), token);
 
+                        DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
                         DirectorySizeCache[dir.FullName] = new CacheEntry
                         {
                             Size = size,
-                            LastUpdated = dir.LastWriteTimeUtc
+                            LastUpdated = dir.LastWriteTimeUtc,
+                            Extensions = existingEntry?.Extensions
                         };
                     }
                     catch (OperationCanceledException )

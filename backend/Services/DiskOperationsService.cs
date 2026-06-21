@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Hubs;
 using GSInteractiveDeviceAnalyzer.Interfaces;
@@ -75,10 +75,15 @@ namespace GSInteractiveDeviceAnalyzer.Services
             var actualFolderSize = nodes.Sum(n => n.SizeBytes);
 
             var normalizedPath = Path.GetFullPath(path);
+            _scanner.DirectorySizeCache.TryGetValue(normalizedPath, out var oldEntry);
             _scanner.DirectorySizeCache[normalizedPath] = new CacheEntry
-                { Size = actualFolderSize, LastUpdated = DateTime.UtcNow };
+            { 
+                Size = actualFolderSize, 
+                LastUpdated = DateTime.UtcNow,
+                Extensions = oldEntry?.Extensions 
+            };
 
-            _scanner.SaveMemoryToDisk();
+            Task.Run(() => _scanner.SaveMemoryToDisk());
 
             return nodes;
         }
@@ -111,7 +116,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
 
             if (memoryChanged)
             {
-                _scanner.SaveMemoryToDisk();
+                Task.Run(() => _scanner.SaveMemoryToDisk());
             }
         }
 
