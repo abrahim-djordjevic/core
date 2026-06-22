@@ -249,7 +249,7 @@ class SettingsScreen extends ConsumerWidget {
                   );
                 }
               },
-              child: const Text('CLEAR CACHE NOW', style: HudTheme.actionRed),
+              child: const Text('CLEAR CACHE NOW', style: TextStyle(letterSpacing: 1.5)),
             ),
           )
         ],

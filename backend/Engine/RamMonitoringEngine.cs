@@ -26,11 +26,20 @@ namespace GSInteractiveDeviceAnalyzer.Engine
         {
             _hub = hub;
             _ownerResolver = ownerResolver;
-
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.RamPollIntervalMs);
+            settings.OnSettingsChanged += (_, s) =>
+                _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.RamPollIntervalMs);
 
-            settings.OnSettingsChanged += (_, s) => _pollInterval =
-                TimeSpan.FromMilliseconds(s.Monitoring.RamPollIntervalMs);
+            // Refresh owner cache on its own slow cadence — never blocks the poll loop
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try { _ownerResolver.RefreshCache(); }
+                    catch { /* ignore WMI errors */ }
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                }
+            });
         }
 
         public void StartRadar()
@@ -57,35 +66,37 @@ namespace GSInteractiveDeviceAnalyzer.Engine
             {
                 while (!token.IsCancellationRequested)
                 {
-                    // Refresh the owner cache once per tick — one WMI/proc round-trip
-                    _ownerResolver.RefreshCache();
+                    var nextTick = Task.Delay(_pollInterval, token);
 
-                    var snapshot = GetTopProcesses(100);
-                    var globalMetrics = SystemMemoryMetrics.GetLiveMetrics();
-
-                    var payload = new
+                    try
                     {
-                        Global = globalMetrics ?? new
+                        var snapshot = GetTopProcesses(100);
+                        var globalMetrics = SystemMemoryMetrics.GetLiveMetrics();
+
+                        var payload = new
                         {
-                            activeGb = 0.0,
-                            cachedGb = 0.0,
-                            swapGb = 0.0,
-                            totalGb = 16.0,
-                        },
-                        Processes = snapshot
-                    };
+                            Global = globalMetrics ?? new
+                            {
+                                activeGb = 0.0,
+                                cachedGb = 0.0,
+                                swapGb = 0.0,
+                                totalGb = 16.0,
+                            },
+                            Processes = snapshot
+                        };
 
-                    await _hub.Clients.All.SendAsync("RamUpdate", payload, cancellationToken: token);
+                        await _hub.Clients.All.SendAsync("RamUpdate", payload, cancellationToken: token);
 
-                    Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
-
-                    await Task.Delay(_pollInterval, token);
+                        Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Console.WriteLine($"\n[RAM ENGINE] Tick error: {ex.Message}");
+                    }
+                    await nextTick;
                 }
             }
-            catch (OperationCanceledException)
-            {
-                
-            }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 Console.WriteLine($"\n[RAM ENGINE FATAL RADAR] ERROR: {ex.Message}");

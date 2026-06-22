@@ -182,7 +182,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 color: HudTheme.accentCyan,
               ),
               tooltip: 'Refresh',
-              onPressed: () => dirNotifier.scanDirectory(dirState.currentPath),
+              onPressed: () => dirNotifier.scanDirectory(dirState.currentPath, forceRefresh: true),
             ),
           ],
         ],

@@ -6,6 +6,7 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 
 class SideBarTreeWidget extends ConsumerWidget {
   final Function(String, String) onNuke;
@@ -17,6 +18,9 @@ class SideBarTreeWidget extends ConsumerWidget {
     final rootNodeAsync = ref.watch(rootTreeProvider);
     final dirNotifier = ref.read(directoryProvider.notifier);
     final isExpanded = ref.watch(treeExpandedProvider);
+    final excludedPaths = ref.watch(
+      settingsProvider.select((s) => s.savedSettings?.scan.excludedPaths ?? <String>[])
+    );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -60,13 +64,24 @@ class SideBarTreeWidget extends ConsumerWidget {
                       ),
                     ),
                     data: (nodes) {
-                      return Column (
-                        children: nodes
-                            .where((n) => n.isDirectory)
-                            .map((node) => DirectoryNodeWidget(node: node, apiService: ApiService(), onNuke: onNuke, onNavigate: dirNotifier.scanDirectory,
-                              depth: 0,
-                              isTreeView: true,
-                        )).toList(),
+                      final visibleNodes = nodes.where((n) {
+                      if (!n.isDirectory) return true;
+                      final nodePath = n.path.replaceAll('\\', '/').toLowerCase();
+                      return !excludedPaths.any((ex) =>
+                        nodePath == ex.replaceAll('\\', '/').toLowerCase(),
+                      );
+                    }).toList();
+                      return Column(
+                      children: visibleNodes
+                          .map((node) => DirectoryNodeWidget(
+                                node: node,
+                                apiService: ApiService(),
+                                onNuke: onNuke,
+                                onNavigate: dirNotifier.scanDirectory,
+                                depth: 0,
+                                isTreeView: true,
+                              ))
+                          .toList(),
                       );
                     }
                   ),
