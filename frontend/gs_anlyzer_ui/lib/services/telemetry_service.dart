@@ -1,40 +1,51 @@
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
-  class TelemetryService {
-    late HubConnection _hubConnection;
-    Function(String)? onSectorChanged;
-    final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
-    Function(double percentage, String target, int completed)? onNukeProgress;
-    Function()? onNukeAborted;
-    Function(Map<String, dynamic>)? onRamUpdate;
-    Function(String path, List<dynamic> chunk)? onDirectoryChunk;
-    Function(String path)? onDirectoryStreamComplete;
-    Function(Map<String, dynamic>)? onCpuUpdate;
-    Function(List<dynamic>)? onDriveUpdate;
+class TelemetryService {
+  late HubConnection _hubConnection;
 
-    TelemetryService({required this.onProgressUpdate}) {
-      _initRadio();
-    }
+  Function(String)? onSectorChanged;
+  final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
+  Function(double percentage, String target, int completed)? onNukeProgress;
+  Function()? onNukeAborted;
+  Function(Map<String, dynamic>)? onRamUpdate;
+  Function(String path, List<dynamic> chunk)? onDirectoryChunk;
+  Function(String path)? onDirectoryStreamComplete;
+  Function(Map<String, dynamic>)? onCpuUpdate;
+  Function(List<dynamic>)? onDriveUpdate;
 
-    void _initRadio() {
-      final url = "http://localhost:5200/systemHub";
+  TelemetryService({
+    required this.onProgressUpdate,
+    int backendPort            = 5200,
+    int reconnectDelayMs       = 3000,
+    int maxRetries             = 10,
+  }) {
+    _initRadio(backendPort, reconnectDelayMs, maxRetries);
+  }
 
-      _hubConnection = HubConnectionBuilder()
-          .withUrl(url)
-          .withAutomaticReconnect()
-          .build();
+  void _initRadio(int port, int reconnectDelayMs, int maxRetries) {
+    final url = "http://localhost:$port/systemHub";
 
-      _hubConnection.on('ScanProgress', _handleIncomingTelemetry);
-      _hubConnection.on('SectorChanged', _handleSectorChanged);
-      _hubConnection.on('NukeProgress', _handleNukeProgress);
-      _hubConnection.on('NukeAborted', _handleNukeAborted);
-      _hubConnection.on('RamUpdate', _handleRamUpdate);
-      _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
-      _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
-      _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
-      _hubConnection.on('DriveListUpdate', _handleDriveUpdate);
-    }
+    final retryDelays = List.generate(
+      maxRetries,
+      (i) => reconnectDelayMs * (i + 1),
+    );
+
+    _hubConnection = HubConnectionBuilder()
+        .withUrl(url)
+        .withAutomaticReconnect(retryDelays: retryDelays)
+        .build();
+
+    _hubConnection.on('ScanProgress',            _handleIncomingTelemetry);
+    _hubConnection.on('SectorChanged',           _handleSectorChanged);
+    _hubConnection.on('NukeProgress',            _handleNukeProgress);
+    _hubConnection.on('NukeAborted',             _handleNukeAborted);
+    _hubConnection.on('RamUpdate',               _handleRamUpdate);
+    _hubConnection.on('DirectoryChunk',          _handleDirectoryChunk);
+    _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
+    _hubConnection.on('ReceiveCpuTelemetry',     _handleCpuUpdate);
+    _hubConnection.on('DriveListUpdate',         _handleDriveUpdate);
+  }
 
     Future<void> startListening() async {
       if (_hubConnection.state == HubConnectionState.Disconnected) {
@@ -42,8 +53,6 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
           await _hubConnection.start();
           print('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
           
-          // Explicitly start the engines once the connection is established
-          // so the default Process Explorer screen receives data immediately.
           final api = ApiService();
           api.startRamRadar();
           api.startCpuRadar();

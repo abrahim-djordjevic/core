@@ -16,19 +16,25 @@ namespace GSInteractiveDeviceAnalyzer.Engine
             _hubContext = hubContext;
 
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.CpuPollIntervalMs);
-            settings.OnSettingsChanged += (_, s) => _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.CpuPollIntervalMs);
+            settings.OnSettingsChanged += (_, s) =>
+            {
+                _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.CpuPollIntervalMs);
+                Console.WriteLine($"[CPU SAMPLER] Poll interval updated → {_pollInterval.TotalMilliseconds}ms");
+            };
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
                     var telemetry = await _cpuProvider.GetNextSampleAsync();
-
                     await _hubContext.Clients.All.SendAsync("ReceiveCpuTelemetry", telemetry, cancellationToken: stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {

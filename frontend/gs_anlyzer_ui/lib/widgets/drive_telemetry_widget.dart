@@ -35,7 +35,7 @@ class DriveTelemetryWidget extends ConsumerWidget {
     }
 
     final double usageFraction = stats.percentageUsed / 100.0;
-    final bool isCritical = stats.percentageFree >= redThreshold;
+    final bool isCritical = stats.percentageUsed >= redThreshold;
 
     return Container(
       padding: const EdgeInsets.all(20),

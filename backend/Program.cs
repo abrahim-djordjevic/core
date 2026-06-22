@@ -25,6 +25,8 @@ builder.Services.AddMemoryCache();
 
 // Engine singletons
 builder.Services.AddSingleton<DiskScannerEngine>();
+builder.Services.AddSingleton<IDiskScannerEngine>(sp =>
+    sp.GetRequiredService<DiskScannerEngine>());
 builder.Services.AddSingleton<RamMonitoringEngine>();
 
 // Service singletons (interface → implementation)

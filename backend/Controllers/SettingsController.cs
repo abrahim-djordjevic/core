@@ -1,4 +1,5 @@
 ﻿using System.Configuration;
+using GSInteractiveDeviceAnalyzer.Engine;
 using GSInteractiveDeviceAnalyzer.Interfaces;
 using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
@@ -10,17 +11,18 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
     public class SettingsController : ControllerBase
     {
         private readonly ISettingService _settingsService;
+        private readonly IDiskScannerEngine _scanner;
 
-        public SettingsController(ISettingService settingsService)
+        public SettingsController(ISettingService settingsService, IDiskScannerEngine scanner)
         {
             _settingsService = settingsService;
+            _scanner = scanner;
         }
 
         [HttpGet]
         public IActionResult GetSettings()
         {
-            return Ok(new { success = true, data = _settingsService.Current })
-                ;
+            return Ok(new { success = true, data = _settingsService.Current });
         }
 
         [HttpGet("defaults")]
@@ -75,6 +77,13 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
             await _settingsService.SaveAsync(mergedSettings);
             return Ok(new { success = true, data = _settingsService.Current });
+        }
+
+        [HttpPost("cache/clear")]
+        public IActionResult ClearCache()
+        {
+            _scanner.ClearCache();
+            return Ok(new { success = true, message = "Scan cache cleared. Run a new Directory Scan to repopulate." });
         }
     }
 }
