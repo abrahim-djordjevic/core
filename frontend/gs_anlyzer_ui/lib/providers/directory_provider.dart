@@ -81,21 +81,26 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   }
 
   void _listenToSettings() {
-    ref.listen(settingsProvider, (previous, next) {
-      final scanSettings = next.currentSettings?.scan;
-      if (scanSettings != null) {
-        if (scanSettings.skipHiddenFiles != state.skipHiddenFiles ||
-            scanSettings.skipSystemFiles != state.skipSystemFiles) {
-          state = state.copyWith(
-            skipHiddenFiles: scanSettings.skipHiddenFiles,
-            skipSystemFiles: scanSettings.skipSystemFiles,
-          );
-          // Refresh current directory to apply visibility filters
-          scanDirectory(state.currentPath, forceRefresh: true);
-        }
-      }
-    }, fireImmediately: true);
-  }
+  ref.listen(settingsProvider, (previous, next) {
+    final scanSettings = next.savedSettings?.scan; // ← use savedSettings (post-save)
+    final prevScan = previous?.savedSettings?.scan;
+    if (scanSettings == null) return;
+
+    final hiddenChanged = scanSettings.skipHiddenFiles != state.skipHiddenFiles;
+    final systemChanged = scanSettings.skipSystemFiles != state.skipSystemFiles;
+    final excludedChanged = scanSettings.excludedPaths != prevScan?.excludedPaths;
+
+    if (hiddenChanged || systemChanged) {
+      state = state.copyWith(
+        skipHiddenFiles: scanSettings.skipHiddenFiles,
+        skipSystemFiles: scanSettings.skipSystemFiles,
+      );
+      scanDirectory(state.currentPath, forceRefresh: true);
+    } else if (excludedChanged) {
+      _applyFiltersAndSort();
+    }
+  });
+}
   
   void _applyFiltersAndSort({
     List<StorageNode>? nodes,
@@ -109,6 +114,19 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     final activeIsAscending = isAscending ?? state.isAscending;
       
     List<StorageNode> filteredNodes = activeSearchQuery.isEmpty ? List.from(activeNodes) : activeNodes.where((n) => n.name.toLowerCase().contains(activeSearchQuery.toLowerCase())).toList();
+
+    final excluded = ref.read(settingsProvider)
+      .savedSettings?.scan.excludedPaths ?? [];
+
+    if (excluded.isNotEmpty) {
+      filteredNodes = filteredNodes.where((n) {
+      final nodePath = n.path.replaceAll('\\', '/').toLowerCase();
+      return !excluded.any((ex) {
+        final exPath = ex.replaceAll('\\', '/').toLowerCase();
+        return nodePath == exPath;
+        });
+      }).toList();
+    }
 
     filteredNodes.sort((a, b) {
       int comparison;
@@ -157,6 +175,14 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     }
 
     _sectorCache[safePath] = [];
+    if (forceRefresh) {
+      final keysToRemove = _sectorCache.keys
+          .where((k) => k.toLowerCase().startsWith(safePath.toLowerCase()))
+          .toList();
+      for (final key in keysToRemove) {
+        _sectorCache.remove(key);
+      }
+    }
     _scanStartTime = DateTime.now();
     _wasForceRefresh = forceRefresh;
 

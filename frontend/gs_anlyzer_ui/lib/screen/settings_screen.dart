@@ -73,7 +73,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               _buildMonitoringSection(settings.monitoring, state, notifier),
               const SizedBox(height: 16),
-              _buildCacheSection(settings.cache, state, notifier),
+              _buildCacheSection(settings.cache, state, notifier, context),
               const SizedBox(height: 16),
               _buildAppearanceSection(settings.appearance, state, notifier),
               const SizedBox(height: 16),
@@ -213,7 +213,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCacheSection(CacheSettings cache, SettingsState state, SettingsNotifier notifier) {
+  Widget _buildCacheSection(CacheSettings cache, SettingsState state, SettingsNotifier notifier, BuildContext context) {
     return _SettingsSection(
       title: 'MEMORY & CACHE',
       errorFilter: 'Cache',
@@ -231,15 +231,25 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton(
-              onPressed: () {
-                // Future Implementation: Clear local storage cache
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: HudTheme.accentRed),
+              onPressed: () async {
+                final success = await notifier.clearCache();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: success ? Colors.green.shade900 : Colors.red.shade900,
+                      content: Text(
+                        success
+                            ? 'Cache cleared. Run a new Directory Scan to repopulate.'
+                            : 'Failed to clear cache. Is the backend running?',
+                        style: HudTheme.bodyText,
+                      ),
+                    ),
+                  );
+                }
               },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.amber),
-                foregroundColor: Colors.amber,
-              ),
-              child: const Text('CLEAR CACHE NOW', style: TextStyle(letterSpacing: 1)),
+              child: const Text('CLEAR CACHE NOW', style: TextStyle(letterSpacing: 1.5)),
             ),
           )
         ],
@@ -278,37 +288,67 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildAdvancedSection(AdvancedSettings adv, SettingsState state, SettingsNotifier notifier) {
-    return Container(
-      decoration: HudTheme.hudPanelDecoration,
-      child: Theme(
-        data: ThemeData(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          title: Text('ADVANCED ▾', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
-          childrenPadding: const EdgeInsets.all(16),
-          children: [
-            if (_hasError(state, 'Port') || _hasError(state, 'SignalR'))
-              _buildErrorMessage(state, 'Port'), // Catchall for advanced errors
-            _buildSlider('BACKEND PORT', adv.backendPort.toDouble(), 1024, 65535, '', (val) {
-              adv.backendPort = val.toInt();
-              notifier.updateUI();
-            }),
-            _buildSlider('RECONNECT DELAY', adv.signalrReconnectDelaysMs.toDouble(), 500, 30000, ' ms', (val) {
-              adv.signalrReconnectDelaysMs = val.toInt();
-              notifier.updateUI();
-            }),
-            _buildSlider('MAX RETRIES', adv.maxSignalrRetries.toDouble(), 1, 100, '', (val) {
-              adv.maxSignalrRetries = val.toInt();
-              notifier.updateUI();
-            }),
-            _buildToggle('DEBUG LOGS', adv.enableDebugLogs, (val) {
-              adv.enableDebugLogs = val;
-              notifier.updateUI();
-            }),
-          ],
-        ),
+  // Read the *saved* port so we can detect unsaved port changes
+  final savedPort = state.savedSettings?.advanced.backendPort ?? 5200;
+  final portChanged = adv.backendPort != savedPort;
+
+  return Container(
+    decoration: HudTheme.hudPanelDecoration,
+    child: Theme(
+      data: ThemeData(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        title: Text('ADVANCED ▾', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
+        childrenPadding: const EdgeInsets.all(16),
+        children: [
+          if (_hasError(state, 'Port') || _hasError(state, 'SignalR'))
+            _buildErrorMessage(state, 'Port'),
+
+          // ↓ ADD THIS — amber warning when port has been changed
+          if (portChanged)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                border: Border.all(color: Colors.amber),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Port change requires a full backend restart to take effect.',
+                      style: HudTheme.bodyText.copyWith(color: Colors.amber, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // ↑ END OF NEW BLOCK
+
+          _buildSlider('BACKEND PORT', adv.backendPort.toDouble(), 1024, 65535, '', (val) {
+            adv.backendPort = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('RECONNECT DELAY', adv.signalrReconnectDelaysMs.toDouble(), 500, 30000, ' ms', (val) {
+            adv.signalrReconnectDelaysMs = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildSlider('MAX RETRIES', adv.maxSignalrRetries.toDouble(), 1, 100, '', (val) {
+            adv.maxSignalrRetries = val.toInt();
+            notifier.updateUI();
+          }),
+          _buildToggle('DEBUG LOGS', adv.enableDebugLogs, (val) {
+            adv.enableDebugLogs = val;
+            notifier.updateUI();
+          }),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
 
   // HELPER WIDGETS

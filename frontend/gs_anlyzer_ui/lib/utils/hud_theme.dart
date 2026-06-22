@@ -72,4 +72,42 @@ class HudTheme {
   static BoxDecoration listItemDecoration = const BoxDecoration(
     border: Border(bottom: BorderSide(color: Colors.white10)),
   );
+
+  static Color resolveAccent(String? accentKey) {
+    switch (accentKey?.toLowerCase()) {
+      case 'cyan':    return Colors.cyanAccent;
+      case 'green':   return Colors.greenAccent;
+      case 'amber':   return Colors.amber;
+      case 'red':     return Colors.redAccent;
+      case 'purple':  return Colors.purpleAccent;
+      case 'blue':    return Colors.blueAccent;
+      default:        return Colors.cyanAccent;
+    }
+  }
+
+  static Color resolveBgBase(String? theme) {
+    switch (theme?.toLowerCase()) {
+      case 'cyber_light': return const Color(0xFFF0F0F0);
+      case 'cyber_dark':
+      default:            return const Color(0xFF161616);
+    }
+  }
+
+  // Helper for Panel backgrounds in Light Mode
+  static Color resolveBgPanel(String? theme) {
+    switch (theme?.toLowerCase()) {
+      case 'cyber_light': return const Color(0xFFFFFFFF); // Pure white panel
+      case 'cyber_dark':  return const Color(0xFF1E1E1E); // Original dark panel
+      default:            return const Color(0xFF1E1E1E);
+    }
+  }
+
+  // Helper for borders in Light Mode
+  static Color resolveBorderColor(String? theme) {
+    switch (theme?.toLowerCase()) {
+      case 'cyber_light': return Colors.grey.shade700;
+      case 'cyber_dark':  return Colors.cyanAccent;
+      default:            return Colors.cyanAccent;
+    }
+  }
 }

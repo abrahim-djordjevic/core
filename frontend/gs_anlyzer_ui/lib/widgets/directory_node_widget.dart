@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import '../providers/directory_provider.dart';
+import '../providers/settings_provider.dart';
 
 String formatBytes(int bytes) {
   if (bytes < 0) return "--";
@@ -57,9 +58,18 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
       try {
         final dirNotifier = ref.read(directoryProvider.notifier);
         final children = await dirNotifier.fetchChildrenForTree(widget.node.path);
+
+        final excluded = ref.read(settingsProvider).currentSettings?.scan.excludedPaths ?? [];
+
+        final filtered = children.where((n) {
+          if (!n.isDirectory) return true;
+          return !excluded.any((ex) =>
+          n.path.toLowerCase() == ex.toLowerCase() || n.path.toLowerCase().startsWith(ex.toLowerCase().endsWith('\\') ? ex.toLowerCase() : '${ex.toLowerCase()}\\',)
+          );
+        }).toList();
         if (mounted) {
           setState(() {
-            _children = children;
+            _children = filtered;
             _isLoading = false;
           });
         }
@@ -76,6 +86,18 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      settingsProvider.select((s) => s.savedSettings?.scan.excludedPaths),
+      (previous, next) {
+        if (previous != next && _children != null) {
+          setState(() {
+            _children = null;
+            _isExpanded = false;
+          });
+        }
+      },
+    );
+
     final double leftPadding = widget.depth * 20.0;
     final isDir = widget.node.isDirectory;
 

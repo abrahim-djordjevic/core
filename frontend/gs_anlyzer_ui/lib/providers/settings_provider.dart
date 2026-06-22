@@ -134,6 +134,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       return false;
     }
   }
+
+  Future<bool> clearCache() async {
+    state = state.copyWith(isLoading: true);
+    final success = await _api.clearCache();
+    state = state.copyWith(isLoading: false);
+    return success;
+  }
 }
 
 final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {

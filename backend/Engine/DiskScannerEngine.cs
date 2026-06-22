@@ -15,7 +15,7 @@ public class CacheEntry
 }    
 
 
-public class DiskScannerEngine
+public class DiskScannerEngine : IDiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _nukeCts;
@@ -50,6 +50,8 @@ public class DiskScannerEngine
                 {
                     DirectorySizeCache = new ConcurrentDictionary<string, CacheEntry>(savedMemory);
                     Console.WriteLine($"MEMORY RESTORED: {DirectorySizeCache.Count} folders loaded from disk!");
+
+                    PruneStaleCacheEntries();
                 }
             }
             catch (Exception ex)
@@ -143,19 +145,25 @@ public class DiskScannerEngine
         
     }
 
-    private long GetDirectorySize(DirectoryInfo dir, CancellationToken token)
+    private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, int currentDepth = 1)
     {
-        if(token.IsCancellationRequested)
-        {
+        if (token.IsCancellationRequested)
             throw new OperationCanceledException("Scan aborted by user");
-        }
+
+        var config = _settings.Current.Scan;
+
+        if (currentDepth > config.Depth) return 0;
+
+        var normalizedPath = dir.FullName.Replace("\\", "/");
+        if (config.ExcludedPaths.Any(p =>
+                normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            return 0;
 
         if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))
         {
             if (dir.LastWriteTimeUtc <= entry.LastUpdated)
-            {
                 return entry.Size;
-            }
+
             Console.WriteLine("CACHE STALE: Rescanning Directory....");
         }
 
@@ -169,27 +177,32 @@ public class DiskScannerEngine
                 IgnoreInaccessible = true,
                 AttributesToSkip = 0
             };
-            var files = dir.GetFiles("*", option);
 
+            if (config.SkipHiddenFiles) option.AttributesToSkip |= FileAttributes.Hidden;
+            if (config.SkipSystemFiles) option.AttributesToSkip |= FileAttributes.System;
+
+            if (!config.FollowSymlinks &&
+                dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                return 0;
+
+            var files = dir.GetFiles("*", option);
             size += files.Sum(f => f.Length);
 
             foreach (var f in files)
             {
                 var ext = f.Extension.ToLowerInvariant();
                 if (string.IsNullOrEmpty(ext)) ext = "no extension";
-                
-                if (!extMap.TryGetValue(ext, out var fileTypeEntry))
+
+                if (!extMap.TryGetValue(ext, out var fte))
                 {
-                    fileTypeEntry = new FileTypeEntry { Count = 0, Bytes = 0 };
-                    extMap[ext] = fileTypeEntry;
+                    fte = new FileTypeEntry { Count = 0, Bytes = 0 };
+                    extMap[ext] = fte;
                 }
-                
-                fileTypeEntry.Count++;
-                fileTypeEntry.Bytes += f.Length;
+                fte.Count++;
+                fte.Bytes += f.Length;
             }
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);
-
             var currentCount = Interlocked.Add(ref _scannedFilesCount, files.Length);
 
             if (pulse % 50 == 0)
@@ -202,20 +215,14 @@ public class DiskScannerEngine
                 });
             }
 
-
             foreach (var subDir in dir.GetDirectories("*", option))
             {
-                size += GetDirectorySize(subDir, token);
+                // Pass depth + 1 so each recursive level is tracked
+                size += GetDirectorySize(subDir, token, currentDepth + 1);
             }
         }
-        catch (OperationCanceledException
-              )
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception) { /* access denied etc — skip silently */ }
 
         DirectorySizeCache[dir.FullName] = new CacheEntry
         {
@@ -375,6 +382,43 @@ public class DiskScannerEngine
     {
         _scanCts?.Cancel();
         Console.WriteLine("SCAN ABORT SIGNAL RECEIVED");
+    }
+
+    public void PruneStaleCacheEntries()
+    {
+        var config = _settings.Current.Cache;
+        var cutoff = DateTime.UtcNow.AddMinutes(-config.ScanCacheTtlMinutes);
+
+        // Remove entries that are past their TTL
+        var stale = DirectorySizeCache
+            .Where(kvp => kvp.Value.LastUpdated < cutoff)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in stale)
+            DirectorySizeCache.TryRemove(key, out _);
+
+        Console.WriteLine($"[CACHE] Pruned {stale.Count} stale entries (TTL = {config.ScanCacheTtlMinutes} min).");
+    }
+
+    public void ClearCache()
+    {
+        DirectorySizeCache.Clear();
+
+        lock (_fileWriteLock)
+        {
+            try
+            {
+                if (File.Exists(_cacheFilePath))
+                    File.Delete(_cacheFilePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CACHE] Clear failed: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine("[CACHE] Cleared — memory wiped, scanner_memory.json deleted.");
     }
     public void ExecuteDelete(FileSystemInfo item)
     {

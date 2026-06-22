@@ -303,4 +303,19 @@ class ApiService {
     jsonDecode(response.body) as Map<String, dynamic>
     );
   }
+
+  Future<bool> clearCache() async {
+  try {
+    final response = await http.post(Uri.parse('$settingsUrl/cache/clear'));
+    if (response.statusCode == 200) {
+      print('[API] Cache cleared successfully.');
+      return true;
+    }
+    print('[API] Cache clear failed: ${response.statusCode}');
+    return false;
+  } catch (e) {
+    print('[API] Cache clear error: $e');
+    return false;
+    }
+  }
 }

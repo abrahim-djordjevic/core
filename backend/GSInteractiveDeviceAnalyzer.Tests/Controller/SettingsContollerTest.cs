@@ -8,19 +8,26 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Controller
 {
     public class SettingsControllerTests
     {
+        private static SettingsController MakeController(
+            Mock<ISettingService> mockService,
+            Mock<IDiskScannerEngine>? mockScanner = null)
+        {
+            var scanner = mockScanner ?? new Mock<IDiskScannerEngine>();
+            return new SettingsController(mockService.Object, scanner.Object);
+        }
+
         [Fact]
         public async Task SaveSettings_WhenValidationFails_ReturnsBadRequestAndDoesNotSave()
         {
             var mockService = new Mock<ISettingService>();
-            var controller = new SettingsController(mockService.Object);
+            var controller = MakeController(mockService);
 
             var badSettings = AppSettingDto.GetFactoryDefaults();
-            badSettings.Advanced.BackendPort = 10; // Illegal port
+            badSettings.Advanced.BackendPort = 10;
 
             var result = await controller.SaveSettings(badSettings);
 
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-
+            Assert.IsType<BadRequestObjectResult>(result);
             mockService.Verify(s => s.SaveAsync(It.IsAny<AppSettingDto>()), Times.Never);
         }
 
@@ -28,16 +35,14 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Controller
         public async Task SaveSettings_WhenValidationPasses_ReturnsOkAndCallsSave()
         {
             var mockService = new Mock<ISettingService>();
-
             var validSettings = AppSettingDto.GetFactoryDefaults();
             mockService.Setup(s => s.Current).Returns(validSettings);
 
-            var controller = new SettingsController(mockService.Object);
+            var controller = MakeController(mockService);
 
             var result = await controller.SaveSettings(validSettings);
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
+            Assert.IsType<OkObjectResult>(result);
             mockService.Verify(s => s.SaveAsync(validSettings), Times.Once);
         }
 
@@ -45,12 +50,11 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Controller
         public async Task ResetSettings_Always_OverwritesWithFactoryDefaults()
         {
             var mockService = new Mock<ISettingService>();
-            var controller = new SettingsController(mockService.Object);
+            var controller = MakeController(mockService);
 
             var result = await controller.ResetSettings();
 
             Assert.IsType<OkObjectResult>(result);
-
             mockService.Verify(s => s.SaveAsync(It.IsAny<AppSettingDto>()), Times.Once);
         }
     }
