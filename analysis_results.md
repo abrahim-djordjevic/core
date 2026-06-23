@@ -155,47 +155,7 @@ Two GitHub Actions workflows:
 
 ---
 
-## 6. Bugs & Issues Found
-
-### 🔴 Critical
-
-| # | Location | Issue |
-|---|---|---|
-| 1 | [Program.cs:13+26](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Program.cs#L13-L26) | **Duplicate DI registration** — `DiskScannerEngine` is registered as singleton **twice** (lines 13 and 26). Same for `LargeFileHunterService` (lines 29-30 and 59) and `NukeProtocolService` (lines 31 and 60). This wastes memory and could cause confusing DI resolution issues. |
-| 2 | [DuplicateFileDetector.cs:132](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Services/DuplicateFileDetector.cs#L132) | **String literal instead of variable** — `file.FullName.Contains("appDataSegment", ...)` uses the literal string `"appDataSegment"` instead of the variable `appDataSegment`. This means AppData paths are **never** filtered out. |
-| 3 | [TelemetryService.dart:103](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/frontend/gs_anlyzer_ui/lib/services/telemetry_service.dart#L103) | **Logic inversion bug** — `if (arguments == null && arguments!.isEmpty)` should be `\|\|` not `&&`. With `&&`, if `arguments` is null, the `arguments!.isEmpty` is never reached (short-circuit), but if `arguments` is non-null, the null-check passes, and it tries `isEmpty`. This effectively never returns early on empty lists — and if arguments *is* null, it falls through and crashes on line 105. |
-| 4 | [dotnet-desktop.yml:29](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/.github/workflows/dotnet-desktop.yml#L29) | **CI SDK mismatch** — CI uses `dotnet-version: '8.0.x'` but the project targets `net10.0`. The CI build will fail or not test against the actual target framework. |
-
-### 🟡 Medium
-
-| # | Location | Issue |
-|---|---|---|
-| 5 | [DiskScannerEngine.cs:157-161](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Engine/DiskScannerEngine.cs#L157-L161) | **Unused `EnumerationOptions`** — `option` is created but never passed to `dir.GetFiles()` on line 162. The options (including `IgnoreInaccessible`) are silently ignored. |
-| 6 | [StorageController.cs:49+58](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Controllers/StorageController.cs#L49-L58) | **Duplicate `DirectoryStreamComplete`** — Sent both in the `try` block (line 49) and the `finally` block (line 58), meaning the client always receives it twice on success. |
-| 7 | [DiskScannerEngine.cs:24](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Engine/DiskScannerEngine.cs#L24) | **Cache path is relative** — `_cacheFilePath = "scanner_memory.json"` resolves relative to the working directory, which varies depending on how the app is launched. This 63 MB file could end up in unexpected locations. Should use an absolute path (e.g., AppData). |
-| 8 | [ApiService.dart:77](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/frontend/gs_anlyzer_ui/lib/services/api_service.dart#L77) | **Wrong abort URL** — `abortNuke()` calls `$nukeUrl/nuke` instead of `$nukeUrl/abort`. The nuke abort signal will never reach the backend. |
-| 9 | [ApiService.dart:253](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/frontend/gs_anlyzer_ui/lib/services/api_service.dart#L253) | **Wrong HTTP method for reset** — Uses `http.delete` but the backend expects `POST` at `api/settings/reset`. Will return 405 Method Not Allowed. |
-| 10 | [WindowsCpuProvider.cs:81-83](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Services/WindowsCpuProvider.cs#L81-L83) | **Hardcoded cache sizes** — L1/L2/L3 cache sizes are hardcoded strings instead of being read from the system. Will be wrong on most machines. |
-| 11 | [Program.cs:17-22](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Program.cs#L17-L22) | **Overly permissive CORS** — `AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()` in production is a security risk. Should be restricted to `http://localhost:*` or the Flutter app's origin. |
-| 12 | [StorageController.cs:20-21](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Controllers/StorageController.cs#L20-L21) | **Scan endpoint mismatch** — `POST scan` expects `[FromBody] ScanRequest` but the Flutter `scanDirectory()` sends a `GET` with query parameters. These will never communicate correctly. |
-| 13 | [DriveMonitorService.cs:29](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/BackgroundWorkers/DriveMonitorService.cs#L29) | **Missing space in generic** — `ILogger<DriveMonitorService>logger` is missing a space. This compiles in C# but is a style issue that suggests it might have been a copy-paste artifact. |
-
-### 🟢 Low / Code Quality
-
-| # | Location | Issue |
-|---|---|---|
-| 14 | [DiskScannerEngine.cs:25](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Engine/DiskScannerEngine.cs#L25) | Typo: `_liveRader` should be `_liveRadar` (used throughout the file) |
-| 15 | [SettingsServices.cs:11](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Services/SettingsServices.cs#L11) | Typo: `_fileLoack` should be `_fileLock` |
-| 16 | [InteractiveAnalyzer.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/InteractiveAnalyzer.cs) | Entire class is commented out — dead code from the original console UI. Should be removed. |
-| 17 | Multiple files | `FormatSize()` utility is duplicated in `NukeProtocolService`, `LargeFileHunterService`, and `DriveMonitorService`. Should be extracted to a shared utility. |
-| 18 | [DiskScannerEngine.cs:190-192](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Engine/DiskScannerEngine.cs#L190-L192) | **Silent exception swallowing** — `catch (Exception e) { }` silently eats all errors in `GetDirectorySize`. At minimum, log the error. |
-| 19 | [ThermalMonitoringEngine.cs:34-43](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Engine/ThermalMonitoringEngine.cs#L34-L43) | **Platform check at runtime** — The `if (Windows)` branch is checked on every tick despite being a compile-time constant. The non-Windows path returns an empty DTO instead of using the registered `LinuxThermalProvider`. |
-| 20 | Frontend | Extensive `print()` debug logging throughout production code (e.g., "MATRIX BRIDGE FIRING", "FEDEX BOX OPENED"). Should use a proper logging framework or be gated behind a debug flag. |
-| 21 | [DiskOperationsService.cs:42](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Services/DiskOperationsService.cs#L42) | **Sync-over-async** — `.GetAwaiter().GetResult()` blocks the calling thread. This can cause deadlocks in ASP.NET Core's thread pool under load. Should be properly `await`ed. |
-
----
-
-## 7. Architecture Assessment
+## 6. Architecture Assessment
 
 ### ✅ Strengths
 
@@ -219,7 +179,7 @@ Two GitHub Actions workflows:
 
 ---
 
-## 8. File & Directory Statistics
+## 7. File & Directory Statistics
 
 | Section | Files | Lines (est.) |
 |---|---|---|
@@ -239,7 +199,7 @@ Two GitHub Actions workflows:
 
 ---
 
-## 9. Prioritised Recommendations
+## 8. Prioritised Recommendations
 
 ### Immediate (Pre-Beta Blockers)
 
