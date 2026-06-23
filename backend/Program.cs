@@ -36,6 +36,7 @@ builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();
 builder.Services.AddSingleton<IProcessOwnerResolver, ProcessOwnerResolver>();
 builder.Services.AddSingleton<IFileTypeScanner, FileTypeScanner>();
+builder.Services.AddSingleton<IAgeHeatmapEngine, AgeHeatmapEngine>();
 
 // Platform-specific CPU provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
