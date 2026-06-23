@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gs_anlyzer_ui/models/age_heatmap_model.dart';
+import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 
 void main() {
 

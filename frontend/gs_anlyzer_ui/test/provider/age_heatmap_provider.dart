@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gs_anlyzer_ui/providers/age_heatmap_provider.dart';
+import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 
 void main() {
 
