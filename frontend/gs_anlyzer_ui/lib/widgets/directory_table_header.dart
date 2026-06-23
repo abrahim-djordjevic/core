@@ -20,13 +20,13 @@ class DirectoryTableHeader extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(width: 32), SizedBox(width: 20), SizedBox(width: 8),
-                HudLabel('NAME')
+                HudLabel('NAME') // Kept left aligned to match the tree view
               ],
             ),
           ),
-          Expanded(flex: 3, child: HudLabel('DATE MODIFIED')),
-          Expanded(flex: 3, child: HudLabel('TYPE')),
-          Expanded(flex: 2, child: Padding(padding: EdgeInsets.only(right: 16), child: HudLabel('SIZE'))),
+          Expanded(flex: 3, child: HudLabel('DATE MODIFIED', textAlign: TextAlign.center,)),
+          Expanded(flex: 2, child: HudLabel('TYPE', textAlign: TextAlign.center,)),
+          Expanded(flex: 2, child: HudLabel('SIZE', textAlign: TextAlign.center,)),
           Expanded(flex: 1, child: HudLabel('ACTION', textAlign: TextAlign.center,)),
         ],
       ),

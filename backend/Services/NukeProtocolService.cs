@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GSInteractiveDeviceAnalyzer.Engine;
@@ -16,11 +18,22 @@ public class NukeProtocolService : INukeProtocolService
     private readonly DiskScannerEngine _scanner;
     private readonly IHubContext<SystemHub> _hubContext;
 
+    // Session-scoped undo stack — max 5 entries, not persisted across restarts.
+    private readonly Stack<NukeOperation> _undoStack = new();
+    private readonly object _undoLock = new();
+    private const int MaxUndoEntries = 5;
+
+    // Staging directory for recoverable deletes
+    private static readonly string StagingRoot = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "GSAnalyzer", "nuke_trash");
+
     public NukeProtocolService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
     {
         _scanner = scanner;
         _hubContext = hubContext;
     }
+
     public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>
@@ -95,7 +108,7 @@ public class NukeProtocolService : INukeProtocolService
         }, cancellationToken);
     }
 
-    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths)
+    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, bool useRecycleBin = false)
     {
         var totalNodes = paths.Count;
         var processedNodes = 0;
@@ -105,9 +118,18 @@ public class NukeProtocolService : INukeProtocolService
         var lastProgressSent = DateTime.MinValue;
         var progressInterval = TimeSpan.FromMilliseconds(150);
 
-        // Track what we actually removed so the cache is invalidated in ONE pass at the end.
-        var nukedPaths = new List<string>();
+        // Counters for the new result shape
+        int deletedFiles = 0;
+        long freedBytes = 0;
+        int skippedFiles = 0;
+        var deletedPaths = new List<string>();
         var aborted = false;
+
+        // Generate a unique operation ID for undo tracking
+        var operationId = $"nuke-{DateTime.UtcNow:yyyy-MM-ddTHH-mm-ss}";
+        var stagingDir = useRecycleBin
+            ? Path.Combine(StagingRoot, operationId)
+            : null;
 
         foreach (var path in paths)
         {
@@ -121,24 +143,53 @@ public class NukeProtocolService : INukeProtocolService
             {
                 if (File.Exists(path))
                 {
-                    // Only clear attributes when needed — skip a syscall on normal files.
-                    var attributes = File.GetAttributes(path);
-                    if ((attributes & FileAttributes.ReadOnly) != 0)
+                    var fileInfo = new FileInfo(path);
+                    var fileSize = fileInfo.Length;
+
+                    if (useRecycleBin)
                     {
-                        File.SetAttributes(path, FileAttributes.Normal);
+                        MoveToStaging(path, stagingDir!, isDirectory: false);
                     }
-                    File.Delete(path);
+                    else
+                    {
+                        // Only clear attributes when needed — skip a syscall on normal files.
+                        var attributes = File.GetAttributes(path);
+                        if ((attributes & FileAttributes.ReadOnly) != 0)
+                        {
+                            File.SetAttributes(path, FileAttributes.Normal);
+                        }
+                        File.Delete(path);
+                    }
+
+                    deletedFiles++;
+                    freedBytes += fileSize;
+                    deletedPaths.Add(path);
                 }
                 else if (Directory.Exists(path))
                 {
-                    AggressiveObliterate(path);
+                    // Count files and size before deletion
+                    var (fileCount, totalSize) = CountDirectoryContents(path);
+
+                    if (useRecycleBin)
+                    {
+                        MoveToStaging(path, stagingDir!, isDirectory: true);
+                    }
+                    else
+                    {
+                        AggressiveObliterate(path);
+                    }
+
+                    deletedFiles += fileCount;
+                    freedBytes += totalSize;
+                    deletedPaths.Add(path);
                 }
                 else
                 {
+                    skippedFiles++;
                     continue; // ghost path
-                } 
-                
-                
+                }
+
+
                 InvalidateCacheBatch(new List<string> { path });
 
                 processedNodes++;
@@ -161,19 +212,303 @@ public class NukeProtocolService : INukeProtocolService
             catch (Exception ex)
             {
                 Console.WriteLine($"[NUKE ERROR] Failed to Nuke {path}: {ex.Message}");
+                skippedFiles++;
             }
         }
 
         // Invalidate everything we removed in a single cache pass, then persist to disk ONCE.
-        InvalidateCacheBatch(nukedPaths);
+        InvalidateCacheBatch(deletedPaths);
+
+        // Push to undo stack
+        if (deletedPaths.Count > 0)
+        {
+            var operation = new NukeOperation(
+                OperationId: operationId,
+                ExecutedAt: DateTime.UtcNow,
+                OriginalPaths: new List<string>(paths),
+                DeletedPaths: new List<string>(deletedPaths),
+                UsedRecycleBin: useRecycleBin
+            );
+            PushUndo(operation);
+        }
 
         if (aborted)
         {
             await _hubContext.Clients.All.SendAsync("NukeAborted", "OPERATION ABORTED BY USER");
-            return new NukeResultDto { Message = "PARTIAL NUKE: ABORTED" };
         }
 
-        return new NukeResultDto { Message = "CARPET BOMBING COMPLETE" };
+        return new NukeResultDto
+        {
+            DeletedFiles = deletedFiles,
+            FreedBytes = freedBytes,
+            FreedFormatted = FormatSize(freedBytes),
+            SkippedFiles = skippedFiles,
+            RecycleBinUsed = useRecycleBin,
+            Recoverable = useRecycleBin && deletedPaths.Count > 0,
+            OperationId = operationId
+        };
+    }
+
+    // ──────────────────────────────────────────────
+    //  Staging Directory (Recoverable Delete)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Moves a file or directory to the staging area, preserving its original
+    /// path structure so it can be restored later.
+    /// </summary>
+    private void MoveToStaging(string originalPath, string stagingDir, bool isDirectory)
+    {
+        // Preserve the full path inside staging so we know where to restore.
+        // e.g. "C:/projects/old" → "{stagingDir}/C/projects/old"
+        var relativePath = originalPath
+            .Replace(":", "_DRIVE_")   // "C:" → "C_DRIVE_"
+            .Replace("\\", "/");
+
+        var destination = Path.Combine(stagingDir, relativePath);
+        var destinationDir = Path.GetDirectoryName(destination);
+
+        if (!string.IsNullOrEmpty(destinationDir))
+            Directory.CreateDirectory(destinationDir);
+
+        if (isDirectory)
+        {
+            // Clear read-only attributes before moving
+            var dir = new DirectoryInfo(originalPath);
+            foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
+            {
+                info.Attributes = FileAttributes.Normal;
+            }
+            dir.Attributes = FileAttributes.Normal;
+
+            Directory.Move(originalPath, destination);
+        }
+        else
+        {
+            var attributes = File.GetAttributes(originalPath);
+            if ((attributes & FileAttributes.ReadOnly) != 0)
+            {
+                File.SetAttributes(originalPath, FileAttributes.Normal);
+            }
+            File.Move(originalPath, destination);
+        }
+    }
+
+    /// <summary>
+    /// Restores files from the staging directory back to their original paths.
+    /// </summary>
+    private (int restoredCount, int failedCount) RestoreFromStaging(NukeOperation operation)
+    {
+        var stagingDir = Path.Combine(StagingRoot, operation.OperationId);
+        int restored = 0;
+        int failed = 0;
+
+        if (!Directory.Exists(stagingDir))
+        {
+            Console.WriteLine($"[UNDO] Staging directory not found: {stagingDir}");
+            return (0, operation.DeletedPaths.Count);
+        }
+
+        foreach (var originalPath in operation.DeletedPaths)
+        {
+            try
+            {
+                var relativePath = originalPath
+                    .Replace(":", "_DRIVE_")
+                    .Replace("\\", "/");
+
+                var stagedPath = Path.Combine(stagingDir, relativePath);
+
+                if (Directory.Exists(stagedPath))
+                {
+                    // Ensure parent directory exists
+                    var parentDir = Path.GetDirectoryName(originalPath);
+                    if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
+                        Directory.CreateDirectory(parentDir);
+
+                    Directory.Move(stagedPath, originalPath);
+                    restored++;
+                }
+                else if (File.Exists(stagedPath))
+                {
+                    var parentDir = Path.GetDirectoryName(originalPath);
+                    if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
+                        Directory.CreateDirectory(parentDir);
+
+                    File.Move(stagedPath, originalPath);
+                    restored++;
+                }
+                else
+                {
+                    Console.WriteLine($"[UNDO] Staged item not found: {stagedPath}");
+                    failed++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UNDO ERROR] Failed to restore {originalPath}: {ex.Message}");
+                failed++;
+            }
+        }
+
+        // Clean up staging directory for this operation
+        try
+        {
+            if (Directory.Exists(stagingDir))
+                Directory.Delete(stagingDir, true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[UNDO] Failed to clean staging directory: {ex.Message}");
+        }
+
+        return (restored, failed);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Undo Stack
+    // ──────────────────────────────────────────────
+
+    private void PushUndo(NukeOperation operation)
+    {
+        lock (_undoLock)
+        {
+            // Enforce max capacity — drop oldest if at limit
+            if (_undoStack.Count >= MaxUndoEntries)
+            {
+                // Convert to list, remove bottom, rebuild stack
+                var items = _undoStack.ToList();
+                items.Reverse(); // Stack.ToList() gives newest-first — reverse to get chronological order
+                
+                // Remove oldest and clean up its staging directory
+                var oldest = items[0];
+                CleanupStagingForOperation(oldest);
+                items.RemoveAt(0);
+
+                _undoStack.Clear();
+                foreach (var item in items)
+                    _undoStack.Push(item);
+            }
+
+            _undoStack.Push(operation);
+        }
+    }
+
+    public NukeOperation? PeekUndo()
+    {
+        lock (_undoLock)
+        {
+            return _undoStack.Count > 0 ? _undoStack.Peek() : null;
+        }
+    }
+
+    public NukeResultDto? UndoLastNuke()
+    {
+        NukeOperation operation;
+
+        lock (_undoLock)
+        {
+            if (_undoStack.Count == 0)
+                return null;
+
+            operation = _undoStack.Pop();
+        }
+
+        if (!operation.UsedRecycleBin)
+        {
+            // Can't undo permanent deletes — push it back and return null marker
+            lock (_undoLock)
+            {
+                _undoStack.Push(operation);
+            }
+            return new NukeResultDto
+            {
+                DeletedFiles = 0,
+                FreedBytes = 0,
+                FreedFormatted = "0 B",
+                SkippedFiles = 0,
+                RecycleBinUsed = false,
+                Recoverable = false,
+                OperationId = operation.OperationId
+            };
+        }
+
+        var (restoredCount, failedCount) = RestoreFromStaging(operation);
+
+        // Invalidate cache for restored paths so the scanner picks up the restored files
+        InvalidateCacheBatch(operation.DeletedPaths);
+
+        return new NukeResultDto
+        {
+            DeletedFiles = restoredCount,       // reusing field — "restored files" in undo context
+            FreedBytes = 0,
+            FreedFormatted = "0 B",
+            SkippedFiles = failedCount,
+            RecycleBinUsed = true,
+            Recoverable = false,                // no longer recoverable after undo
+            OperationId = operation.OperationId
+        };
+    }
+
+    public void ClearUndoStack()
+    {
+        lock (_undoLock)
+        {
+            // Clean up all staging directories
+            foreach (var operation in _undoStack)
+            {
+                CleanupStagingForOperation(operation);
+            }
+            _undoStack.Clear();
+        }
+    }
+
+    private void CleanupStagingForOperation(NukeOperation operation)
+    {
+        if (!operation.UsedRecycleBin) return;
+
+        try
+        {
+            var stagingDir = Path.Combine(StagingRoot, operation.OperationId);
+            if (Directory.Exists(stagingDir))
+                Directory.Delete(stagingDir, true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[UNDO] Failed to clean staging for {operation.OperationId}: {ex.Message}");
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Existing Helpers (unchanged)
+    // ──────────────────────────────────────────────
+
+    private (int fileCount, long totalSize) CountDirectoryContents(string path)
+    {
+        int count = 0;
+        long size = 0;
+
+        try
+        {
+            var options = new EnumerationOptions
+            {
+                IgnoreInaccessible = true,
+                RecurseSubdirectories = true,
+                ReturnSpecialDirectories = false
+            };
+
+            foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", options))
+            {
+                count++;
+                size += file.Length;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NUKE] Failed to count directory {path}: {ex.Message}");
+        }
+
+        return (count, size);
     }
 
     private void AggressiveObliterate(string targetPath)
@@ -250,6 +585,14 @@ public class NukeProtocolService : INukeProtocolService
         }
 
         return string.Format("{0:n1} {1}", number, suffixes[counter]);
+    }
+
+    public List<NukeOperation> GetUndoHistory()
+    {
+        lock (_undoLock)
+        {
+            return _undoStack.ToList();
+        }
     }
 
     public void TriggerNukeAbort()

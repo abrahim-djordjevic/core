@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
+import 'package:gs_analyzer_ui/models/nuke_result.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
@@ -58,23 +59,61 @@ class ApiService {
     }
   }
 
-  Future<bool> executeNuke(List<String> paths) async {
+  Future<NukeResultDto> executeNuke(List<String> paths, {bool useRecycleBin = false}) async {
     final uri = Uri.parse('$nukeUrl/execute');
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
 
-    final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(paths));
+    final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode({
+      'paths': paths,
+      'useRecycleBin': useRecycleBin
+    }));
 
     if(response.statusCode == 200) {
       final jsonBody = json.decode(response.body);
 
       if (jsonBody['success'] == true) {
-        return true;
+        return NukeResultDto.fromJson(jsonBody['data']);
       } else {
         throw Exception(jsonBody['message']);
       }
     } else {
       throw Exception('Nuke Failed: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<NukeResultDto> undoNuke() async {
+    final uri = Uri.parse('$nukeUrl/undo');
+    final response = await http.post(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = json.decode(response.body);
+      if (jsonBody['success'] == true) {
+        return NukeResultDto.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else if (response.statusCode == 409) {
+      throw Exception('PERMANENT_DELETE');
+    } else {
+      throw Exception('Undo Failed: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<List<NukeOperation>> getUndoHistory() async {
+    final uri = Uri.parse('$nukeUrl/undo/history');
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = json.decode(response.body);
+      if (jsonBody['success'] == true) {
+        List<dynamic> data = jsonBody['data'];
+        return data.map((json) => NukeOperation.fromJson(json)).toList();
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Failed to load undo history: ${response.statusCode} - ${response.body}');
     }
   }
 

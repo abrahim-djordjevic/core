@@ -9,6 +9,7 @@ import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/widgets/file_type_analyzer_panel.dart';
+import 'package:gs_analyzer_ui/widgets/undo_history_panel.dart';
 
 class StorageScreen extends ConsumerWidget {
   const StorageScreen({Key? key}) : super(key: key);
@@ -61,6 +62,7 @@ class StorageScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const UndoHistoryPanel(),
               ],
             ),
           )
