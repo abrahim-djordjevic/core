@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
+import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 
 class ApiService {
@@ -318,4 +320,28 @@ class ApiService {
     return false;
     }
   }
+
+  Future<AgeHeatmapResult> getAgeHeatmap(String root) async {
+    final uri = Uri.parse('$storageUrl/scan/ageheatmap')
+        .replace(queryParameters: {'root': root});
+
+    print('MATRIX BRIDGE: Requesting Age Heatmap for $root');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 409) {
+      throw AgeHeatmapNoScanException();
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'AgeHeatmap fetch failed [${response.statusCode}]: ${response.body}',
+      );
+    }
+
+    return AgeHeatmapResult.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
 }
+

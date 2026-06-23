@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/_directory_search_widget.dart';
+import 'package:gs_analyzer_ui/widgets/age_heatmap_overlay.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
 import 'package:gs_analyzer_ui/widgets/drive_telemetry_widget.dart';
 import 'package:gs_analyzer_ui/widgets/go_up_row_widget.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_hud_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import '../providers/drive_stats_provider.dart';
 import '../providers/navigation_provider.dart';
@@ -115,6 +117,31 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             ],
           ),
           if (currentMode == StorageMode.diskAnalyzer) ...[
+            // FILE AGE HEATMAP toggle
+            Consumer(
+              builder: (context, ref, _) {
+                final isHeatmapOn = ref.watch(ageHeatmapEnabledProvider);
+                return TextButton.icon(
+                  icon: Icon(
+                    isHeatmapOn ? Icons.thermostat : Icons.thermostat_outlined,
+                    color: isHeatmapOn ? HudTheme.accentAmber : HudTheme.textDim,
+                    size: 18,
+                  ),
+                  label: Text(
+                    'AGE MAP',
+                    style: HudTheme.bodyText.copyWith(
+                      color: isHeatmapOn ? HudTheme.accentAmber : HudTheme.textDim,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  onPressed: () {
+                    ref.read(ageHeatmapEnabledProvider.notifier).state = !isHeatmapOn;
+                  },
+                );
+              },
+            ),
             PopupMenuButton<dynamic>(
               icon: const Icon(Icons.sort_outlined),
               tooltip: 'Sort Option',
@@ -263,8 +290,12 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
         ),
       );
     }
+    final isHeatmapOn = ref.watch(ageHeatmapEnabledProvider);
+
     return Column(
       children: [
+        // Age Heatmap overlay (legend + summary) — shown when toggle is on
+        if (isHeatmapOn) const AgeHeatmapOverlay(),
         DirectoryTableHeader(),
         if (dirState.currentPath != 'C:/' && dirState.searchQuery.isEmpty) GoUpRowWidget(),
         Expanded(

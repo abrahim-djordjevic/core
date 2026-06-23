@@ -5,6 +5,8 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'dart:math';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/widgets/age_heatmap_overlay.dart';
+import '../providers/age_heatmap_provider.dart';
 import '../providers/directory_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -162,6 +164,21 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
       );
     }
 
+    // ── Heatmap overlay lookup ──
+    final heatmapEnabled = ref.watch(ageHeatmapEnabledProvider);
+    String? nodeBucket;
+    if (heatmapEnabled) {
+      final currentPath = ref.watch(directoryProvider).currentPath;
+      final heatmapAsync = ref.watch(ageHeatmapProvider(currentPath));
+      final normalizedNodePath = widget.node.path.replaceAll('\\', '/').toLowerCase();
+      heatmapAsync.whenData((result) {
+        final match = result.lookupByPath[normalizedNodePath];
+        if (match != null) nodeBucket = match.ageBucket;
+      });
+    }
+    final Color? heatmapColor = nodeBucket != null ? bucketColor(nodeBucket!) : null;
+    final bool showReviewBadge = nodeBucket == 'stale' && isDir && widget.node.sizeBytes > 1073741824;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -173,6 +190,23 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
             decoration: HudTheme.listItemDecoration,
             child: Row(
               children: [
+                // Left color bar (heatmap overlay)
+                if (heatmapColor != null)
+                  Container(
+                    width: 4,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: heatmapColor,
+                      borderRadius: BorderRadius.circular(2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: heatmapColor.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
                 // Checkbox for select
                 if(ref.watch(directoryProvider).isSelectionMode)
                   Checkbox(
@@ -188,7 +222,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   flex: 4,
                   child: Row(
                     children: [
-                      const SizedBox(width: 32),
+                      if (heatmapColor == null) const SizedBox(width: 32),
                       Icon(
                         isDir ? Icons.folder : Icons.insert_drive_file_outlined,
                         color: isDir ? HudTheme.accentAmber : HudTheme.accentGreen,
@@ -202,6 +236,27 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // ⚠ REVIEW badge for stale directories > 1 GB
+                      if (showReviewBadge)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: HudTheme.accentAmber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: HudTheme.accentAmber.withValues(alpha: 0.4)),
+                          ),
+                          child: const Text(
+                            '⚠ REVIEW',
+                            style: TextStyle(
+                              fontFamily: HudTheme.fontCore,
+                              color: HudTheme.accentAmber,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -218,12 +273,14 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   flex: 2,
                   child: HudLabel(widget.node.type)
                 ),
-                // SIZE Column
+                // SIZE Column — colored by bucket when heatmap is active
                 Expanded(
                   flex: 2,
                   child: Text(
                     formatBytes(widget.node.sizeBytes),
-                    style: HudTheme.statGreen.copyWith(color: HudTheme.accentCyan),
+                    style: HudTheme.statGreen.copyWith(
+                      color: heatmapColor ?? HudTheme.accentCyan,
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),

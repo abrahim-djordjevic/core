@@ -354,5 +354,36 @@ namespace GSInteractiveDeviceAnalyzer.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("scan/ageheatmap")]
+        public IActionResult GetAgeHeatmap(
+            [FromQuery] string root,
+            [FromServices] IAgeHeatmapEngine heatmap)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+                return BadRequest(new
+                {
+                    error = "ROOT_REQUIRED",
+                    message = "root query parameter is required."
+                });
+
+            if (!Directory.Exists(root))
+                return BadRequest(new
+                {
+                    error = "DRIVE_NOT_FOUND",
+                    message = $"Root path '{root}' does not exist or is not accessible."
+                });
+
+            var result = heatmap.Analyze(root);
+
+            if (result is null)
+                return Conflict(new
+                {
+                    error = "NO_SCAN_CACHED",
+                    message = "No scan result found for this root. Run a Directory scan first."
+                });
+
+            return Ok(result);
+        }
     }
 }
