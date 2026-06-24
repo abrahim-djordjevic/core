@@ -266,12 +266,13 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   child: Text(
                     widget.node.lastModified.toString().split('.')[0],
                     style: HudTheme.bodyText,
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 // TYPE Column
                 Expanded(
                   flex: 2,
-                  child: HudLabel(widget.node.type)
+                  child: Center(child: HudLabel(widget.node.type))
                 ),
                 // SIZE Column — colored by bucket when heatmap is active
                 Expanded(
@@ -281,19 +282,21 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                     style: HudTheme.statGreen.copyWith(
                       color: heatmapColor ?? HudTheme.accentCyan,
                     ),
-                    textAlign: TextAlign.right,
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 // ACTION Column
                 Expanded(
                   flex: 1,
-                  child: IconButton(
-                    icon: Icon(
-                      isDir ? Icons.folder_delete_outlined : Icons.delete_forever_outlined,
-                      color: HudTheme.accentRed,
-                      size: 20,
+                  child: Center(
+                    child: IconButton(
+                      icon: Icon(
+                        isDir ? Icons.folder_delete_outlined : Icons.delete_forever_outlined,
+                        color: HudTheme.accentRed,
+                        size: 20,
+                      ),
+                      onPressed: () => widget.onNuke(widget.node.name, widget.node.path),
                     ),
-                    onPressed: () => widget.onNuke(widget.node.name, widget.node.path),
                   ),
                 ),
               ],

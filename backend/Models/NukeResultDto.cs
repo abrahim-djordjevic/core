@@ -1,9 +1,15 @@
-﻿namespace GSInteractiveDeviceAnalyzer.Models
+namespace GSInteractiveDeviceAnalyzer.Models
 {
     public class NukeResultDto
     {
-        public string Message { get; set; } = string.Empty;
-        public string Path { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
+        public int DeletedFiles { get; set; }
+        public long FreedBytes { get; set; }
+        public string FreedFormatted { get; set; } = string.Empty;
+        public long StagedBytes { get; set; }
+        public string StagedFormatted { get; set; } = string.Empty;
+        public int SkippedFiles { get; set; }
+        public bool RecycleBinUsed { get; set; }
+        public bool Recoverable { get; set; }
+        public string OperationId { get; set; } = string.Empty;
     }
 }

@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import '../widgets/nuke_preview_dialog.dart';
 import '../widgets/nuke_progress_dialog.dart';
+import '../widgets/undo_history_panel.dart';
 
 Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath, List<String>? customPath, VoidCallback? onComplete}) async {
   final dirState = ref.read(directoryProvider);
@@ -24,13 +25,13 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
   ref.invalidate(nukeCompletedProvider);
   ref.invalidate(nukeTargetProvider);
 
-  final confirmExecute = await showDialog<bool>(
+  final previewResult = await showDialog<NukePreviewResult>(
     context: context,
     barrierDismissible: false,
     builder: (context) => NukePreviewDialog(targetPaths: targetsToNuke),
   );
 
-  if (confirmExecute != true) {
+  if (previewResult == null || !previewResult.confirmed) {
     print('MATRIX: Nuke Sequence Aborted by System Administrator at Preview');
     return;
   }
@@ -44,7 +45,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
   final masterNavigator = Navigator.of(context, rootNavigator: true);
   try {
     final api = ApiService();
-    bool allSuccess = await api.executeNuke(targetsToNuke);
+    final result = await api.executeNuke(targetsToNuke, previewResult.planToken, useRecycleBin: previewResult.useRecycleBin);
 
     masterNavigator.pop();
 
@@ -64,16 +65,56 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
 
     ref.invalidate(rootTreeProvider);
     ref.read(drivesProvider.notifier).refresh();
+    ref.invalidate(undoHistoryProvider);
 
-    snackbarKey.currentState?.showSnackBar(SnackBar(
-      behavior: SnackBarBehavior.floating,
-      content: Text(
-        allSuccess ? (isBulk ? 'ALL TARGET NUKED SUCCESSFULLY' : 'TARGET NUKED SUCCESSFULLY') : 'PARTIAL NUKE: Some Files were Locked',
-        style: TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold,),
-      ),
-      backgroundColor: allSuccess ? HudTheme.accentGreen : HudTheme.accentAmber,
-    ),
-    );
+    if (result.recycleBinUsed) {
+      snackbarKey.currentState?.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 15), 
+        content: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${result.stagedFormatted} MOVED TO RECYCLE BIN',
+              style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold),
+            ),
+            TextButton(
+              onPressed: () async {
+                snackbarKey.currentState?.hideCurrentSnackBar();
+                try {
+                  final undoResult = await api.undoNuke();
+                  snackbarKey.currentState?.showSnackBar(SnackBar(
+                    content: Text('RESTORED ${undoResult.deletedFiles} FILES', style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold)),
+                    backgroundColor: HudTheme.accentGreen,
+                  ));
+                  // Refresh directory view
+                  ref.invalidate(rootTreeProvider);
+                  ref.read(drivesProvider.notifier).refresh();
+                  final currentPath = ref.read(directoryProvider).currentPath;
+                  await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
+                } catch (e) {
+                  snackbarKey.currentState?.showSnackBar(SnackBar(
+                    content: Text('UNDO FAILED: $e', style: const TextStyle(fontFamily: HudTheme.fontCore)),
+                    backgroundColor: HudTheme.accentRed,
+                  ));
+                }
+              },
+              child: const Text('[UNDO]', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        backgroundColor: HudTheme.accentAmber,
+      ));
+    } else {
+      snackbarKey.currentState?.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          '${result.freedFormatted} PERMANENTLY DELETED',
+          style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold,),
+        ),
+        backgroundColor: HudTheme.accentGreen,
+      ));
+    }
   } catch (e) {
     masterNavigator.pop();
     snackbarKey.currentState?.showSnackBar(SnackBar(content: Text('ERROR: $e', style: TextStyle(fontFamily: HudTheme.fontCore),), backgroundColor: HudTheme.accentRed));

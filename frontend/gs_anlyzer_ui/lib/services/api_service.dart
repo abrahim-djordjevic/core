@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
+import 'package:gs_analyzer_ui/models/nuke_result.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
@@ -9,6 +10,9 @@ import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 
 class ApiService {
+  final http.Client _client;
+  ApiService([http.Client? client]) : _client = client ?? http.Client();
+
   static  const String storageUrl = 'http://localhost:5200/api/storage';
   static const String telemetryUrl = 'http://localhost:5200/api/Telemetry';
   static const String nukeUrl = 'http://localhost:5200/api/nuke';
@@ -21,7 +25,7 @@ class ApiService {
     final uri = Uri.parse('$storageUrl/scan');
     print('MATRIX BRIDGE FIRING TO: $uri (root: $path)');
 
-    final response = await http.post(
+    final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'Root': path}),
@@ -43,7 +47,7 @@ class ApiService {
   }
 
   Future<DriveStats> getDriveTelemetry(String driveLetter) async {
-    final response = await http.get(Uri.parse('$storageUrl/drive-stats?driveLetter=$driveLetter'));
+    final response = await _client.get(Uri.parse('$storageUrl/drive-stats?driveLetter=$driveLetter'));
 
     if(response.statusCode == 200) {
       final jsonBody = json.decode(response.body);
@@ -58,18 +62,22 @@ class ApiService {
     }
   }
 
-  Future<bool> executeNuke(List<String> paths) async {
+  Future<NukeResultDto> executeNuke(List<String> paths, String planToken, {bool useRecycleBin = false}) async {
     final uri = Uri.parse('$nukeUrl/execute');
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
 
-    final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(paths));
+    final response = await _client.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode({
+      'paths': paths,
+      'planToken': planToken,
+      'useRecycleBin': useRecycleBin
+    }));
 
     if(response.statusCode == 200) {
       final jsonBody = json.decode(response.body);
 
       if (jsonBody['success'] == true) {
-        return true;
+        return NukeResultDto.fromJson(jsonBody['data']);
       } else {
         throw Exception(jsonBody['message']);
       }
@@ -78,10 +86,52 @@ class ApiService {
     }
   }
 
+  Future<NukeResultDto> undoNuke([String? operationId]) async {
+    final uriStr = operationId != null ? '$nukeUrl/undo/$operationId' : '$nukeUrl/undo';
+    final uri = Uri.parse(uriStr);
+    final response = await _client.post(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = json.decode(response.body);
+      if (jsonBody['success'] == true) {
+        return NukeResultDto.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Undo Failed: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<List<NukeOperation>> getUndoHistory() async {
+    final uri = Uri.parse('$nukeUrl/undo/history');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = json.decode(response.body);
+      if (jsonBody['success'] == true) {
+        List<dynamic> data = jsonBody['data'];
+        return data.map((json) => NukeOperation.fromJson(json)).toList();
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Failed to load undo history: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<void> clearUndoStack() async {
+    final uri = Uri.parse('$nukeUrl/undo');
+    final response = await _client.delete(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to clear undo stack');
+    }
+  }
+
   Future<void> abortNuke() async {
     try {
       print('SENDING NUKE ABORT SIGNAL....');
-      await http.post(Uri.parse('$nukeUrl/abort'));
+      await _client.post(Uri.parse('$nukeUrl/abort'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -90,7 +140,7 @@ class ApiService {
   Future<void> abortScan() async {
     try {
       print('SENDING SCAN ABORT SIGNAL...');
-      await http.post(Uri.parse('$storageUrl/abort-scan'));
+      await _client.post(Uri.parse('$storageUrl/abort-scan'));
     } catch (e) {
       print('Failed to send abort signal: $e');
     }
@@ -100,7 +150,7 @@ class ApiService {
     final uri = Uri.parse('$telemetryUrl/ram/kill');
     print('INITIATING ASSASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
-    final response = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
+    final response = await _client.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
 
     if(response.statusCode == 200) {
       return true;
@@ -112,7 +162,7 @@ class ApiService {
   Future<void> startRamRadar() async {
     final uri = Uri.parse('$telemetryUrl/ram/start');
     try {
-      final response = await http.post(uri);
+      final response = await _client.post(uri);
       if (response.statusCode == 200) {
         print('FLUTTER COMMAND: RAM Radar Started Successfully!');
       }
@@ -124,7 +174,7 @@ class ApiService {
   Future<void> startCpuRadar() async {
     final uri = Uri.parse('$telemetryUrl/cpu-load');
     try {
-      final response = await http.get(uri);
+      final response = await _client.get(uri);
       if (response.statusCode == 200) {
         print('FLUTTER COMMAND: CPU Radar Started Successfully!');
       } else {
@@ -139,14 +189,14 @@ class ApiService {
     final uri = Uri.parse('$storageUrl/stream-sector').replace(queryParameters: {
       'path': path
     });
-    await http.post(uri);
+    await _client.post(uri);
   }
 
   Future<List<dynamic>> scanForDuplicates(String path) async {
     final uri = Uri.parse('$storageUrl/duplicates');
     print('INITIATING DUPLICATE HUNTER ON: $uri (root: $path)');
 
-    final response = await http.post(
+    final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'Root': path}),
@@ -176,7 +226,7 @@ class ApiService {
 
     print('INITIATING LARGE FILE HUNTER ON: $uri');
 
-    final response = await http.get(uri);
+    final response = await _client.get(uri);
 
     if (response.statusCode == 200) {
       final jsonBody = jsonDecode(response.body);
@@ -196,7 +246,7 @@ class ApiService {
     print('MATRIX BRIDGE: Requesting Instant Thermal Snapshot...');
 
     try {
-      final response = await http.get(uri);
+      final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
         final jsonBody = jsonDecode(response.body);
@@ -221,7 +271,7 @@ class ApiService {
     final uri = Uri.parse('$nukeUrl/preview');
     print('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETTs');
 
-    final response = await http.post(
+    final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'paths': paths}),
@@ -242,7 +292,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> getSettings() async {
     try {
-      final response = await http.get(Uri.parse(settingsUrl));
+      final response = await _client.get(Uri.parse(settingsUrl));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
       print('[API] Settings Fetch Error: $e');
@@ -252,7 +302,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> saveSettings(Map<String, dynamic> payload) async {
     try {
-      final response = await http.post(Uri.parse(settingsUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+      final response = await _client.post(Uri.parse(settingsUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
       return jsonDecode(response.body);
     } catch (e) {
       return {'success': false, 'message': 'Network Error'};
@@ -261,7 +311,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> resetSettings() async {
     try {
-      final response = await http.post(Uri.parse('$settingsUrl/reset'));
+      final response = await _client.post(Uri.parse('$settingsUrl/reset'));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
       print('[API] Reset Error: $e');
@@ -271,7 +321,7 @@ class ApiService {
 
   Future<List<dynamic>?> getDrives() async {
     try {
-      final response = await http.get(Uri.parse(driveUrl));
+      final response = await _client.get(Uri.parse(driveUrl));
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -289,7 +339,7 @@ class ApiService {
   final uri = Uri.parse('$storageUrl/scan/filetypes')
       .replace(queryParameters: {'root': root});
 
-  final response = await http.get(uri);
+  final response = await _client.get(uri);
 
   if (response.statusCode == 409) {
     throw FileTypeNoScanException();
@@ -308,7 +358,7 @@ class ApiService {
 
   Future<bool> clearCache() async {
   try {
-    final response = await http.post(Uri.parse('$settingsUrl/cache/clear'));
+    final response = await _client.post(Uri.parse('$settingsUrl/cache/clear'));
     if (response.statusCode == 200) {
       print('[API] Cache cleared successfully.');
       return true;
@@ -327,7 +377,7 @@ class ApiService {
 
     print('MATRIX BRIDGE: Requesting Age Heatmap for $root');
 
-    final response = await http.get(uri);
+    final response = await _client.get(uri);
 
     if (response.statusCode == 409) {
       throw AgeHeatmapNoScanException();
@@ -344,4 +394,5 @@ class ApiService {
     );
   }
 }
+
 
