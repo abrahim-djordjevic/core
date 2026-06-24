@@ -434,4 +434,45 @@ public class DiskScannerEngine : IDiskScannerEngine
             Console.WriteLine($"Error deleting item: {ex.Message}");
         }
     }
+
+    public void InvalidatePaths(IEnumerable<string> paths)
+    {
+        var nukedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var parentsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var subtreePrefixes = new List<string>();
+
+        foreach (var path in paths)
+        {
+            var normalizedPath = Path.GetFullPath(path);
+            nukedSet.Add(normalizedPath);
+
+            subtreePrefixes.Add(
+                normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString())
+                    ? normalizedPath
+                    : normalizedPath + Path.DirectorySeparatorChar);
+
+            var parent = Path.GetDirectoryName(normalizedPath);
+            while (!string.IsNullOrEmpty(parent))
+            {
+                parentsToRemove.Add(parent);
+                parent = Path.GetDirectoryName(parent);
+            }
+        }
+
+        if (nukedSet.Count == 0) return;
+
+        var keysToRemove = DirectorySizeCache.Keys
+            .Where(k =>
+                nukedSet.Contains(k) ||
+                parentsToRemove.Contains(k) ||
+                subtreePrefixes.Any(prefix => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        foreach (var key in keysToRemove)
+        {
+            DirectorySizeCache.TryRemove(key, out _);
+        }
+
+        SaveMemoryToDisk();
+    }
 }

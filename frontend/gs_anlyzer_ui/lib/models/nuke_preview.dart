@@ -18,12 +18,14 @@ class NukePreviewResponse {
   final int totalFiles;
   final int totalBytes;
   final String totalFormatted;
+  final String planToken;
   final List<NukePathBreakdown> breakdown;
 
   NukePreviewResponse({
     required this.totalFiles,
     required this.totalBytes,
     required this.totalFormatted,
+    required this.planToken,
     required this.breakdown,
 });
 
@@ -31,6 +33,11 @@ class NukePreviewResponse {
     var list = json['breakdown'] as List? ?? [];
     List<NukePathBreakdown> breakdownList = list.map((e) => NukePathBreakdown.fromJson(e)).toList();
 
-    return NukePreviewResponse(totalFiles: json['totalFiles'] ?? 0, totalBytes: json['totalBytes'] ?? 0, totalFormatted: json['totalFormatted'] ?? '', breakdown: breakdownList);
+    return NukePreviewResponse(
+        totalFiles: json['totalFiles'] ?? 0, 
+        totalBytes: json['totalBytes'] ?? 0, 
+        totalFormatted: json['totalFormatted'] ?? '', 
+        planToken: json['planToken'] ?? '',
+        breakdown: breakdownList);
   }
 }

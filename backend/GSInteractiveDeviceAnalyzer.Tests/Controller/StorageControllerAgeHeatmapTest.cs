@@ -17,11 +17,6 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Controllers
             return new StorageController(diskService.Object, duplicateDetector.Object);
         }
 
-        /// <summary>
-        /// GetAgeHeatmap checks Directory.Exists before it calls Analyze.
-        /// We need a real directory that exists on disk so the controller
-        /// doesn't short-circuit with 400. Use the temp folder.
-        /// </summary>
         private static string ExistingRoot => Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar);
 
         [Fact]

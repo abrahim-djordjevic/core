@@ -79,13 +79,22 @@ public class NukeController : ControllerBase
     }
 
     [HttpDelete("execute")]
-    public async Task<IActionResult> NukeNode([FromBody] List<string> paths, [FromServices] IDriveDetectionService driveService)
+    public async Task<IActionResult> NukeNode([FromBody] NukeExecuteRequest request, [FromServices] IDriveDetectionService driveService)
     {
         try
         {
+            if (request == null || request.Paths == null || request.Paths.Count == 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Nuke failed: No target paths were specified."
+                });
+            }
+
             var readyDrives = driveService.GetReadyDrives();
 
-            foreach (var path in paths)
+            foreach (var path in request.Paths)
             {
                 var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
                 if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
@@ -102,7 +111,13 @@ public class NukeController : ControllerBase
                     return BadRequest(new ApiResponse<object>
                         { Success = false, Message = "CRITICAL OS FILES PROTECTED." });
             }
-            var result = await _nukeService.ObliterateNodeAsync(paths);
+
+            if (string.IsNullOrWhiteSpace(request.PlanToken))
+            {
+                throw new UnauthorizedAccessException("Execution requires a valid Dry-Run planToken.");
+            }
+
+            var result = await _nukeService.ObliterateNodeAsync(request.Paths, request.PlanToken, request.UseRecycleBin);
 
             var response = new ApiResponse<NukeResultDto>
             {
@@ -121,12 +136,12 @@ public class NukeController : ControllerBase
                 Message = ex.Message
             });
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
             return StatusCode(403, new ApiResponse<object>
             {
                 Success = false,
-                Message = "ACCESS DENIED: OS level restricted"
+                Message = string.IsNullOrEmpty(ex.Message) || ex.Message == "Attempted to perform an unauthorized operation." ? "ACCESS DENIED: OS level restricted" : ex.Message
             });
         }
         catch (Exception ex)
@@ -148,6 +163,79 @@ public class NukeController : ControllerBase
         {
             Success = true,
             Message = "Abort Signal received. Brakes applied."
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    //  Undo Endpoints
+    // ──────────────────────────────────────────────
+
+    [HttpGet("undo/peek")]
+    public IActionResult PeekUndo()
+    {
+        var operation = _nukeService.PeekUndo();
+
+        if (operation is null)
+        {
+            return NotFound(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "No undoable operations in the stack."
+            });
+        }
+
+        return Ok(new ApiResponse<NukeOperation>
+        {
+            Success = true,
+            Message = "Most recent undoable operation.",
+            Data = operation
+        });
+    }
+
+    [HttpGet("undo/history")]
+    public IActionResult GetUndoHistory()
+    {
+        var history = _nukeService.GetUndoHistory();
+
+        return Ok(new ApiResponse<IEnumerable<NukeOperation>>
+        {
+            Success = true,
+            Message = "Undo history retrieved.",
+            Data = history
+        });
+    }
+
+    [HttpPost("undo/{operationId?}")]
+    public IActionResult UndoNuke(string? operationId = null)
+    {
+        var result = _nukeService.UndoNuke(operationId);
+
+        if (result is null)
+        {
+            return NotFound(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "No undoable operations in the stack."
+            });
+        }
+
+        return Ok(new ApiResponse<NukeResultDto>
+        {
+            Success = true,
+            Message = "Undo completed — files restored to original locations.",
+            Data = result
+        });
+    }
+
+    [HttpDelete("undo")]
+    public IActionResult ClearUndoStack()
+    {
+        _nukeService.ClearUndoStack();
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Undo stack cleared."
         });
     }
 }

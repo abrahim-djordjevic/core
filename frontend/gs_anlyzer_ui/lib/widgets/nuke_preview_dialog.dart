@@ -3,19 +3,29 @@ import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
+class NukePreviewResult {
+  final bool confirmed;
+  final bool useRecycleBin;
+  final String planToken;
+
+  NukePreviewResult({required this.confirmed, required this.useRecycleBin, required this.planToken});
+}
+
 class NukePreviewDialog extends StatefulWidget {
+  final ApiService apiService;
   final List<String> targetPaths;
-  const NukePreviewDialog({super.key, required this.targetPaths});
+  NukePreviewDialog({super.key, required this.targetPaths, ApiService? apiService}) : apiService = apiService ?? ApiService();
 
   @override
   State<NukePreviewDialog> createState() => _NukePreviewDialogState();
 }
 
 class _NukePreviewDialogState extends State<NukePreviewDialog> {
-  final ApiService _api = ApiService();
+  late final ApiService _api = widget.apiService;
   NukePreviewResponse? _preview;
   bool _isLoading = true;
   String? _error;
+  bool _useRecycleBin = false;
 
   @override
   void initState() {
@@ -58,7 +68,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
       content: SizedBox(width: 500, child: _buildContent()),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: false, useRecycleBin: false, planToken: '')),
           child: const Text('ABORT', style: TextStyle(color: Colors.white70)),
         ),
         if(!_isLoading && _error == null)
@@ -67,8 +77,8 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
               backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
               side: const BorderSide(color: HudTheme.accentRed),
             ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('EXECUTE NUKE', style: TextStyle(color: HudTheme.accentRed, fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: true, useRecycleBin: _useRecycleBin, planToken: _preview!.planToken)),
+            child: Text(_useRecycleBin ? 'MOVE TO RECYCLE BIN' : 'EXECUTE NUKE', style: const TextStyle(color: HudTheme.accentRed, fontWeight: FontWeight.bold)),
           )
       ],
     );
@@ -132,6 +142,46 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
             },
           ),
         ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('MOVE TO RECYCLE BIN', style: TextStyle(color: Colors.white, fontFamily: HudTheme.fontCore)),
+              Switch(
+                value: _useRecycleBin,
+                activeColor: HudTheme.accentAmber,
+                onChanged: (val) => setState(() => _useRecycleBin = val),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _useRecycleBin ? HudTheme.accentAmber.withValues(alpha: 0.1) : HudTheme.accentRed.withValues(alpha: 0.1),
+            border: Border.all(color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            _useRecycleBin 
+                ? 'FILES WILL BE RECOVERABLE FROM YOUR SYSTEM RECYCLE BIN' 
+                : '⚠ THIS CANNOT BE UNDONE — FILES WILL BE PERMANENTLY DELETED',
+            style: TextStyle(
+              color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              fontFamily: HudTheme.fontCore,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -147,3 +197,4 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
     );
   }
 }
+
