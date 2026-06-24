@@ -15,7 +15,8 @@ final undoHistoryProvider = FutureProvider.autoDispose<List<NukeOperation>>((ref
 });
 
 class UndoHistoryPanel extends ConsumerStatefulWidget {
-  const UndoHistoryPanel({super.key});
+  final ApiService apiService;
+  UndoHistoryPanel({super.key, ApiService? apiService}) : apiService = apiService ?? ApiService();
 
   @override
   ConsumerState<UndoHistoryPanel> createState() => _UndoHistoryPanelState();
@@ -64,7 +65,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                         icon: const Icon(Icons.delete_forever, color: HudTheme.accentRed, size: 20),
                         tooltip: 'Empty Recycle Bin',
                         onPressed: () async {
-                          final api = ApiService();
+                          final api = widget.apiService;
                           await api.clearUndoStack();
                           ref.invalidate(undoHistoryProvider);
                           ref.read(drivesProvider.notifier).refresh();
@@ -135,7 +136,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
   }
 
   Future<void> _handleUndo(String operationId) async {
-    final api = ApiService();
+    final api = widget.apiService;
     try {
       final undoResult = await api.undoNuke(operationId);
       snackbarKey.currentState?.showSnackBar(SnackBar(
@@ -158,3 +159,4 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
     }
   }
 }
+

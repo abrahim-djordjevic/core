@@ -62,7 +62,7 @@ class StorageScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const UndoHistoryPanel(),
+                UndoHistoryPanel(),
               ],
             ),
           )

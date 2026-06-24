@@ -12,15 +12,16 @@ class NukePreviewResult {
 }
 
 class NukePreviewDialog extends StatefulWidget {
+  final ApiService apiService;
   final List<String> targetPaths;
-  const NukePreviewDialog({super.key, required this.targetPaths});
+  NukePreviewDialog({super.key, required this.targetPaths, ApiService? apiService}) : apiService = apiService ?? ApiService();
 
   @override
   State<NukePreviewDialog> createState() => _NukePreviewDialogState();
 }
 
 class _NukePreviewDialogState extends State<NukePreviewDialog> {
-  final ApiService _api = ApiService();
+  late final ApiService _api = widget.apiService;
   NukePreviewResponse? _preview;
   bool _isLoading = true;
   String? _error;
@@ -196,3 +197,4 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
     );
   }
 }
+

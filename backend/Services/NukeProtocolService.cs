@@ -28,13 +28,7 @@ public class NukeProtocolService : INukeProtocolService
     // Cache of active plan tokens to their normalized paths (TTL 15 mins)
     private readonly MemoryCache _activePlanTokens = new MemoryCache(new MemoryCacheOptions());
 
-    public NukeProtocolService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
-    {
-        _scanner = scanner;
-        _hubContext = hubContext;
 
-        Task.Run(() => CleanupOrphanedStagingDirs());
-    }
 
     public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
     {
