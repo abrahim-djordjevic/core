@@ -59,13 +59,14 @@ class ApiService {
     }
   }
 
-  Future<NukeResultDto> executeNuke(List<String> paths, {bool useRecycleBin = false}) async {
+  Future<NukeResultDto> executeNuke(List<String> paths, String planToken, {bool useRecycleBin = false}) async {
     final uri = Uri.parse('$nukeUrl/execute');
 
     print("INITIATING NUKE PROTOCOL ON: $uri");
 
     final response = await http.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode({
       'paths': paths,
+      'planToken': planToken,
       'useRecycleBin': useRecycleBin
     }));
 

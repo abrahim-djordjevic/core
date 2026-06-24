@@ -6,8 +6,9 @@ import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 class NukePreviewResult {
   final bool confirmed;
   final bool useRecycleBin;
+  final String planToken;
 
-  NukePreviewResult({required this.confirmed, required this.useRecycleBin});
+  NukePreviewResult({required this.confirmed, required this.useRecycleBin, required this.planToken});
 }
 
 class NukePreviewDialog extends StatefulWidget {
@@ -66,7 +67,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
       content: SizedBox(width: 500, child: _buildContent()),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: false, useRecycleBin: false)),
+          onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: false, useRecycleBin: false, planToken: '')),
           child: const Text('ABORT', style: TextStyle(color: Colors.white70)),
         ),
         if(!_isLoading && _error == null)
@@ -75,7 +76,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
               backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
               side: const BorderSide(color: HudTheme.accentRed),
             ),
-            onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: true, useRecycleBin: _useRecycleBin)),
+            onPressed: () => Navigator.of(context).pop(NukePreviewResult(confirmed: true, useRecycleBin: _useRecycleBin, planToken: _preview!.planToken)),
             child: Text(_useRecycleBin ? 'MOVE TO RECYCLE BIN' : 'EXECUTE NUKE', style: const TextStyle(color: HudTheme.accentRed, fontWeight: FontWeight.bold)),
           )
       ],

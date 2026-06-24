@@ -24,9 +24,6 @@
     <PackageReference Include="System.Management" Version="10.0.8" />
   </ItemGroup>
 
-  <!-- Recycle Bin API (Microsoft.VisualBasic.FileIO) — Windows only -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
-  </ItemGroup>
+
 
 </Project>

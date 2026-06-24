@@ -44,7 +44,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
   final masterNavigator = Navigator.of(context, rootNavigator: true);
   try {
     final api = ApiService();
-    final result = await api.executeNuke(targetsToNuke, useRecycleBin: previewResult.useRecycleBin);
+    final result = await api.executeNuke(targetsToNuke, previewResult.planToken, useRecycleBin: previewResult.useRecycleBin);
 
     masterNavigator.pop();
 
@@ -73,7 +73,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${result.freedFormatted} MOVED TO RECYCLE BIN',
+              '${result.stagedFormatted} MOVED TO RECYCLE BIN',
               style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold),
             ),
             TextButton(

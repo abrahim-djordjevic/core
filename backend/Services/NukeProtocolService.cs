@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -23,15 +24,15 @@ public class NukeProtocolService : INukeProtocolService
     private readonly object _undoLock = new();
     private const int MaxUndoEntries = 5;
 
-    // Staging directory for recoverable deletes
-    private static readonly string StagingRoot = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "GSAnalyzer", "nuke_trash");
+    // Cache of active plan tokens to their normalized paths
+    private readonly ConcurrentDictionary<string, HashSet<string>> _activePlanTokens = new();
 
     public NukeProtocolService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
     {
         _scanner = scanner;
         _hubContext = hubContext;
+
+        Task.Run(() => CleanupOrphanedStagingDirs());
     }
 
     public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
@@ -103,13 +104,39 @@ public class NukeProtocolService : INukeProtocolService
 
             response.TotalFormatted = FormatSize(response.TotalBytes);
 
+            var planToken = Guid.NewGuid().ToString("N");
+            response.PlanToken = planToken;
+
+            var normalizedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var p in paths) {
+                normalizedPaths.Add(Path.GetFullPath(p));
+            }
+            _activePlanTokens.TryAdd(planToken, normalizedPaths);
+
             return response;
 
         }, cancellationToken);
     }
 
-    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, bool useRecycleBin = false)
+    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false)
     {
+        if (string.IsNullOrWhiteSpace(planToken) || !_activePlanTokens.TryGetValue(planToken, out var validPaths))
+        {
+            throw new UnauthorizedAccessException("Execution requires a valid Dry-Run planToken.");
+        }
+
+        foreach(var path in paths)
+        {
+            var normalizedPath = Path.GetFullPath(path);
+            if (!validPaths.Contains(normalizedPath))
+            {
+                throw new UnauthorizedAccessException($"Path '{path}' was not part of the previewed plan.");
+            }
+        }
+
+        // Remove the token so it can't be reused
+        _activePlanTokens.TryRemove(planToken, out _);
+
         var totalNodes = paths.Count;
         var processedNodes = 0;
         var cancelToken = _scanner.NukeToken();
@@ -121,15 +148,13 @@ public class NukeProtocolService : INukeProtocolService
         // Counters for the new result shape
         int deletedFiles = 0;
         long freedBytes = 0;
+        long stagedBytes = 0;
         int skippedFiles = 0;
         var deletedPaths = new List<string>();
         var aborted = false;
 
         // Generate a unique operation ID for undo tracking
-        var operationId = $"nuke-{DateTime.UtcNow:yyyy-MM-ddTHH-mm-ss}";
-        var stagingDir = useRecycleBin
-            ? Path.Combine(StagingRoot, operationId)
-            : null;
+        var operationId = $"nuke-{Guid.NewGuid():N}";
 
         foreach (var path in paths)
         {
@@ -148,7 +173,7 @@ public class NukeProtocolService : INukeProtocolService
 
                     if (useRecycleBin)
                     {
-                        MoveToStaging(path, stagingDir!, isDirectory: false);
+                        MoveToStaging(path, operationId, isDirectory: false);
                     }
                     else
                     {
@@ -162,7 +187,8 @@ public class NukeProtocolService : INukeProtocolService
                     }
 
                     deletedFiles++;
-                    freedBytes += fileSize;
+                    if (useRecycleBin) stagedBytes += fileSize;
+                    else freedBytes += fileSize;
                     deletedPaths.Add(path);
                 }
                 else if (Directory.Exists(path))
@@ -172,7 +198,7 @@ public class NukeProtocolService : INukeProtocolService
 
                     if (useRecycleBin)
                     {
-                        MoveToStaging(path, stagingDir!, isDirectory: true);
+                        MoveToStaging(path, operationId, isDirectory: true);
                     }
                     else
                     {
@@ -180,7 +206,8 @@ public class NukeProtocolService : INukeProtocolService
                     }
 
                     deletedFiles += fileCount;
-                    freedBytes += totalSize;
+                    if (useRecycleBin) stagedBytes += totalSize;
+                    else freedBytes += totalSize;
                     deletedPaths.Add(path);
                 }
                 else
@@ -189,8 +216,6 @@ public class NukeProtocolService : INukeProtocolService
                     continue; // ghost path
                 }
 
-
-                InvalidateCacheBatch(new List<string> { path });
 
                 processedNodes++;
 
@@ -242,6 +267,8 @@ public class NukeProtocolService : INukeProtocolService
             DeletedFiles = deletedFiles,
             FreedBytes = freedBytes,
             FreedFormatted = FormatSize(freedBytes),
+            StagedBytes = stagedBytes,
+            StagedFormatted = FormatSize(stagedBytes),
             SkippedFiles = skippedFiles,
             RecycleBinUsed = useRecycleBin,
             Recoverable = useRecycleBin && deletedPaths.Count > 0,
@@ -257,8 +284,11 @@ public class NukeProtocolService : INukeProtocolService
     /// Moves a file or directory to the staging area, preserving its original
     /// path structure so it can be restored later.
     /// </summary>
-    private void MoveToStaging(string originalPath, string stagingDir, bool isDirectory)
+    private void MoveToStaging(string originalPath, string operationId, bool isDirectory)
     {
+        var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+        var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operationId);
+
         // Preserve the full path inside staging so we know where to restore.
         // e.g. "C:/projects/old" → "{stagingDir}/C/projects/old"
         var relativePath = originalPath
@@ -273,13 +303,19 @@ public class NukeProtocolService : INukeProtocolService
 
         if (isDirectory)
         {
-            // Clear read-only attributes before moving
+            // Clear only read-only attributes before moving, preserving others
             var dir = new DirectoryInfo(originalPath);
             foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
             {
-                info.Attributes = FileAttributes.Normal;
+                if ((info.Attributes & FileAttributes.ReadOnly) != 0)
+                {
+                    info.Attributes &= ~FileAttributes.ReadOnly;
+                }
             }
-            dir.Attributes = FileAttributes.Normal;
+            if ((dir.Attributes & FileAttributes.ReadOnly) != 0)
+            {
+                dir.Attributes &= ~FileAttributes.ReadOnly;
+            }
 
             Directory.Move(originalPath, destination);
         }
@@ -288,31 +324,24 @@ public class NukeProtocolService : INukeProtocolService
             var attributes = File.GetAttributes(originalPath);
             if ((attributes & FileAttributes.ReadOnly) != 0)
             {
-                File.SetAttributes(originalPath, FileAttributes.Normal);
+                File.SetAttributes(originalPath, attributes & ~FileAttributes.ReadOnly);
             }
             File.Move(originalPath, destination);
         }
     }
 
-    /// <summary>
-    /// Restores files from the staging directory back to their original paths.
-    /// </summary>
     private (int restoredCount, int failedCount) RestoreFromStaging(NukeOperation operation)
     {
-        var stagingDir = Path.Combine(StagingRoot, operation.OperationId);
         int restored = 0;
         int failed = 0;
-
-        if (!Directory.Exists(stagingDir))
-        {
-            Console.WriteLine($"[UNDO] Staging directory not found: {stagingDir}");
-            return (0, operation.DeletedPaths.Count);
-        }
 
         foreach (var originalPath in operation.DeletedPaths)
         {
             try
             {
+                var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+                var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operation.OperationId);
+
                 var relativePath = originalPath
                     .Replace(":", "_DRIVE_")
                     .Replace("\\", "/");
@@ -326,7 +355,8 @@ public class NukeProtocolService : INukeProtocolService
                     if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                         Directory.CreateDirectory(parentDir);
 
-                    Directory.Move(stagedPath, originalPath);
+                    var finalPath = GetUniqueRestorePath(originalPath);
+                    Directory.Move(stagedPath, finalPath);
                     restored++;
                 }
                 else if (File.Exists(stagedPath))
@@ -335,7 +365,8 @@ public class NukeProtocolService : INukeProtocolService
                     if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                         Directory.CreateDirectory(parentDir);
 
-                    File.Move(stagedPath, originalPath);
+                    var finalPath = GetUniqueRestorePath(originalPath);
+                    File.Move(stagedPath, finalPath);
                     restored++;
                 }
                 else
@@ -352,17 +383,46 @@ public class NukeProtocolService : INukeProtocolService
         }
 
         // Clean up staging directory for this operation
-        try
+        var drives = operation.OriginalPaths
+            .Select(p => Path.GetPathRoot(p))
+            .Where(r => !string.IsNullOrEmpty(r))
+            .Distinct();
+
+        foreach (var drive in drives)
         {
-            if (Directory.Exists(stagingDir))
-                Directory.Delete(stagingDir, true);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[UNDO] Failed to clean staging directory: {ex.Message}");
+            var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
+            try
+            {
+                if (Directory.Exists(stagingDir))
+                    Directory.Delete(stagingDir, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UNDO] Failed to clean staging directory {stagingDir}: {ex.Message}");
+            }
         }
 
         return (restored, failed);
+    }
+
+    private string GetUniqueRestorePath(string originalPath)
+    {
+        if (!File.Exists(originalPath) && !Directory.Exists(originalPath))
+            return originalPath;
+
+        var directory = Path.GetDirectoryName(originalPath) ?? string.Empty;
+        var name = Path.GetFileNameWithoutExtension(originalPath);
+        var ext = Path.GetExtension(originalPath);
+
+        int count = 1;
+        while (true)
+        {
+            var newName = $"{name}_Restored_{count}{ext}";
+            var newPath = Path.Combine(directory, newName);
+            if (!File.Exists(newPath) && !Directory.Exists(newPath))
+                return newPath;
+            count++;
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -398,39 +458,32 @@ public class NukeProtocolService : INukeProtocolService
     {
         lock (_undoLock)
         {
-            return _undoStack.Count > 0 ? _undoStack.Peek() : null;
+            return _undoStack.FirstOrDefault(op => op.UsedRecycleBin);
         }
     }
 
     public NukeResultDto? UndoLastNuke()
     {
-        NukeOperation operation;
+        NukeOperation operation = null;
 
         lock (_undoLock)
         {
             if (_undoStack.Count == 0)
                 return null;
 
-            operation = _undoStack.Pop();
-        }
+            var items = _undoStack.ToList();
+            var targetIndex = items.FindIndex(op => op.UsedRecycleBin);
 
-        if (!operation.UsedRecycleBin)
-        {
-            // Can't undo permanent deletes — push it back and return null marker
-            lock (_undoLock)
-            {
-                _undoStack.Push(operation);
-            }
-            return new NukeResultDto
-            {
-                DeletedFiles = 0,
-                FreedBytes = 0,
-                FreedFormatted = "0 B",
-                SkippedFiles = 0,
-                RecycleBinUsed = false,
-                Recoverable = false,
-                OperationId = operation.OperationId
-            };
+            if (targetIndex == -1)
+                return null;
+
+            operation = items[targetIndex];
+            items.RemoveAt(targetIndex);
+
+            _undoStack.Clear();
+            items.Reverse();
+            foreach (var item in items)
+                _undoStack.Push(item);
         }
 
         var (restoredCount, failedCount) = RestoreFromStaging(operation);
@@ -443,6 +496,8 @@ public class NukeProtocolService : INukeProtocolService
             DeletedFiles = restoredCount,       // reusing field — "restored files" in undo context
             FreedBytes = 0,
             FreedFormatted = "0 B",
+            StagedBytes = 0,
+            StagedFormatted = "0 B",
             SkippedFiles = failedCount,
             RecycleBinUsed = true,
             Recoverable = false,                // no longer recoverable after undo
@@ -467,15 +522,23 @@ public class NukeProtocolService : INukeProtocolService
     {
         if (!operation.UsedRecycleBin) return;
 
-        try
+        var drives = operation.OriginalPaths
+            .Select(p => Path.GetPathRoot(p))
+            .Where(r => !string.IsNullOrEmpty(r))
+            .Distinct();
+
+        foreach (var drive in drives)
         {
-            var stagingDir = Path.Combine(StagingRoot, operation.OperationId);
-            if (Directory.Exists(stagingDir))
-                Directory.Delete(stagingDir, true);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[UNDO] Failed to clean staging for {operation.OperationId}: {ex.Message}");
+            var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
+            try
+            {
+                if (Directory.Exists(stagingDir))
+                    Directory.Delete(stagingDir, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UNDO] Failed to clean staging {stagingDir} for {operation.OperationId}: {ex.Message}");
+            }
         }
     }
 
@@ -598,5 +661,75 @@ public class NukeProtocolService : INukeProtocolService
     public void TriggerNukeAbort()
     {
         _scanner.TriggerNukeAbort();
+    }
+
+    // ──────────────────────────────────────────────
+    //  Startup Cleanup
+    // ──────────────────────────────────────────────
+
+    private void CleanupOrphanedStagingDirs()
+    {
+        long totalFreed = 0;
+
+        // 1. Clean up old StagingRoot (AppData) if it exists
+        try
+        {
+            var oldStagingRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "GSAnalyzer", "nuke_trash");
+
+            if (Directory.Exists(oldStagingRoot))
+            {
+                totalFreed += GetDirectorySize(oldStagingRoot);
+                Directory.Delete(oldStagingRoot, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NUKE STARTUP] Failed to clean old staging root: {ex.Message}");
+        }
+
+        // 2. Clean up per-volume .gsanalyzer_trash
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            if (!drive.IsReady) continue;
+
+            try
+            {
+                var stagingDir = Path.Combine(drive.RootDirectory.FullName, ".gsanalyzer_trash");
+                if (Directory.Exists(stagingDir))
+                {
+                    totalFreed += GetDirectorySize(stagingDir);
+                    Directory.Delete(stagingDir, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NUKE STARTUP] Failed to clean staging dir on {drive.Name}: {ex.Message}");
+            }
+        }
+
+        if (totalFreed > 0)
+        {
+            Console.WriteLine($"[NUKE STARTUP] Cleaned up {FormatSize(totalFreed)} of orphaned nuke trash.");
+        }
+    }
+
+    private long GetDirectorySize(string path)
+    {
+        long size = 0;
+        try
+        {
+            var dirInfo = new DirectoryInfo(path);
+            foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                size += file.Length;
+            }
+        }
+        catch 
+        {
+            // Ignore access issues during size calculation
+        }
+        return size;
     }
 }

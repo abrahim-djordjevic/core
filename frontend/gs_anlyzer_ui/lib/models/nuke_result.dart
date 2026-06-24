@@ -28,6 +28,8 @@ class NukeResultDto {
   final int deletedFiles;
   final int freedBytes;
   final String freedFormatted;
+  final int stagedBytes;
+  final String stagedFormatted;
   final int skippedFiles;
   final bool recycleBinUsed;
   final bool recoverable;
@@ -37,6 +39,8 @@ class NukeResultDto {
     required this.deletedFiles,
     required this.freedBytes,
     required this.freedFormatted,
+    required this.stagedBytes,
+    required this.stagedFormatted,
     required this.skippedFiles,
     required this.recycleBinUsed,
     required this.recoverable,
@@ -48,6 +52,8 @@ class NukeResultDto {
       deletedFiles: json['deletedFiles'] ?? 0,
       freedBytes: json['freedBytes'] ?? 0,
       freedFormatted: json['freedFormatted'] ?? '',
+      stagedBytes: json['stagedBytes'] ?? 0,
+      stagedFormatted: json['stagedFormatted'] ?? '',
       skippedFiles: json['skippedFiles'] ?? 0,
       recycleBinUsed: json['recycleBinUsed'] ?? false,
       recoverable: json['recoverable'] ?? false,

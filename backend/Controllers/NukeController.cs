@@ -111,7 +111,17 @@ public class NukeController : ControllerBase
                     return BadRequest(new ApiResponse<object>
                         { Success = false, Message = "CRITICAL OS FILES PROTECTED." });
             }
-            var result = await _nukeService.ObliterateNodeAsync(request.Paths, request.UseRecycleBin);
+
+            if (string.IsNullOrWhiteSpace(request.PlanToken))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Execution requires a valid Dry-Run planToken."
+                });
+            }
+
+            var result = await _nukeService.ObliterateNodeAsync(request.Paths, request.PlanToken, request.UseRecycleBin);
 
             var response = new ApiResponse<NukeResultDto>
             {
@@ -130,12 +140,12 @@ public class NukeController : ControllerBase
                 Message = ex.Message
             });
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
             return StatusCode(403, new ApiResponse<object>
             {
                 Success = false,
-                Message = "ACCESS DENIED: OS level restricted"
+                Message = string.IsNullOrEmpty(ex.Message) || ex.Message == "Attempted to perform an unauthorized operation." ? "ACCESS DENIED: OS level restricted" : ex.Message
             });
         }
         catch (Exception ex)
