@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import '../widgets/nuke_preview_dialog.dart';
 import '../widgets/nuke_progress_dialog.dart';
+import '../widgets/undo_history_panel.dart';
 
 Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? fileName, String? filePath, List<String>? customPath, VoidCallback? onComplete}) async {
   final dirState = ref.read(directoryProvider);
@@ -64,11 +65,12 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
 
     ref.invalidate(rootTreeProvider);
     ref.read(drivesProvider.notifier).refresh();
+    ref.invalidate(undoHistoryProvider);
 
     if (result.recycleBinUsed) {
       snackbarKey.currentState?.showSnackBar(SnackBar(
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(days: 365), // practically persistent
+        duration: const Duration(seconds: 15), 
         content: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -92,7 +94,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
                   await ref.read(directoryProvider.notifier).scanDirectory(currentPath);
                 } catch (e) {
                   snackbarKey.currentState?.showSnackBar(SnackBar(
-                    content: Text(e.toString() == 'Exception: PERMANENT_DELETE' ? 'CANNOT UNDO — FILES PERMANENTLY DELETED' : 'UNDO FAILED: $e', style: const TextStyle(fontFamily: HudTheme.fontCore)),
+                    content: Text('UNDO FAILED: $e', style: const TextStyle(fontFamily: HudTheme.fontCore)),
                     backgroundColor: HudTheme.accentRed,
                   ));
                 }

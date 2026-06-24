@@ -13,7 +13,7 @@ namespace GSInteractiveDeviceAnalyzer.Interfaces
 
         // Undo stack operations
         NukeOperation? PeekUndo();
-        NukeResultDto? UndoLastNuke();
+        NukeResultDto? UndoNuke(string? operationId = null);
         List<NukeOperation> GetUndoHistory();
         void ClearUndoStack();
     }

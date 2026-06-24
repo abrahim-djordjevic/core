@@ -1,148 +1,250 @@
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
-using Microsoft.AspNetCore.SignalR;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSInteractiveDeviceAnalyzer.Hubs;
+using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSInteractiveDeviceAnalyzer.Services;
+using Microsoft.AspNetCore.SignalR;
+using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests;
+namespace GSInteractiveDeviceAnalyzer.Tests.Services;
 
 public class NukeProtocolServiceTests : IDisposable
 {
-    private readonly string _sandboxRoot;
-    private readonly NukeProtocolService _service;
-    private readonly Mock<DiskScannerEngine> _mockScanner;
-    private readonly Mock<IHubContext<SystemHub>> _mockHub;
+    private readonly string _workDir;
+    private readonly string _stagingBase;
+    private readonly Mock<IDiskScannerEngine> _scanner = new();
 
     public NukeProtocolServiceTests()
     {
-        _sandboxRoot = Path.Combine(Path.GetTempPath(), $"NukeTest_{Guid.NewGuid()}");
-        Directory.CreateDirectory(_sandboxRoot);
+        _workDir = Path.Combine(Path.GetTempPath(), "gsnuke_work_" + Guid.NewGuid().ToString("N"));
+        _stagingBase = Path.Combine(Path.GetTempPath(), "gsnuke_stage_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_workDir);
+        Directory.CreateDirectory(_stagingBase);
 
-        _mockHub = new Mock<IHubContext<SystemHub>>();
-
-        // 1. Create the Settings Mock
-        var mockSettings = new Mock<ISettingService>();
-
-        // 2. 🚀 CRITICAL: Mock the 'Current' property so the base constructor doesn't throw a NullReferenceException if it reads from it!
-        mockSettings.Setup(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
-
-        // 3. 🚀 CRITICAL: Pass exactly 2 arguments to match the real constructor, avoiding the runtime MissingMethodException!
-        _mockScanner = new Mock<DiskScannerEngine>(_mockHub.Object, mockSettings.Object);
-
-        _service = new NukeProtocolService(_mockScanner.Object, _mockHub.Object);
+        _scanner.Setup(s => s.NukeToken()).Returns(CancellationToken.None);
+        _scanner.Setup(s => s.InvalidatePaths(It.IsAny<IEnumerable<string>>()));
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_sandboxRoot))
+        foreach (var d in new[] { _workDir, _stagingBase })
+            try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { /* ignore */ }
+    }
+
+    private NukeProtocolService CreateService()
+    {
+        var hub = new Mock<IHubContext<SystemHub>>();
+        var clients = new Mock<IHubClients>();
+        var proxy = new Mock<IClientProxy>();
+        clients.Setup(c => c.All).Returns(proxy.Object);
+        hub.Setup(h => h.Clients).Returns(clients.Object);
+        proxy.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+             .Returns(Task.CompletedTask);
+
+        return new NukeProtocolService(_scanner.Object, hub.Object, runStartupCleanup: false)
         {
-            Directory.Delete(_sandboxRoot, true);
-        }
+            StagingBaseResolver = _ => _stagingBase
+        };
+    }
+
+    private string NewFile(string content = "hello world")
+    {
+        var path = Path.Combine(_workDir, $"f_{Guid.NewGuid():N}.txt");
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    private static async Task<string> TokenFor(NukeProtocolService svc, params string[] paths)
+        => (await svc.PreviewNukeAsync(new List<string>(paths))).PlanToken;
+
+    [Fact]
+    public async Task Obliterate_EmptyToken_Throws()
+    {
+        var svc = CreateService();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => svc.ObliterateNodeAsync(new() { NewFile() }, "", useRecycleBin: false));
     }
 
     [Fact]
-    public async Task Preview_IsStrictlyReadOnly_DoesNotDeleteFiles()
+    public async Task Obliterate_UnknownToken_Throws()
     {
-        // Arrange
-        var testFile = Path.Combine(_sandboxRoot, "keep_me.txt");
-        await File.WriteAllTextAsync(testFile, "This data must survive.");
-        var paths = new List <string> { _sandboxRoot };
-
-        // Act
-        var result = await _service.PreviewNukeAsync(paths, CancellationToken.None);
-
-        // Assert
-        Assert.True(File.Exists(testFile), "The preview endpoint accidentally deleted a file!");
-        Assert.Equal(1, result.TotalFiles);
+        var svc = CreateService();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => svc.ObliterateNodeAsync(new() { NewFile() }, "not-a-real-token", useRecycleBin: false));
     }
 
     [Fact]
-    public async Task Preview_CorrectlySumsSizesrecursively_ForNestedDirectories()
+    public async Task Obliterate_PathNotInPlan_Throws_AndDoesNotDelete()
     {
-        // Arrange
-        var subFolder = Path.Combine(_sandboxRoot, "SubFolder");
-        var subsubFolder = Path.Combine(subFolder, "SubSubFolder");
-        Directory.CreateDirectory(subsubFolder);
+        var svc = CreateService();
+        var planned = NewFile();
+        var notPlanned = NewFile();
+        var token = await TokenFor(svc, planned); // token bound to `planned` only
 
-        var file1 = Path.Combine(subFolder, "file1.dat");
-        var file2 = Path.Combine(subsubFolder, "file2.dat");
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => svc.ObliterateNodeAsync(new() { planned, notPlanned }, token, useRecycleBin: false));
 
-        await File.WriteAllBytesAsync(file1, new byte[10]);
-        await File.WriteAllBytesAsync(file2, new byte[20]);
-
-        var paths = new List<string> { _sandboxRoot };
-
-        // Act
-        var result = await _service.PreviewNukeAsync(paths, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(2, result.TotalFiles);
-        Assert.Equal(30, result.TotalBytes);
+        Assert.True(File.Exists(planned)); // nothing deleted — validation runs first
+        Assert.True(File.Exists(notPlanned));
     }
 
     [Fact]
-    public async Task Preview_InaccesibleFiles_AreExcludedWithoutCrashing()
+    public async Task Obliterate_TokenIsSingleUse()
     {
-        // Arrange
-        var accessibleFile = Path.Combine(_sandboxRoot, "open.txt");
-        await File.WriteAllBytesAsync(accessibleFile, new byte[50]);
+        var svc = CreateService();
+        var file = NewFile();
+        var token = await TokenFor(svc, file);
 
-        var fakeRoute = Path.Combine(_sandboxRoot, "NonExistentSecureFolder");
+        await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true); // consumes token
 
-        var paths = new List<string> { _sandboxRoot, fakeRoute };
-
-        // Act
-        var result = await _service.PreviewNukeAsync(paths, CancellationToken.None);
-
-        // Assert: this should skip the fake file and count the open one only
-        Assert.Equal(1, result.TotalFiles);
-        Assert.Equal(50, result.TotalBytes);
-        
+        var file2 = NewFile();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => svc.ObliterateNodeAsync(new() { file2 }, token, useRecycleBin: true));
     }
 
-    [Theory]
-    [InlineData(0, "0.0 B")]
-    [InlineData(1024, "1.0 KB")]
-    [InlineData(5242880, "5.0 MB")]
-    public async Task Preview_TotalFormatted_MatchesTotalBytesInHumanReadableForm(long byteSize, string expectedFormat)
+    [Fact]
+    public async Task RecycleBin_Stages_SetsStagedBytes_AndIsRecoverable()
     {
-        // Arrange
-        if (byteSize > 0)
+        var svc = CreateService();
+        var file = NewFile("123456"); // 6 bytes
+        var token = await TokenFor(svc, file);
+
+        var result = await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+
+        Assert.False(File.Exists(file));
+        Assert.True(result.RecycleBinUsed);
+        Assert.True(result.Recoverable);
+        Assert.Equal(1, result.DeletedFiles);
+        Assert.Equal(6, result.StagedBytes);
+        Assert.Equal(0, result.FreedBytes);
+        Assert.NotNull(svc.PeekUndo()); // recoverable op is peekable
+        Assert.Single(svc.GetUndoHistory());
+    }
+
+    [Fact]
+    public async Task Permanent_Deletes_SetsFreedBytes_NotRecoverable_NotPeekable()
+    {
+        var svc = CreateService();
+        var file = NewFile("123456");
+        var token = await TokenFor(svc, file);
+
+        var result = await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: false);
+
+        Assert.False(File.Exists(file));
+        Assert.False(result.Recoverable);
+        Assert.Equal(6, result.FreedBytes);
+        Assert.Equal(0, result.StagedBytes);
+        Assert.Null(svc.PeekUndo()); // permanent op is filtered out of peek
+        Assert.Single(svc.GetUndoHistory()); // still recorded in history
+    }
+
+    [Fact]
+    public async Task GhostPath_IsSkipped()
+    {
+        var svc = CreateService();
+        var ghost = Path.Combine(_workDir, "does_not_exist.txt");
+        var token = await TokenFor(svc, ghost);
+
+        var result = await svc.ObliterateNodeAsync(new() { ghost }, token, useRecycleBin: false);
+
+        Assert.Equal(1, result.SkippedFiles);
+        Assert.Equal(0, result.DeletedFiles);
+    }
+
+    [Fact]
+    public async Task Undo_RestoresFile_ToOriginalPath()
+    {
+        var svc = CreateService();
+        var file = NewFile("payload");
+        var token = await TokenFor(svc, file);
+        await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+
+        var undo = svc.UndoNuke();
+
+        Assert.NotNull(undo);
+        Assert.Equal(1, undo!.DeletedFiles); // reused field = restored count
+        Assert.Equal(0, undo.SkippedFiles);
+        Assert.True(File.Exists(file));
+        Assert.Equal("payload", File.ReadAllText(file));
+        Assert.Null(svc.PeekUndo()); // op consumed
+    }
+
+    [Fact]
+    public async Task Undo_SkipsPermanentOnTop_RestoresRecoverableBeneath()
+    {
+        var svc = CreateService();
+        var recoverable = NewFile("keepme");
+        var permanent = NewFile("byebye");
+
+        var t1 = await TokenFor(svc, recoverable);
+        await svc.ObliterateNodeAsync(new() { recoverable }, t1, useRecycleBin: true); // op A (bottom)
+
+        var t2 = await TokenFor(svc, permanent);
+        await svc.ObliterateNodeAsync(new() { permanent }, t2, useRecycleBin: false); // op B (top, permanent)
+
+        var peeked = svc.PeekUndo();
+        Assert.NotNull(peeked);
+        Assert.True(peeked!.UsedRecycleBin); // skipped the permanent op
+
+        svc.UndoNuke();
+        Assert.True(File.Exists(recoverable)); // recoverable restored
+        Assert.False(File.Exists(permanent)); // permanent stays gone
+    }
+
+    [Fact]
+    public async Task Undo_RestoreCollision_RestoresToUniquePath()
+    {
+        var svc = CreateService();
+        var file = NewFile("original");
+        var token = await TokenFor(svc, file);
+        await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+
+        // Recreate a different file at the original path before undo
+        File.WriteAllText(file, "new occupant");
+
+        svc.UndoNuke();
+
+        Assert.Equal("new occupant", File.ReadAllText(file)); // current file untouched
+        var dir = Path.GetDirectoryName(file)!;
+        var name = Path.GetFileNameWithoutExtension(file);
+        var restored = Path.Combine(dir, $"{name}_Restored_1.txt");
+        Assert.True(File.Exists(restored));
+        Assert.Equal("original", File.ReadAllText(restored));
+    }
+
+    [Fact]
+    public async Task Clear_EmptiesStack_AndRemovesStaging()
+    {
+        var svc = CreateService();
+        var file = NewFile();
+        var token = await TokenFor(svc, file);
+        var result = await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+
+        svc.ClearUndoStack();
+
+        Assert.Empty(svc.GetUndoHistory());
+        Assert.False(Directory.Exists(Path.Combine(_stagingBase, ".gsanalyzer_trash", result.OperationId)));
+    }
+
+    [Fact]
+    public async Task UndoStack_CapsAtFive_EvictsOldest_AndCleansItsStaging()
+    {
+        var svc = CreateService();
+        string? oldestOpId = null;
+
+        for (int i = 0; i < 6; i++)
         {
-            var file = Path.Combine(_sandboxRoot, "format_test.dat");
-            await File.WriteAllBytesAsync(file, new byte[byteSize]);
+            var file = NewFile();
+            var token = await TokenFor(svc, file);
+            var result = await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+            oldestOpId ??= result.OperationId; // first one = oldest, should be evicted
         }
-        var paths = new List<string> { _sandboxRoot };
 
-        // Act
-        var result = await _service.PreviewNukeAsync(paths, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(expectedFormat, result.TotalFormatted);
-    }
-
-    [Fact]
-    public async Task Preview_EmptyPathsArray_ReturnsZeroTotals()
-    {
-        // Arrange 
-        var paths = new List<string>();
-
-        // Act
-        var result = await _service.PreviewNukeAsync(paths, CancellationToken.None);
-
-        // Assert (empty paths array returns zero totals)
-        Assert.Equal(0, result.TotalFiles);
-        Assert.Equal(0, result.TotalBytes);
-        Assert.Equal("0.0 B", result.TotalFormatted);
-        Assert.Empty(result.Breakdown);
+        Assert.Equal(5, svc.GetUndoHistory().Count);
+        Assert.False(Directory.Exists(Path.Combine(_stagingBase, ".gsanalyzer_trash", oldestOpId!)));
     }
 }

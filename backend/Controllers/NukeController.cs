@@ -114,11 +114,7 @@ public class NukeController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.PlanToken))
             {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Execution requires a valid Dry-Run planToken."
-                });
+                throw new UnauthorizedAccessException("Execution requires a valid Dry-Run planToken.");
             }
 
             var result = await _nukeService.ObliterateNodeAsync(request.Paths, request.PlanToken, request.UseRecycleBin);
@@ -209,12 +205,12 @@ public class NukeController : ControllerBase
         });
     }
 
-    [HttpPost("undo")]
-    public IActionResult UndoLastNuke()
+    [HttpPost("undo/{operationId?}")]
+    public IActionResult UndoNuke(string? operationId = null)
     {
-        var peeked = _nukeService.PeekUndo();
+        var result = _nukeService.UndoNuke(operationId);
 
-        if (peeked is null)
+        if (result is null)
         {
             return NotFound(new ApiResponse<object>
             {
@@ -222,18 +218,6 @@ public class NukeController : ControllerBase
                 Message = "No undoable operations in the stack."
             });
         }
-
-        if (!peeked.UsedRecycleBin)
-        {
-            return Conflict(new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Cannot undo: files were permanently deleted.",
-                Data = new { error = "PERMANENT_DELETE" }
-            });
-        }
-
-        var result = _nukeService.UndoLastNuke();
 
         return Ok(new ApiResponse<NukeResultDto>
         {

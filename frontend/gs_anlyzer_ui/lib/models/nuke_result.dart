@@ -4,6 +4,7 @@ class NukeOperation {
   final List<String> originalPaths;
   final List<String> deletedPaths;
   final bool usedRecycleBin;
+  final int deletedFiles;
 
   NukeOperation({
     required this.operationId,
@@ -11,6 +12,7 @@ class NukeOperation {
     required this.originalPaths,
     required this.deletedPaths,
     required this.usedRecycleBin,
+    required this.deletedFiles,
   });
 
   factory NukeOperation.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class NukeOperation {
       originalPaths: List<String>.from(json['originalPaths'] ?? []),
       deletedPaths: List<String>.from(json['deletedPaths'] ?? []),
       usedRecycleBin: json['usedRecycleBin'] ?? false,
+      deletedFiles: json['deletedFiles'] ?? 0,
     );
   }
 }

@@ -11,5 +11,6 @@ public record NukeOperation(
     DateTime ExecutedAt,
     List<string> OriginalPaths,
     List<string> DeletedPaths,
-    bool UsedRecycleBin
+    bool UsedRecycleBin,
+    int DeletedFiles
 );

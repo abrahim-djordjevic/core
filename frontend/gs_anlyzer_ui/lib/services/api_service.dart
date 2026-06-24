@@ -83,8 +83,9 @@ class ApiService {
     }
   }
 
-  Future<NukeResultDto> undoNuke() async {
-    final uri = Uri.parse('$nukeUrl/undo');
+  Future<NukeResultDto> undoNuke([String? operationId]) async {
+    final uriStr = operationId != null ? '$nukeUrl/undo?operationId=$operationId' : '$nukeUrl/undo';
+    final uri = Uri.parse(uriStr);
     final response = await http.post(uri);
 
     if (response.statusCode == 200) {
@@ -94,8 +95,6 @@ class ApiService {
       } else {
         throw Exception(jsonBody['message']);
       }
-    } else if (response.statusCode == 409) {
-      throw Exception('PERMANENT_DELETE');
     } else {
       throw Exception('Undo Failed: ${response.statusCode} - ${response.body}');
     }
@@ -115,6 +114,14 @@ class ApiService {
       }
     } else {
       throw Exception('Failed to load undo history: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<void> clearUndoStack() async {
+    final uri = Uri.parse('$nukeUrl/undo');
+    final response = await http.delete(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to clear undo stack');
     }
   }
 

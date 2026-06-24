@@ -49,7 +49,33 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                       Text('UNDO HISTORY', style: HudTheme.headerCyan.copyWith(color: HudTheme.accentCyan)),
                     ],
                   ),
-                  Icon(_isExpanded ? Icons.expand_less : Icons.expand_more, color: HudTheme.accentCyan),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.refresh, color: HudTheme.accentCyan, size: 20),
+                        onPressed: () {
+                          ref.invalidate(undoHistoryProvider);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever, color: HudTheme.accentRed, size: 20),
+                        tooltip: 'Empty Recycle Bin',
+                        onPressed: () async {
+                          final api = ApiService();
+                          await api.clearUndoStack();
+                          ref.invalidate(undoHistoryProvider);
+                          ref.read(drivesProvider.notifier).refresh();
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(_isExpanded ? Icons.expand_less : Icons.expand_more, color: HudTheme.accentCyan),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -71,7 +97,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                   itemBuilder: (context, index) {
                     final op = history[index];
                     final timeFormatted = DateFormat('HH:mm:ss').format(op.executedAt.toLocal());
-                    final targets = op.deletedPaths.length;
+                    final targets = op.deletedFiles;
                     
                     return ListTile(
                       title: Text('$targets ITEMS', style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -111,7 +137,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
   Future<void> _handleUndo(String operationId) async {
     final api = ApiService();
     try {
-      final undoResult = await api.undoNuke();
+      final undoResult = await api.undoNuke(operationId);
       snackbarKey.currentState?.showSnackBar(SnackBar(
         content: Text('RESTORED ${undoResult.deletedFiles} FILES', style: const TextStyle(fontFamily: HudTheme.fontCore, fontWeight: FontWeight.bold)),
         backgroundColor: HudTheme.accentGreen,
@@ -126,7 +152,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
       ref.invalidate(undoHistoryProvider);
     } catch (e) {
       snackbarKey.currentState?.showSnackBar(SnackBar(
-        content: Text(e.toString() == 'Exception: PERMANENT_DELETE' ? 'CANNOT UNDO — FILES PERMANENTLY DELETED' : 'UNDO FAILED: $e', style: const TextStyle(fontFamily: HudTheme.fontCore)),
+        content: Text('UNDO FAILED: $e', style: const TextStyle(fontFamily: HudTheme.fontCore)),
         backgroundColor: HudTheme.accentRed,
       ));
     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.IO;
+using Microsoft.Extensions.Caching.Memory;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -16,7 +17,7 @@ namespace GSInteractiveDeviceAnalyzer.Services;
 
 public class NukeProtocolService : INukeProtocolService
 {
-    private readonly DiskScannerEngine _scanner;
+    private readonly IDiskScannerEngine _scanner;
     private readonly IHubContext<SystemHub> _hubContext;
 
     // Session-scoped undo stack — max 5 entries, not persisted across restarts.
@@ -24,8 +25,8 @@ public class NukeProtocolService : INukeProtocolService
     private readonly object _undoLock = new();
     private const int MaxUndoEntries = 5;
 
-    // Cache of active plan tokens to their normalized paths
-    private readonly ConcurrentDictionary<string, HashSet<string>> _activePlanTokens = new();
+    // Cache of active plan tokens to their normalized paths (TTL 15 mins)
+    private readonly MemoryCache _activePlanTokens = new MemoryCache(new MemoryCacheOptions());
 
     public NukeProtocolService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
     {
@@ -111,7 +112,7 @@ public class NukeProtocolService : INukeProtocolService
             foreach(var p in paths) {
                 normalizedPaths.Add(Path.GetFullPath(p));
             }
-            _activePlanTokens.TryAdd(planToken, normalizedPaths);
+            _activePlanTokens.Set(planToken, normalizedPaths, TimeSpan.FromMinutes(15));
 
             return response;
 
@@ -120,7 +121,7 @@ public class NukeProtocolService : INukeProtocolService
 
     public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false)
     {
-        if (string.IsNullOrWhiteSpace(planToken) || !_activePlanTokens.TryGetValue(planToken, out var validPaths))
+        if (string.IsNullOrWhiteSpace(planToken) || !_activePlanTokens.TryGetValue(planToken, out HashSet<string> validPaths))
         {
             throw new UnauthorizedAccessException("Execution requires a valid Dry-Run planToken.");
         }
@@ -130,12 +131,12 @@ public class NukeProtocolService : INukeProtocolService
             var normalizedPath = Path.GetFullPath(path);
             if (!validPaths.Contains(normalizedPath))
             {
-                throw new UnauthorizedAccessException($"Path '{path}' was not part of the previewed plan.");
+                throw new UnauthorizedAccessException("Target path was not part of the previewed plan.");
             }
         }
 
         // Remove the token so it can't be reused
-        _activePlanTokens.TryRemove(planToken, out _);
+        _activePlanTokens.Remove(planToken);
 
         var totalNodes = paths.Count;
         var processedNodes = 0;
@@ -242,7 +243,7 @@ public class NukeProtocolService : INukeProtocolService
         }
 
         // Invalidate everything we removed in a single cache pass, then persist to disk ONCE.
-        InvalidateCacheBatch(deletedPaths);
+        _scanner.InvalidatePaths(deletedPaths);
 
         // Push to undo stack
         if (deletedPaths.Count > 0)
@@ -252,7 +253,8 @@ public class NukeProtocolService : INukeProtocolService
                 ExecutedAt: DateTime.UtcNow,
                 OriginalPaths: new List<string>(paths),
                 DeletedPaths: new List<string>(deletedPaths),
-                UsedRecycleBin: useRecycleBin
+                UsedRecycleBin: useRecycleBin,
+                DeletedFiles: deletedFiles
             );
             PushUndo(operation);
         }
@@ -276,14 +278,6 @@ public class NukeProtocolService : INukeProtocolService
         };
     }
 
-    // ──────────────────────────────────────────────
-    //  Staging Directory (Recoverable Delete)
-    // ──────────────────────────────────────────────
-
-    /// <summary>
-    /// Moves a file or directory to the staging area, preserving its original
-    /// path structure so it can be restored later.
-    /// </summary>
     private void MoveToStaging(string originalPath, string operationId, bool isDirectory)
     {
         var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
@@ -355,7 +349,7 @@ public class NukeProtocolService : INukeProtocolService
                     if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                         Directory.CreateDirectory(parentDir);
 
-                    var finalPath = GetUniqueRestorePath(originalPath);
+                    var finalPath = GetUniqueRestorePath(originalPath, isDirectory: true);
                     Directory.Move(stagedPath, finalPath);
                     restored++;
                 }
@@ -365,7 +359,7 @@ public class NukeProtocolService : INukeProtocolService
                     if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                         Directory.CreateDirectory(parentDir);
 
-                    var finalPath = GetUniqueRestorePath(originalPath);
+                    var finalPath = GetUniqueRestorePath(originalPath, isDirectory: false);
                     File.Move(stagedPath, finalPath);
                     restored++;
                 }
@@ -405,14 +399,14 @@ public class NukeProtocolService : INukeProtocolService
         return (restored, failed);
     }
 
-    private string GetUniqueRestorePath(string originalPath)
+    private string GetUniqueRestorePath(string originalPath, bool isDirectory)
     {
         if (!File.Exists(originalPath) && !Directory.Exists(originalPath))
             return originalPath;
 
         var directory = Path.GetDirectoryName(originalPath) ?? string.Empty;
-        var name = Path.GetFileNameWithoutExtension(originalPath);
-        var ext = Path.GetExtension(originalPath);
+        var name = isDirectory ? Path.GetFileName(originalPath) : Path.GetFileNameWithoutExtension(originalPath);
+        var ext = isDirectory ? "" : Path.GetExtension(originalPath);
 
         int count = 1;
         while (true)
@@ -424,10 +418,6 @@ public class NukeProtocolService : INukeProtocolService
             count++;
         }
     }
-
-    // ──────────────────────────────────────────────
-    //  Undo Stack
-    // ──────────────────────────────────────────────
 
     private void PushUndo(NukeOperation operation)
     {
@@ -462,9 +452,9 @@ public class NukeProtocolService : INukeProtocolService
         }
     }
 
-    public NukeResultDto? UndoLastNuke()
+    public NukeResultDto? UndoNuke(string? operationId = null)
     {
-        NukeOperation operation = null;
+        NukeOperation? operation = null;
 
         lock (_undoLock)
         {
@@ -472,7 +462,16 @@ public class NukeProtocolService : INukeProtocolService
                 return null;
 
             var items = _undoStack.ToList();
-            var targetIndex = items.FindIndex(op => op.UsedRecycleBin);
+            int targetIndex;
+
+            if (operationId != null)
+            {
+                targetIndex = items.FindIndex(op => op.OperationId == operationId && op.UsedRecycleBin);
+            }
+            else
+            {
+                targetIndex = items.FindIndex(op => op.UsedRecycleBin);
+            }
 
             if (targetIndex == -1)
                 return null;
@@ -489,7 +488,7 @@ public class NukeProtocolService : INukeProtocolService
         var (restoredCount, failedCount) = RestoreFromStaging(operation);
 
         // Invalidate cache for restored paths so the scanner picks up the restored files
-        InvalidateCacheBatch(operation.DeletedPaths);
+        _scanner.InvalidatePaths(operation.DeletedPaths);
 
         return new NukeResultDto
         {
@@ -542,10 +541,6 @@ public class NukeProtocolService : INukeProtocolService
         }
     }
 
-    // ──────────────────────────────────────────────
-    //  Existing Helpers (unchanged)
-    // ──────────────────────────────────────────────
-
     private (int fileCount, long totalSize) CountDirectoryContents(string path)
     {
         int count = 0;
@@ -587,54 +582,6 @@ public class NukeProtocolService : INukeProtocolService
         dir.Delete(true);
     }
 
-    private void InvalidateCacheBatch(IEnumerable<string> paths)
-    {
-        var nukedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var parentsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var subtreePrefixes = new List<string>();
-
-        foreach (var path in paths)
-        {
-            var normalizedPath = Path.GetFullPath(path);
-            nukedSet.Add(normalizedPath);
-
-            subtreePrefixes.Add(
-                normalizedPath.EndsWith(Path.DirectorySeparatorChar.ToString())
-                    ? normalizedPath
-                    : normalizedPath + Path.DirectorySeparatorChar);
-
-            // Every ancestor's cached size is now stale.
-            var parent = Path.GetDirectoryName(normalizedPath);
-            while (!string.IsNullOrEmpty(parent))
-            {
-                parentsToRemove.Add(parent);
-                parent = Path.GetDirectoryName(parent);
-            }
-        }
-
-        if (nukedSet.Count == 0)
-        {
-            return;
-        }
-
-        // ONE pass over the cache: drop nuked nodes, anything under a nuked directory,
-        // and every affected ancestor directory.
-        var keysToRemove = _scanner.DirectorySizeCache.Keys
-            .Where(k =>
-                nukedSet.Contains(k) ||
-                parentsToRemove.Contains(k) ||
-                subtreePrefixes.Any(prefix => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-
-        foreach (var key in keysToRemove)
-        {
-            _scanner.DirectorySizeCache.TryRemove(key, out _);
-        }
-
-        // Persist the cache to disk exactly once for the whole batch.
-        _scanner.SaveMemoryToDisk();
-    }
-
     private string FormatSize(long bytes)
     {
         string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
@@ -662,10 +609,6 @@ public class NukeProtocolService : INukeProtocolService
     {
         _scanner.TriggerNukeAbort();
     }
-
-    // ──────────────────────────────────────────────
-    //  Startup Cleanup
-    // ──────────────────────────────────────────────
 
     private void CleanupOrphanedStagingDirs()
     {
@@ -731,5 +674,15 @@ public class NukeProtocolService : INukeProtocolService
             // Ignore access issues during size calculation
         }
         return size;
+    }
+
+    public Func<string, string> StagingBaseResolver { get; set; } = p => Path.GetPathRoot(p) ?? "C:\\";
+
+    public NukeProtocolService(IDiskScannerEngine scanner, IHubContext<SystemHub> hubContext,
+        bool runStartupCleanup = true)
+    {
+        _scanner = scanner;
+        _hubContext = hubContext;
+        if (runStartupCleanup) Task.Run(() => CleanupOrphanedStagingDirs());
     }
 }
