@@ -1,4 +1,4 @@
-// frontend/gs_anlyzer_ui/lib/main.dart
+// frontend/gs_analyzer_ui/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';

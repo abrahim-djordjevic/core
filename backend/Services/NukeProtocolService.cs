@@ -28,8 +28,6 @@ public class NukeProtocolService : INukeProtocolService
     // Cache of active plan tokens to their normalized paths (TTL 15 mins)
     private readonly MemoryCache _activePlanTokens = new MemoryCache(new MemoryCacheOptions());
 
-
-
     public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>
