@@ -45,6 +45,13 @@ class HudTheme {
     fontWeight: FontWeight.bold
   );
 
+  // For numeric data values like sizes, percentages, counts
+  static const TextStyle statCyan = TextStyle(
+    fontFamily: fontCore,
+    color: accentCyan,
+    fontSize: 13,
+  );
+
   // for destructive action like 'ABORT SCAN'
   static const TextStyle actionRed = TextStyle(
     fontFamily: fontCore,

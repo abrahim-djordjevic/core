@@ -42,7 +42,7 @@ class _ExtensionBreakdownScreenState extends ConsumerState<ExtensionBreakdownScr
         backgroundColor: HudTheme.bgPanel,
         elevation: 0,
         title: Text(
-          'EXTENSION BREAKDOWN  ·  ${widget.driveName}',
+          'EXTENSION_BREAKDOWN_${widget.driveName.replaceAll(' ', '_')}',
           style: HudTheme.headerCyan,
         ),
         actions: [
@@ -221,19 +221,19 @@ class _ExtensionBreakdownScreenState extends ConsumerState<ExtensionBreakdownScr
             ),
             Expanded(
               flex: 1,
-              child: Text('${item.fileCount}', style: HudTheme.bodyText, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
+              child: Text('${item.fileCount}', style: HudTheme.statCyan, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
             Expanded(
               flex: 2,
-              child: Text(item.sizeFormatted, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
+              child: Text(item.sizeFormatted, style: HudTheme.statCyan, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
             Expanded(
               flex: 2,
-              child: Text(item.averageSizeFormatted, style: const TextStyle(color: Colors.white54), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
+              child: Text(item.averageSizeFormatted, style: HudTheme.statCyan, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
             Expanded(
               flex: 1,
-              child: Text('${item.percentOfDisk}%', style: const TextStyle(color: Colors.white38), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
+              child: Text('${item.percentOfDisk}%', style: HudTheme.statCyan, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
           ],
         ),
@@ -424,7 +424,7 @@ class _DetailStat extends StatelessWidget {
       children: [
         Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(value, style: HudTheme.statCyan.copyWith(fontSize: 16)),
       ],
     );
   }
