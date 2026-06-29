@@ -1,7 +1,7 @@
-﻿using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GSInteractiveDeviceAnalyzer.Controllers
+namespace GSSystemAnalyzer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

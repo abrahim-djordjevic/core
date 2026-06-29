@@ -1,7 +1,7 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 
-namespace GSInteractiveDeviceAnalyzer.Models
+namespace GSSystemAnalyzer.Models
 {
     public class SystemMemoryMetrics
     {

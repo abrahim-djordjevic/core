@@ -5,10 +5,10 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class DuplicateFileDetector : IDuplicateFileDetector
     {

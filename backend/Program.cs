@@ -1,9 +1,9 @@
-using GSInteractiveDeviceAnalyzer;
-using GSInteractiveDeviceAnalyzer.BackgroundWorkers;
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer;
+using GSSystemAnalyzer.BackgroundWorkers;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Services;
 using LibreHardwareMonitor.Hardware;
 using System.Runtime.InteropServices;
 

@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Hubs;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Hubs;
 
-namespace GSInteractiveDeviceAnalyzer.BackgroundWorkers;
+namespace GSSystemAnalyzer.BackgroundWorkers;
 
 public class DriveMonitorService : BackgroundService
 {

@@ -45,12 +45,12 @@ core/
 │   ├── Properties/                         launchSettings.json
 │   ├── Program.cs                          App startup / DI registration
 │   ├── InteractiveAnalyzer.cs
-│   ├── GSInteractiveDeviceAnalyzer.csproj  Main backend project
-│   ├── GSInteractiveDeviceAnalyzer.slnx    Solution file
-│   └── GSInteractiveDeviceAnalyzer.Tests/  xUnit backend tests
+│   ├── GSSystemAnalyzer.csproj  Main backend project
+│   ├── GSSystemAnalyzer.slnx    Solution file
+│   └── GSSystemAnalyzer.Tests/  xUnit backend tests
 │
 └── frontend/
-    └── gs_anlyzer_ui/                       Flutter app (Dart, Riverpod)
+    └── gs_analyzer_ui/                       Flutter app (Dart, Riverpod)
         ├── lib/
         │   ├── models/                      Immutable data structures (StorageNode, DriveStats)
         │   ├── providers/                   Riverpod state notifiers / providers
@@ -66,8 +66,8 @@ core/
         └── pubspec.lock
 ```
 
-- **Backend** lives at `/backend` → ASP.NET Core 10, C#, SignalR. Main project: `GSInteractiveDeviceAnalyzer.csproj`. Backend unit tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests`.
-- **Frontend** lives at `/frontend/gs_anlyzer_ui` → Flutter + Dart with Riverpod state management. Flutter widget/unit tests live in `/frontend/gs_anlyzer_ui/test`.
+- **Backend** lives at `/backend` → ASP.NET Core 10, C#, SignalR. Main project: `GSSystemAnalyzer.csproj`. Backend unit tests live in `/backend/GSSystemAnalyzer.Tests`.
+- **Frontend** lives at `/frontend/gs_analyzer_ui` → Flutter + Dart with Riverpod state management. Flutter widget/unit tests live in `/frontend/gs_analyzer_ui/test`.
 
 ---
 
@@ -103,12 +103,12 @@ dotnet run            # serves on http://localhost:5200
 ```
 
 - Run your terminal **as Administrator** — thermal/sensor reads require elevated privileges. Without it, thermal and several telemetry panels will show empty or ghost data.
-- Alternatively, open `backend/GSInteractiveDeviceAnalyzer.slnx` in Visual Studio / Rider and run from there.
+- Alternatively, open `backend/GSSystemAnalyzer.slnx` in Visual Studio / Rider and run from there.
 
 **3. Start the frontend (Terminal 2)**
 
 ```bash
-cd frontend/gs_anlyzer_ui
+cd frontend/gs_analyzer_ui
 flutter pub get
 flutter run -d windows      # or: -d macos / -d linux
 ```
@@ -158,7 +158,7 @@ Text('58.6 GB', style: TextStyle(color: Colors.white))
 - Every new backend service must include at least **one xUnit test** covering the happy path and **one edge case**.
 - File deletion tests must use a **temp directory only** — never real paths.
 - Every new Flutter widget must include at least **one widget test** covering the empty/loading state.
-- Tests live in `/backend/GSInteractiveDeviceAnalyzer.Tests` (C#, xUnit) and `/frontend/gs_anlyzer_ui/test` (Flutter widget/unit tests). Integration tests live in `/frontend/gs_anlyzer_ui/integration_test`.
+- Tests live in `/backend/GSSystemAnalyzer.Tests` (C#, xUnit) and `/frontend/gs_analyzer_ui/test` (Flutter widget/unit tests). Integration tests live in `/frontend/gs_analyzer_ui/integration_test`.
 
 Run the full suite before opening a PR:
 
@@ -166,7 +166,7 @@ Run the full suite before opening a PR:
 # Backend (from /backend)
 dotnet test
 
-# Frontend (from /frontend/gs_anlyzer_ui)
+# Frontend (from /frontend/gs_analyzer_ui)
 flutter analyze
 flutter test
 flutter test integration_test

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 
-namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface IDiskScannerEngine
     {

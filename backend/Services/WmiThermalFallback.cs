@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class WmiThermalFallback : IWmiThermalFallback
     {
@@ -24,7 +24,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             }
             catch (Exception ex)
             {
-                // 🚀 UNMASKING THE GHOST: Print the exact assassination report to the terminal!
+                // ?? UNMASKING THE GHOST: Print the exact assassination report to the terminal!
                 Console.WriteLine($"\n[DEFENSE GRID WMI CRASH] -> {ex.GetType().Name}: {ex.Message}\n");
             }
 

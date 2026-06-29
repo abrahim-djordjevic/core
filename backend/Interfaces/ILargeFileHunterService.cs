@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface ILargeFileHunterService
     {

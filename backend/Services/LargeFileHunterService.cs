@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
 using System.Runtime.CompilerServices;
 
-namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 public class LargeFileHunterService : ILargeFileHunterService
 {
     private readonly ISettingService _settings;

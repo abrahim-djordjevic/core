@@ -7,13 +7,13 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 
 public class NukeProtocolService : INukeProtocolService
 {
@@ -27,8 +27,6 @@ public class NukeProtocolService : INukeProtocolService
 
     // Cache of active plan tokens to their normalized paths (TTL 15 mins)
     private readonly MemoryCache _activePlanTokens = new MemoryCache(new MemoryCacheOptions());
-
-
 
     public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
     {

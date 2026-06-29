@@ -1,8 +1,8 @@
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace GSInteractiveDeviceAnalyzer.Engine;
+namespace GSSystemAnalyzer.Engine;
 
 public class AgeHeatmapEngine : IAgeHeatmapEngine
 {

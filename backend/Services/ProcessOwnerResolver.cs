@@ -1,14 +1,14 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class ProcessOwnerResolver : IProcessOwnerResolver
     {
         private ConcurrentDictionary<int, string> _cache = new();
 
-        // Linux only — /etc/passwd UID→username map
+        // Linux only � /etc/passwd UID?username map
         private Dictionary<int, string> _passwdCache = new();
         private DateTime _passwdLastRead = DateTime.MinValue;
 
@@ -42,7 +42,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
                         var user = outParams?["User"]?.ToString() ?? "SYSTEM";
                         newCache[pid] = user;
                     }
-                    catch { /* protected process — skip */ }
+                    catch { /* protected process � skip */ }
                 }
             }
             catch { }

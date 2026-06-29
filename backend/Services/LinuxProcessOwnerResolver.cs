@@ -1,6 +1,6 @@
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 
 public class LinuxProcessOwnerResolver : IProcessOwnerResolver
 {

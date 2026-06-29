@@ -1,4 +1,4 @@
-﻿namespace GSInteractiveDeviceAnalyzer.Models.SettingDtos
+namespace GSSystemAnalyzer.Models.SettingDtos
 {
     public class AppearanceSettingDto
     {

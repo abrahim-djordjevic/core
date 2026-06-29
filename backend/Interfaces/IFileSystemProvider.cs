@@ -1,4 +1,4 @@
-﻿namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface IFileSystemProvider
     {

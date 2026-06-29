@@ -1,7 +1,7 @@
-﻿using System.IO;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using System.IO;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     // Production wrapper that passes commands directly to the real OS
     public class PhysicalFileSystemProvider : IFileSystemProvider

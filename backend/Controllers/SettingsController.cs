@@ -1,10 +1,10 @@
-﻿using System.Configuration;
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using System.Configuration;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GSInteractiveDeviceAnalyzer.Controllers
+namespace GSSystemAnalyzer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

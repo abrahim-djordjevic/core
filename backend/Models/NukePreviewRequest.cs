@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GSInteractiveDeviceAnalyzer.Models;
+namespace GSSystemAnalyzer.Models;
 
 public class NukePreviewRequest
 {

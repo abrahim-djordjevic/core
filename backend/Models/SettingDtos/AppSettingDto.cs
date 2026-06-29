@@ -1,4 +1,4 @@
-ï»¿namespace GSInteractiveDeviceAnalyzer.Models.SettingDtos
+namespace GSSystemAnalyzer.Models.SettingDtos
 {
     public class AppSettingDto
     {
@@ -24,7 +24,7 @@
             if (Alerts.DiskThresholdPercent < 1 || Alerts.DiskThresholdPercent > 100) errors.Add("Disk Threshold Percent must be between 1 and 100.");
             if (Alerts.CpuThresholdPercent < 1 || Alerts.CpuThresholdPercent > 100) errors.Add("CPU Threshold Percent must be between 1 and 100.");
             if (Alerts.RamThresholdPercent < 1 || Alerts.RamThresholdPercent > 100) errors.Add("RAM Threshold Percent must be between 1 and 100.");
-            if (Alerts.ThermalThresholdCelsius < 40 || Alerts.ThermalThresholdCelsius > 110) errors.Add("Thermal Threshold must be between 40Â°C and 110Â°C.");
+            if (Alerts.ThermalThresholdCelsius < 40 || Alerts.ThermalThresholdCelsius > 110) errors.Add("Thermal Threshold must be between 40°C and 110°C.");
 
             if (Cache.ScanCacheTtlMinutes < 1 || Cache.ScanCacheTtlMinutes > 1440) errors.Add("Scan Cache TTL must be between 1 and 1440 minutes.");
             if (Advanced.BackendPort < 1024 || Advanced.BackendPort > 65535) errors.Add("Backend Port must be between 1024 and 65535.");
