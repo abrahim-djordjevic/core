@@ -1,32 +1,32 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
 
 #if WINDOWS
 using LibreHardwareMonitor.Hardware;
 #endif
 using Moq;
 using Xunit;
-using DellOemTelemetry = GSInteractiveDeviceAnalyzer.Services.Oem.Dell.DellOemTelemetry;
+using DellOemTelemetry = GSSystemAnalyzer.Services.Oem.Dell.DellOemTelemetry;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Engine
+namespace GSSystemAnalyzer.Tests.Engine
 {
     public class LibreThermalProviderTests
     {
         private readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 #if WINDOWS
-        // 🛠️ HELPERS
+        // ??? HELPERS
         private Mock<IHardware> CreateMockHardware(HardwareType type, List<ISensor> sensors)
         {
             var mockHw = new Mock<IHardware>();
             mockHw.Setup(h => h.HardwareType).Returns(type);
-            mockHw.Setup(h => h.Sensors).Returns(sensors.ToArray()); // 🚀 FIXED: Added () to ToArray
+            mockHw.Setup(h => h.Sensors).Returns(sensors.ToArray()); // ?? FIXED: Added () to ToArray
             mockHw.Setup(h => h.SubHardware).Returns(Array.Empty<IHardware>());
             return mockHw;
         }
@@ -54,7 +54,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             return new LibreThermalProvider(mockComputer.Object, wmi.Object, dell.Object);
         }
 
-        // 🛡️ ORIGINAL CPU & GHOST UI TESTS
+        // ??? ORIGINAL CPU & GHOST UI TESTS
         [Fact]
         public async Task GetThermalData_CpuPackageAndCores_MappedCorrectly_ExcludingNulls()
         {
@@ -131,7 +131,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.Null(result.PumpRpm);
         }
 
-        // 🛡️ EXCEPTION SHIELD & DISPOSE TESTS
+        // ??? EXCEPTION SHIELD & DISPOSE TESTS
         [Fact]
         public async Task GetThermalData_ThermalThrottling_DetectedOnClockDrop()
         {
@@ -208,8 +208,8 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
         [Fact]
         public void WmiThermalFallback_ConvertsKelvinToCelsius_Correctly()
         {
-            // CRITERIA: (currentTemperature / 10.0) − 273.15
-            double rawWmiKelvin = 3100; // 3100 = 310.0K = 36.85°C. Math.Round(36.85, 1) = 36.9°C
+            // CRITERIA: (currentTemperature / 10.0) - 273.15
+            double rawWmiKelvin = 3100; // 3100 = 310.0K = 36.85�C. Math.Round(36.85, 1) = 36.9�C
 
             var result = WmiThermalFallback.ConvertKelvinToCelsius(rawWmiKelvin);
 
@@ -227,7 +227,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             var mockWmi = new Mock<IWmiThermalFallback>();
             mockWmi.Setup(w => w.GetCpuTemperatureCelsius()).Returns(45.5); // Mock WMI reads 45.5
             var mockDell = new Mock<IDellOemTelemetry>();
-            // 🚀 THE FIX: Force the Dell mock to be completely silent for this test
+            // ?? THE FIX: Force the Dell mock to be completely silent for this test
             mockDell.Setup(d => d.TryGetDellOemTelemetry()).Returns((DellOemDto?)null);
 
             var provider = CreateProvider(mockComputer, mockWmi, mockDell);
@@ -241,7 +241,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
         [Fact]
         public async Task GetThermalData_WhenWmiReturnsNoInstances_ReturnsNull_DoesNotThrow()
         {
-            // CRITERIA: When WMI ACPI returns no instances, fallback returns null — does not throw
+            // CRITERIA: When WMI ACPI returns no instances, fallback returns null � does not throw
             var mockComputer = new Mock<IComputerEngine>();
             var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor>());
             mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });

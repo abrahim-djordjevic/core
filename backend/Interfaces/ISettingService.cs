@@ -1,6 +1,6 @@
-﻿using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Models.SettingDtos;
 
-namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface ISettingService
     {

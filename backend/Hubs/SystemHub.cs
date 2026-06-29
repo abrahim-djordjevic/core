@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Hubs
+namespace GSSystemAnalyzer.Hubs
 {
     public class SystemHub : Hub
     {

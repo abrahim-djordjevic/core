@@ -1,14 +1,14 @@
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Engine
+namespace GSSystemAnalyzer.Tests.Engine
 {
     public class AgeHeatmapEngineTests
     {

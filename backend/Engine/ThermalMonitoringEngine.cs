@@ -1,11 +1,11 @@
-﻿using System.Runtime.InteropServices;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
+using System.Runtime.InteropServices;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Engine
+namespace GSSystemAnalyzer.Engine
 {
     public class ThermalMonitoringEngine : BackgroundService
     {

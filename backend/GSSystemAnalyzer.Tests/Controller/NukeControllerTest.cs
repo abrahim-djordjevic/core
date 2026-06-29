@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Controllers;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controllers;
+namespace GSSystemAnalyzer.Tests.Controllers;
 
 public class NukeControllerTests
 {

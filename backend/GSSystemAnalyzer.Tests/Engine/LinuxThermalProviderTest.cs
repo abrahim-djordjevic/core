@@ -1,20 +1,20 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Services;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Engine
+namespace GSSystemAnalyzer.Tests.Engine
 {
     public class LinuxThermalProviderTests
     {
         private readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 #if !WINDOWS
-        // 🛡️ 1 & 2: Thermal Zones and Mapping
+        // ??? 1 & 2: Thermal Zones and Mapping
         [Fact]
         public async Task GetThermalData_ThermalZones_MapsCorrectlyAndIgnoresMissing()
         {
@@ -44,7 +44,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.Equal(38.0, result.MotherboardCelsius);
         }
 
-        // 🛡️ 3: FANS (Return 0 when absent)
+        // ??? 3: FANS (Return 0 when absent)
         [Fact]
         public async Task GetThermalData_Fans_ReturnZeroWhenAbsent()
         {
@@ -63,7 +63,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.Null(result.PumpRpm); // Pump should remain null
         }
 
-        // 🛡️ 4: RAPL Power Calculation (1 Second Delta)
+        // ??? 4: RAPL Power Calculation (1 Second Delta)
         [Fact]
         public async Task GetThermalData_RaplWatts_CalculatesDeltaSuccessfully()
         {
@@ -85,7 +85,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.Equal(3.5, result.CpuPowerWatts);
         }
 
-        // 🛡️ 5: Throttling Check
+        // ??? 5: Throttling Check
         [Fact]
         public async Task GetThermalData_Throttling_DetectedOnFrequencyDrop_DoesNotThrowIfMissing()
         {
@@ -111,7 +111,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Engine
             Assert.True(result.IsThermalThrottling);
         }
 
-        // 🛡️ 6: NVMe Thermal
+        // ??? 6: NVMe Thermal
         [Fact]
         public async Task GetThermalData_Nvme_DividesBy1000()
         {

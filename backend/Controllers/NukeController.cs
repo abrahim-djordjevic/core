@@ -2,11 +2,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Services;
 
-namespace GSInteractiveDeviceAnalyzer.Controllers;
+namespace GSSystemAnalyzer.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

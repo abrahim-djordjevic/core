@@ -39,7 +39,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF00FFFF).withOpacity(0.35)),
+                  border: Border.all(color: const Color(0xFF00FFFF).withValues(alpha: 0.35)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -69,7 +69,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
               'TOTAL: ${result.totalScannedFormatted}  ·  '
               '${result.categories.length} CATEGORIES',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.45), fontSize: 11),
+                  color: Colors.white.withValues(alpha: 0.45), fontSize: 11),
             ),
           ),
         ),
@@ -95,7 +95,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
         backgroundColor: const Color(0xFF1A1D23),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: const Color(0xFF00FFFF).withOpacity(0.3)),
+          side: BorderSide(color: const Color(0xFF00FFFF).withValues(alpha: 0.3)),
         ),
         title: const Text(
           'SELECT SCAN ROOT',
@@ -113,7 +113,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             Text(
               'Enter the folder path you want to analyze:',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.55), fontSize: 12),
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -127,7 +127,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
               decoration: InputDecoration(
                 hintText: r'C:\Users\YourName\Projects',
                 hintStyle: TextStyle(
-                    color: Colors.white.withOpacity(0.25), fontSize: 12),
+                    color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
                 filled: true,
                 fillColor: const Color(0xFF0D0F14),
                 prefixIcon: const Icon(Icons.folder_open_rounded,
@@ -135,12 +135,12 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(
-                      color: const Color(0xFF00FFFF).withOpacity(0.3)),
+                      color: const Color(0xFF00FFFF).withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(
-                      color: const Color(0xFF00FFFF).withOpacity(0.2)),
+                      color: const Color(0xFF00FFFF).withValues(alpha: 0.2)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
@@ -152,7 +152,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             Text(
               'A Directory Scan must have been run on this path first.',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.35), fontSize: 10),
+                  color: Colors.white.withValues(alpha: 0.35), fontSize: 10),
             ),
           ],
         ),
@@ -161,7 +161,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             child: Text('CANCEL',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                    color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
@@ -220,18 +220,18 @@ class _NoScanState extends StatelessWidget {
         child: Column(
           children: [
             Icon(Icons.radar_rounded,
-                color: Colors.white.withOpacity(0.25), size: 40),
+                color: Colors.white.withValues(alpha: 0.25), size: 40),
             const SizedBox(height: 12),
             Text(
               'No scan found for "$root"',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.55), fontSize: 13),
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
               'Run a Directory Scan on this path first, then return here.',
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.3), fontSize: 11),
+                  color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
               textAlign: TextAlign.center,
             ),
           ],
@@ -290,7 +290,7 @@ class _DonutChart extends ConsumerWidget {
       return PieChartSectionData(
         value:          cat.percentOfDisk,
         color:          _fileTypeColor(cat.name)
-            .withOpacity(isSelected ? 1.0 : 0.25),
+            .withValues(alpha: isSelected ? 1.0 : 0.25),
         radius:         selected == cat.name ? 38 : 32,
         title:          '',
         showTitle:      false,
@@ -334,7 +334,7 @@ class _DonutChart extends ConsumerWidget {
             Text(
               'SCANNED',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 fontSize: 10,
                 letterSpacing: 1.2,
               ),
@@ -363,7 +363,7 @@ class _CategoryList extends ConsumerWidget {
               left: BorderSide(
                 color: isSelected
                     ? _fileTypeColor(cat.name)
-                    : _fileTypeColor(cat.name).withOpacity(0.3),
+                    : _fileTypeColor(cat.name).withValues(alpha: 0.3),
                 width: 3,
               ),
             ),
@@ -405,11 +405,11 @@ class _CategoryList extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Text('${cat.percentOfDisk}%',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                        color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
                 const SizedBox(width: 8),
                 Text('${cat.fileCount} f',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.35), fontSize: 10)),
+                        color: Colors.white.withValues(alpha: 0.35), fontSize: 10)),
                 const Icon(Icons.expand_more_rounded,
                     color: Colors.white38, size: 16),
               ],
@@ -437,9 +437,9 @@ class _ExtRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color:        catColor.withOpacity(0.12),
+                color:        catColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(3),
-                border:       Border.all(color: catColor.withOpacity(0.3)),
+                border:       Border.all(color: catColor.withValues(alpha: 0.3)),
               ),
               child: Text(ext.ext,
                   style: TextStyle(
@@ -451,11 +451,11 @@ class _ExtRow extends StatelessWidget {
             const SizedBox(width: 12),
             Text('${ext.percentOfDisk}%',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.4), fontSize: 10)),
+                    color: Colors.white.withValues(alpha: 0.4), fontSize: 10)),
             const SizedBox(width: 12),
             Text('${ext.fileCount} files',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.3), fontSize: 10)),
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
           ],
         ),
       );

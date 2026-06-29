@@ -1,18 +1,18 @@
-﻿using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
 #if !WINDOWS
     public class LinuxThermalProvider : IThermalProvider
     {
         private readonly IFileSystemProvider _fileSystem;
 
-        // 🚀 INJECT THE FILE SYSTEM (Defaults to real physical OS in production)
+        // ?? INJECT THE FILE SYSTEM (Defaults to real physical OS in production)
         public LinuxThermalProvider(IFileSystemProvider? fileSystem = null)
         {
             _fileSystem = fileSystem ?? new PhysicalFileSystemProvider();
@@ -22,7 +22,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
         {
             var payload = new ThermalTelemetryDto
             {
-                // 🚀 FIXED: Default missing fans to 0, just like we did for Windows!
+                // ?? FIXED: Default missing fans to 0, just like we did for Windows!
                 CpuFanRpm = 0,
                 ChassisFan1Rpm = 0,
                 ChassisFan2Rpm = 0,
@@ -154,7 +154,7 @@ namespace GSInteractiveDeviceAnalyzer.Services
             return payload;
         }
 
-        // 🚀 SAFE READ: Uses the injected File System so Moq can track it!
+        // ?? SAFE READ: Uses the injected File System so Moq can track it!
         private string? ReadSysFsSafe(string path)
         {
             try

@@ -1,11 +1,11 @@
 using System.Drawing;
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class DiskOperationsService : IDiskOperationService
     {

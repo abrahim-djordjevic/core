@@ -1,11 +1,11 @@
-using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Controllers;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controllers
+namespace GSSystemAnalyzer.Tests.Controllers
 {
     public class StorageControllerAgeHeatmapTests
     {

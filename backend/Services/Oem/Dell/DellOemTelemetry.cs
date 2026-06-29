@@ -1,8 +1,8 @@
-﻿using System.Management;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using System.Management;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer.Services.Oem.Dell
+namespace GSSystemAnalyzer.Services.Oem.Dell
 {
     /// <summary>
     /// Tier-3 fallback: reads fan RPM from Dell Command | Monitor's WMI provider

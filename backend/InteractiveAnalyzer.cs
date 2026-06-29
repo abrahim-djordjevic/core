@@ -1,4 +1,4 @@
-﻿namespace GSInteractiveDeviceAnalyzer
+namespace GSSystemAnalyzer
 {
     public static class InteractiveAnalyzer
     {

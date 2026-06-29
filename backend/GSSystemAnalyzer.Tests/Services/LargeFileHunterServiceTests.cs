@@ -1,13 +1,13 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Xunit;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Services;
 using Moq;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Services;
+namespace GSSystemAnalyzer.Tests.Services;
 
 public class LargeFileHunterServiceTests : IDisposable
 {

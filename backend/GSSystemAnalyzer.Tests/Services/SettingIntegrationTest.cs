@@ -1,12 +1,12 @@
-ï»¿using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Services;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Integration
+namespace GSSystemAnalyzer.Tests.Integration
 {
     public class SettingsIntegrationTests : IDisposable
     {
@@ -85,7 +85,7 @@ namespace GSInteractiveDeviceAnalyzer.Tests.Integration
 
             Assert.Equal(2, errors.Count);
             Assert.Contains("Scan Depth must be between 1 and 50.", errors);
-            Assert.Contains("Thermal Threshold must be between 40Â°C and 110Â°C.", errors);
+            Assert.Contains("Thermal Threshold must be between 40°C and 110°C.", errors);
         }
 
         [Fact]

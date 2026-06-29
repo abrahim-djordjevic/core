@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace GSInteractiveDeviceAnalyzer.Utils
+namespace GSSystemAnalyzer.Utils
 {
     /// <summary>
     /// Single shared byte-size formatter. Replaces the per-service FormatSize

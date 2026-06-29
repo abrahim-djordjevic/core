@@ -1,7 +1,7 @@
-﻿using GSInteractiveDeviceAnalyzer.Models;
-using DellOemTelemetry = GSInteractiveDeviceAnalyzer.Services.Oem.Dell.DellOemTelemetry;
+using GSSystemAnalyzer.Models;
+using DellOemTelemetry = GSSystemAnalyzer.Services.Oem.Dell.DellOemTelemetry;
 
-namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface IDellOemTelemetry
     {

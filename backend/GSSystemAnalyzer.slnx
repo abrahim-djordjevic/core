@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GSSystemAnalyzer.csproj" />
+  <Project Path="GSSystemAnalyzer.Tests/GSSystemAnalyzer.Tests.csproj" />
+</Solution>

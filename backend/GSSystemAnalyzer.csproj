@@ -10,10 +10,10 @@
 
 
   <ItemGroup>
-    <Compile Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
-    <Content Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
-    <EmbeddedResource Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
-    <None Remove="GSInteractiveDeviceAnalyzer.Tests\**" />
+    <Compile Remove="GSSystemAnalyzer.Tests\**" />
+    <Content Remove="GSSystemAnalyzer.Tests\**" />
+    <EmbeddedResource Remove="GSSystemAnalyzer.Tests\**" />
+    <None Remove="GSSystemAnalyzer.Tests\**" />
   </ItemGroup>
 
 

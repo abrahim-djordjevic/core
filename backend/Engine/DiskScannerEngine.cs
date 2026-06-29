@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Engine;
+namespace GSSystemAnalyzer.Engine;
 
 public class CacheEntry
 {

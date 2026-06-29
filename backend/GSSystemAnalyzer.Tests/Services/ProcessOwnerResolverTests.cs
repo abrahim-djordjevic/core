@@ -1,7 +1,7 @@
-﻿using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Services;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Services;
+namespace GSSystemAnalyzer.Tests.Services;
 
 public class ProcessOwnerResolverTests
 {

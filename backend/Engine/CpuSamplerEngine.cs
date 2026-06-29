@@ -1,8 +1,8 @@
-﻿using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Engine
+namespace GSSystemAnalyzer.Engine
 {
     public class CpuSamplerEngine : BackgroundService
     {
@@ -19,7 +19,7 @@ namespace GSInteractiveDeviceAnalyzer.Engine
             settings.OnSettingsChanged += (_, s) =>
             {
                 _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.CpuPollIntervalMs);
-                Console.WriteLine($"[CPU SAMPLER] Poll interval updated → {_pollInterval.TotalMilliseconds}ms");
+                Console.WriteLine($"[CPU SAMPLER] Poll interval updated ? {_pollInterval.TotalMilliseconds}ms");
             };
         }
 

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Controllers;
+namespace GSSystemAnalyzer.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -1,13 +1,13 @@
-﻿using BlackSharp.Core.Extensions;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
+using BlackSharp.Core.Extensions;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using System.Runtime.Versioning;
-using GSInteractiveDeviceAnalyzer.Services.Oem.Dell;
+using GSSystemAnalyzer.Services.Oem.Dell;
 #if WINDOWS
 using LibreHardwareMonitor.Hardware;
 #endif
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
 #if WINDOWS
     public class LibreThermalProvider : IThermalProvider

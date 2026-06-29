@@ -1,7 +1,7 @@
-﻿using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Models;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Models;
+namespace GSSystemAnalyzer.Tests.Models;
 
 public class ProcessTelemetryModelTests
 {

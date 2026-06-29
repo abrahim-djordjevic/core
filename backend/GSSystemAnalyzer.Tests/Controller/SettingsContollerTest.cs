@@ -1,10 +1,10 @@
-﻿using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Controllers;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controller
+namespace GSSystemAnalyzer.Tests.Controller
 {
     public class SettingsControllerTests
     {

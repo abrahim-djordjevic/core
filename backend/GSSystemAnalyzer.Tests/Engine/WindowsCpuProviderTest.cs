@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Services;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Engine
+namespace GSSystemAnalyzer.Tests.Engine
 {
     public class WindowsCpuProviderTest
     {

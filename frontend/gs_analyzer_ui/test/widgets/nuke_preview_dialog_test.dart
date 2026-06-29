@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/widgets/nuke_preview_dialog.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'dart:convert';

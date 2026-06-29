@@ -1,11 +1,11 @@
-﻿using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
 using Moq;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Engine;
+namespace GSSystemAnalyzer.Tests.Engine;
 
 public class RamMonitoringEngineTests
 {

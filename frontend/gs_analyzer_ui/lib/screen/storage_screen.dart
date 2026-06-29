@@ -4,7 +4,6 @@ import '../models/drive_info.dart';
 import '../providers/drive_stats_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/hud_theme.dart';
-import '../utils/hud_label.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
@@ -198,7 +197,7 @@ class _DriveTab extends ConsumerWidget {
       width: 160,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isActive ? Colors.white.withOpacity(0.05) : Colors.transparent,
+        color: isActive ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
         border: Border(
           bottom: BorderSide(
             color: isActive ? HudTheme.accentCyan : Colors.transparent,

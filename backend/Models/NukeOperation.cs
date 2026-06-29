@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace GSInteractiveDeviceAnalyzer.Models;
+namespace GSSystemAnalyzer.Models;
 
 /// <summary>
 /// Represents a completed nuke operation stored in the session-scoped undo stack.

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Fakes;
+namespace GSSystemAnalyzer.Tests.Fakes;
 
 public class FakeDriveDetectionService : IDriveDetectionService
 {

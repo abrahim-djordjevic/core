@@ -1,7 +1,7 @@
-﻿using LibreHardwareMonitor.Hardware;
-using IComputerEngine = GSInteractiveDeviceAnalyzer.Interfaces.IComputerEngine;
+using LibreHardwareMonitor.Hardware;
+using IComputerEngine = GSSystemAnalyzer.Interfaces.IComputerEngine;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class LibreComputerWrapper : IComputerEngine
     {

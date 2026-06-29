@@ -1,13 +1,13 @@
-﻿using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Controllers;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Moq;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controller;
+namespace GSSystemAnalyzer.Tests.Controller;
 
 public class TelemetryControllerTests
 {

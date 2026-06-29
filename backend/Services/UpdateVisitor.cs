@@ -1,6 +1,6 @@
-﻿using LibreHardwareMonitor.Hardware;
+using LibreHardwareMonitor.Hardware;
 
-namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 
 public class UpdateVisitor : IVisitor
 {

@@ -1,7 +1,7 @@
-﻿using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Services.Oem.Dell;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Services.Oem.Dell;
 
-namespace GSInteractiveDeviceAnalyzer.Services.Oem.Factory
+namespace GSSystemAnalyzer.Services.Oem.Factory
 {
     /* public static class OemReaderFactory
     {

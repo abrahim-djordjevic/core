@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Fakes;
+namespace GSSystemAnalyzer.Tests.Fakes;
 
 public class FakeLargeFileHunter : ILargeFileHunterService
 {

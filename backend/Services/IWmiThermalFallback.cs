@@ -1,4 +1,4 @@
-﻿namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 
 public interface IWmiThermalFallback
 {

@@ -1,6 +1,6 @@
-﻿using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer.Interfaces
+namespace GSSystemAnalyzer.Interfaces
 {
     public interface ICpuMetricsProvider
     {

@@ -1,4 +1,4 @@
-﻿namespace GSInteractiveDeviceAnalyzer.Models
+namespace GSSystemAnalyzer.Models
 {
     public class CpuTelemetryDto
     {

@@ -148,7 +148,6 @@ class _Toolbar extends ConsumerWidget {
       case ProcessSortMode.ram:  sortLabel = '% MEM';    break;
       case ProcessSortMode.pid:  sortLabel = 'PID';      break;
       case ProcessSortMode.name: sortLabel = 'NAME';     break;
-      default:                   sortLabel = '% CPU';
     }
 
     String statusLabel;
@@ -156,7 +155,6 @@ class _Toolbar extends ConsumerWidget {
       case ProcessStatusFilter.all:      statusLabel = 'ALL';      break;
       case ProcessStatusFilter.running:  statusLabel = 'RUNNING';  break;
       case ProcessStatusFilter.sleeping: statusLabel = 'SLEEPING'; break;
-      default:                           statusLabel = 'ALL';
     }
 
     return Container(
@@ -288,7 +286,6 @@ class _ProcessRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
     final isCpuHot = group.totalCpuPercent > 10.0;
     final isMemHot = group.totalPercentMem > 10.0;
     final isHot    = isCpuHot || isMemHot;

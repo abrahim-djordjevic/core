@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Management;
 using System.Runtime.InteropServices;
-using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Interfaces;
 
-namespace GSInteractiveDeviceAnalyzer.Services;
+namespace GSSystemAnalyzer.Services;
 
 public class WindowsProcessOwnerResolver : IProcessOwnerResolver
 {

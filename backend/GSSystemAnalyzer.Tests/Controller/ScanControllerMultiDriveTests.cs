@@ -1,10 +1,10 @@
-using GSInteractiveDeviceAnalyzer.Controllers;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Tests.Fakes;
+using GSSystemAnalyzer.Controllers;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Tests.Fakes;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Controller;
+namespace GSSystemAnalyzer.Tests.Controller;
 
 public class ScanControllerMultiDriveTests
 {

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GSInteractiveDeviceAnalyzer.csproj" />
+    <ProjectReference Include="..\GSSystemAnalyzer.csproj" />
   </ItemGroup>
 
 </Project>

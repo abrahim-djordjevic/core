@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models.SettingDtos;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Services;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Services
+namespace GSSystemAnalyzer.Tests.Services
 {
     public class DuplicateFileDetectorTests : IDisposable
     {

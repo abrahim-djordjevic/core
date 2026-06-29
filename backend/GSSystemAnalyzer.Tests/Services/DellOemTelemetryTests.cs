@@ -1,10 +1,10 @@
-﻿using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
-using GSInteractiveDeviceAnalyzer.Services.Oem.Dell;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Services.Oem.Dell;
 using Moq;
 using Xunit;
 
-namespace GSInteractiveDeviceAnalyzer.Tests.Services
+namespace GSSystemAnalyzer.Tests.Services
 {
     public class DellOemTelemetryTests
     {

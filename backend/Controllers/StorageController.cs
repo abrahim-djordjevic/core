@@ -1,12 +1,12 @@
-using GSInteractiveDeviceAnalyzer.Engine;
-using GSInteractiveDeviceAnalyzer.Hubs;
-using GSInteractiveDeviceAnalyzer.Interfaces;
-using GSInteractiveDeviceAnalyzer.Models;
-using GSInteractiveDeviceAnalyzer.Services;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
-namespace GSInteractiveDeviceAnalyzer.Controllers
+namespace GSSystemAnalyzer.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

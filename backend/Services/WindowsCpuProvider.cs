@@ -1,8 +1,8 @@
-﻿using GSInteractiveDeviceAnalyzer.Interfaces;
+using GSSystemAnalyzer.Interfaces;
 using System.Diagnostics;
-using GSInteractiveDeviceAnalyzer.Models;
+using GSSystemAnalyzer.Models;
 
-namespace GSInteractiveDeviceAnalyzer.Services
+namespace GSSystemAnalyzer.Services
 {
     public class WindowsCpuProvider : ICpuMetricsProvider
     {
