@@ -10,18 +10,18 @@ Implemented the Recycle Bin mode and session-scoped Undo Stack for the Nuke Prot
 
 | File | Purpose |
 |------|---------|
-| [NukeExecuteRequest.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Models/NukeExecuteRequest.cs) | Request DTO with `Paths` + `UseRecycleBin` flag |
-| [NukeOperation.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Models/NukeOperation.cs) | Undo stack record (operation ID, timestamps, paths, recycle bin flag) |
+| [NukeExecuteRequest.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Models/NukeExecuteRequest.cs) | Request DTO with `Paths` + `UseRecycleBin` flag |
+| [NukeOperation.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Models/NukeOperation.cs) | Undo stack record (operation ID, timestamps, paths, recycle bin flag) |
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| [NukeResultDto.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Models/NukeResultDto.cs) | Redesigned from `Message/Path/Type` → `DeletedFiles/FreedBytes/FreedFormatted/SkippedFiles/RecycleBinUsed/Recoverable/OperationId` |
-| [INukeProtocolService.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Interfaces/INukeProtocolService.cs) | Added `useRecycleBin` param + `PeekUndo()`, `UndoLastNuke()`, `ClearUndoStack()` |
-| [NukeProtocolService.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Services/NukeProtocolService.cs) | Staging directory logic, undo stack (max 5), file/byte counters, restore logic |
-| [NukeController.cs](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/Controllers/NukeController.cs) | `NukeExecuteRequest` body, 3 new undo endpoints |
-| [GSInteractiveDeviceAnalyzer.csproj](file:///c:/Users/USER/My%20Project/GSInteractiveDeviceAnalyzer/backend/GSInteractiveDeviceAnalyzer.csproj) | `Microsoft.WindowsDesktop.App` framework reference (Windows TFM) |
+| [NukeResultDto.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Models/NukeResultDto.cs) | Redesigned from `Message/Path/Type` → `DeletedFiles/FreedBytes/FreedFormatted/SkippedFiles/RecycleBinUsed/Recoverable/OperationId` |
+| [INukeProtocolService.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Interfaces/INukeProtocolService.cs) | Added `useRecycleBin` param + `PeekUndo()`, `UndoLastNuke()`, `ClearUndoStack()` |
+| [NukeProtocolService.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Services/NukeProtocolService.cs) | Staging directory logic, undo stack (max 5), file/byte counters, restore logic |
+| [NukeController.cs](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/Controllers/NukeController.cs) | `NukeExecuteRequest` body, 3 new undo endpoints |
+| [GSSystemAnalyzer.csproj](file:///c:/Users/USER/My%20Project/GSSystemAnalyzer/backend/GSSystemAnalyzer.csproj) | `Microsoft.WindowsDesktop.App` framework reference (Windows TFM) |
 
 ## Design Decisions
 

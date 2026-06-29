@@ -14,7 +14,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./frontend/gs_anlyzer_ui
+        working-directory: ./frontend/gs_analyzer_ui
 
     steps:
       # Step A: Download your code
