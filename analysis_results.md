@@ -155,6 +155,7 @@ Two GitHub Actions workflows:
 
 ---
 
+
 ## 6. Bugs & Issues Found
 
 ### 🔴 Critical
@@ -219,7 +220,7 @@ Two GitHub Actions workflows:
 
 ---
 
-## 8. File & Directory Statistics
+## 7. File & Directory Statistics
 
 | Section | Files | Lines (est.) |
 |---|---|---|
@@ -239,7 +240,7 @@ Two GitHub Actions workflows:
 
 ---
 
-## 9. Prioritised Recommendations
+## 8. Prioritised Recommendations
 
 ### Immediate (Pre-Beta Blockers)
 
