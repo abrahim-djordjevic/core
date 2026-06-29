@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/models/file_type_model.dart';
 import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
+import 'package:gs_analyzer_ui/models/permission_audit_models.dart';
 
 class ApiService {
   final http.Client _client;
@@ -21,6 +22,7 @@ class ApiService {
   static const String thermalUrl = 'http://localhost:5200/api/thermal';
   static const String settingsUrl = 'http://localhost:5200/api/settings';
   static const String driveUrl = 'http://localhost:5200/api/drives';
+  static const String auditUrl = 'http://localhost:5200/api/audit';
 
 
   Future<List<StorageNode>> scanDirectory(String path) async {
@@ -45,6 +47,30 @@ class ApiService {
       }
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<PermissionAuditResult> auditPermissions(String root) async {
+    final uri = Uri.parse('$auditUrl/permissions');
+    print('FIRING PERMISSION AUDIT ON: $uri (root: $root)');
+
+    final response = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'root': root}),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+      if (jsonBody['success'] == true) {
+        return PermissionAuditResult.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else if (response.statusCode == 499) {
+      throw Exception('Audit cancelled by user');
+    } else {
+      throw Exception('Audit Failed with Status: ${response.statusCode} - ${response.body}');
     }
   }
 
