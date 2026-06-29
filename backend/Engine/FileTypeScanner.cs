@@ -118,10 +118,71 @@ public class FileTypeScanner : IFileTypeScanner
         return result;
     }
 
-    /// <inheritdoc/>
     public void Invalidate(string root)
     {
         _cache.Remove($"filetypes:{NormalizeRoot(root).ToLowerInvariant()}");
+        _cache.Remove($"extbreakdown:{NormalizeRoot(root).ToLowerInvariant()}");
+    }
+
+    public ExtensionBreakdownResult? GetExtensionBreakdown(string root)
+    {
+        var normalized = NormalizeRoot(root);
+        var cacheKey = $"extbreakdown:{normalized.ToLowerInvariant()}";
+
+        if (_cache.TryGetValue(cacheKey, out ExtensionBreakdownResult? hit))
+            return hit;
+
+        var normalizedNoSlash = normalized.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var wasScanned = _engine.DirectorySizeCache.Keys
+            .Any(k => k.Equals(normalizedNoSlash, StringComparison.OrdinalIgnoreCase) ||
+                      k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
+
+        if (!wasScanned) return null;
+
+        var result = BuildExtensionBreakdownResult(normalized);
+        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(15));
+        return result;
+    }
+
+    private ExtensionBreakdownResult BuildExtensionBreakdownResult(string root)
+    {
+        var normalizedRoot = NormalizeRoot(root);
+        var extMap = BuildFromMemory(normalizedRoot);
+        var realEntries = extMap.Where(kvp => !kvp.Key.StartsWith("__visited__")).ToList();
+        var totalBytes = realEntries.Sum(v => v.Value.Bytes);
+
+        var extensions = realEntries.Select(e =>
+        {
+            var extName = string.IsNullOrEmpty(e.Key) || e.Key == "no extension" ? "(none)" : e.Key.ToLowerInvariant();
+            var cat = _categoryMap.TryGetValue(extName, out var c) ? c : "other";
+            
+            // if it was "no extension" in extMap, map to "(none)"
+            if (e.Key == "no extension") extName = "(none)";
+
+            var avgBytes = e.Value.Count > 0 ? e.Value.Bytes / e.Value.Count : 0;
+            return new ExtensionBreakdownItem
+            {
+                Ext = extName,
+                Category = cat,
+                FileCount = e.Value.Count,
+                TotalBytes = e.Value.Bytes,
+                SizeFormatted = FormatBytes(e.Value.Bytes),
+                PercentOfDisk = totalBytes > 0 ? Math.Round((double)e.Value.Bytes / totalBytes * 100, 1) : 0.0,
+                AverageFileSizeBytes = avgBytes,
+                AverageSizeFormatted = FormatBytes(avgBytes),
+                LargestFileBytes = e.Value.LargestFileBytes,
+                LargestFilePath = e.Value.LargestFilePath ?? string.Empty,
+                LargestSizeFormatted = FormatBytes(e.Value.LargestFileBytes)
+            };
+        })
+        .OrderByDescending(x => x.TotalBytes)
+        .ToList();
+
+        return new ExtensionBreakdownResult
+        {
+            Root = root,
+            Extensions = extensions
+        };
     }
     private FileTypeScanResult BuildResult(string root)
     {
@@ -194,8 +255,23 @@ public class FileTypeScanner : IFileTypeScanner
                 {
                     extMap.AddOrUpdate(
                         ext.Key,
-                        _ => new FileTypeEntry { Count = ext.Value.Count, Bytes = ext.Value.Bytes },
-                        (_, prev) => { prev.Count += ext.Value.Count; prev.Bytes += ext.Value.Bytes; return prev; });
+                        _ => new FileTypeEntry 
+                        { 
+                            Count = ext.Value.Count, 
+                            Bytes = ext.Value.Bytes, 
+                            LargestFileBytes = ext.Value.LargestFileBytes, 
+                            LargestFilePath = ext.Value.LargestFilePath 
+                        },
+                        (_, prev) => { 
+                            prev.Count += ext.Value.Count; 
+                            prev.Bytes += ext.Value.Bytes; 
+                            if (ext.Value.LargestFileBytes > prev.LargestFileBytes)
+                            {
+                                prev.LargestFileBytes = ext.Value.LargestFileBytes;
+                                prev.LargestFilePath = ext.Value.LargestFilePath;
+                            }
+                            return prev; 
+                        });
                 }
             }
         }

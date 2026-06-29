@@ -4,6 +4,8 @@ public class FileTypeEntry
 {
     public int Count { get; set; }
     public long Bytes { get; set; }
+    public long LargestFileBytes { get; set; }
+    public string LargestFilePath { get; set; } = string.Empty;
 }
 public class FileTypeExtensionEntry
 {
@@ -31,4 +33,25 @@ public class FileTypeScanResult
     public string TotalScannedFormatted { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public List<FileTypeCategory> Categories { get; set; } = new();
+}
+
+public class ExtensionBreakdownItem
+{
+    public string Ext { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public int FileCount { get; set; }
+    public long TotalBytes { get; set; }
+    public string SizeFormatted { get; set; } = string.Empty;
+    public double PercentOfDisk { get; set; }
+    public long AverageFileSizeBytes { get; set; }
+    public string AverageSizeFormatted { get; set; } = string.Empty;
+    public string LargestFilePath { get; set; } = string.Empty;
+    public long LargestFileBytes { get; set; }
+    public string LargestSizeFormatted { get; set; } = string.Empty;
+}
+
+public class ExtensionBreakdownResult
+{
+    public string Root { get; set; } = string.Empty;
+    public List<ExtensionBreakdownItem> Extensions { get; set; } = new();
 }
