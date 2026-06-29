@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
+import 'package:gs_analyzer_ui/providers/extension_breakdown_provider.dart';
+import 'package:gs_analyzer_ui/widgets/extension_breakdown_screen.dart';
+import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class FileTypeAnalyzerPanel extends ConsumerWidget {
   final String driveName;
@@ -79,7 +82,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             error:   (e, _) => e is FileTypeNoScanException
                 ? _NoScanState(driveName: driveName, root: scanRoot)
                 : _ErrorState(error: e.toString()),
-            data:    (result) => _DataView(result: result),
+            data:    (result) => _DataView(result: result, driveName: driveName, scanRoot: scanRoot),
           ),
         ],
       ),
@@ -252,11 +255,13 @@ class _ErrorState extends StatelessWidget {
 
 class _DataView extends ConsumerWidget {
   final FileTypeResult result;
-  const _DataView({required this.result});
+  final String driveName;
+  final String scanRoot;
+  const _DataView({required this.result, required this.driveName, required this.scanRoot});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedCategoryProvider);
+    final selectedCat = ref.watch(selectedCategoryProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
@@ -267,11 +272,11 @@ class _DataView extends ConsumerWidget {
           SizedBox(
             width: 180,
             height: 180,
-            child: _DonutChart(result: result, selected: selected),
+            child: _DonutChart(result: result, selected: selectedCat),
           ),
           const SizedBox(width: 24),
           // Category list
-          Expanded(child: _CategoryList(result: result, selected: selected)),
+          Expanded(child: _CategoryList(result: result, selected: selectedCat, driveName: driveName, scanRoot: scanRoot)),
         ],
       ),
     );
@@ -289,7 +294,7 @@ class _DonutChart extends ConsumerWidget {
       final isSelected = selected == null || selected == cat.name;
       return PieChartSectionData(
         value:          cat.percentOfDisk,
-        color:          _fileTypeColor(cat.name)
+        color:          HudTheme.fileTypeColor(cat.name)
             .withValues(alpha: isSelected ? 1.0 : 0.25),
         radius:         selected == cat.name ? 38 : 32,
         title:          '',
@@ -346,13 +351,15 @@ class _DonutChart extends ConsumerWidget {
   }
 }
 
-class _CategoryList extends ConsumerWidget {
+class _CategoryList extends StatelessWidget {
   final FileTypeResult result;
   final String?        selected;
-  const _CategoryList({required this.result, required this.selected});
+  final String driveName;
+  final String scanRoot;
+  const _CategoryList({required this.result, required this.selected, required this.driveName, required this.scanRoot});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Column(
       children: result.categories.map((cat) {
         final isSelected = selected == cat.name;
@@ -362,8 +369,8 @@ class _CategoryList extends ConsumerWidget {
             border: Border(
               left: BorderSide(
                 color: isSelected
-                    ? _fileTypeColor(cat.name)
-                    : _fileTypeColor(cat.name).withValues(alpha: 0.3),
+                    ? HudTheme.fileTypeColor(cat.name)
+                    : HudTheme.fileTypeColor(cat.name).withValues(alpha: 0.3),
                 width: 3,
               ),
             ),
@@ -374,15 +381,16 @@ class _CategoryList extends ConsumerWidget {
             collapsedBackgroundColor: const Color(0xFF0D0F14),
             backgroundColor:          const Color(0xFF0D0F14),
             onExpansionChanged: (_) {
-              ref.read(selectedCategoryProvider.notifier).state =
-                  isSelected ? null : cat.name;
+              // Now we don't need ref.read here for category selection since it pushes a screen
+              // Wait, ExpansionTile still needs it if it expands? It's fine to leave it or remove it.
+              // We'll leave the Expansion logic for the tile but we will push the screen from an icon.
             },
             title: Row(
               children: [
                 Container(
                     width: 10, height: 10,
                     decoration: BoxDecoration(
-                      color: _fileTypeColor(cat.name),
+                      color: HudTheme.fileTypeColor(cat.name),
                       shape: BoxShape.circle,
                     )),
                 const SizedBox(width: 8),
@@ -399,7 +407,7 @@ class _CategoryList extends ConsumerWidget {
               children: [
                 Text(cat.sizeFormatted,
                     style: TextStyle(
-                        color: _fileTypeColor(cat.name),
+                        color: HudTheme.fileTypeColor(cat.name),
                         fontSize: 12,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(width: 8),
@@ -410,12 +418,27 @@ class _CategoryList extends ConsumerWidget {
                 Text('${cat.fileCount} f',
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.35), fontSize: 10)),
+                const SizedBox(width: 8),
+                Consumer(
+                  builder: (context, ref, child) {
+                    return IconButton(
+                      icon: const Icon(Icons.open_in_new, color: HudTheme.accentCyan, size: 16),
+                      tooltip: 'View Extensions Breakdown',
+                      onPressed: () {
+                        ref.read(ebSelectedCategoriesProvider.notifier).state = {cat.name};
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (ctx) => ExtensionBreakdownScreen(scanRoot: scanRoot, driveName: driveName)
+                        ));
+                      },
+                    );
+                  }
+                ),
                 const Icon(Icons.expand_more_rounded,
                     color: Colors.white38, size: 16),
               ],
             ),
             children: cat.extensions
-                .map((ext) => _ExtRow(ext: ext, catColor: _fileTypeColor(cat.name)))
+                .map((ext) => _ExtRow(ext: ext, catColor: HudTheme.fileTypeColor(cat.name), scanRoot: scanRoot, driveName: driveName, category: cat.name))
                 .toList(),
           ),
         );
@@ -424,49 +447,52 @@ class _CategoryList extends ConsumerWidget {
   }
 }
 
-class _ExtRow extends StatelessWidget {
+class _ExtRow extends ConsumerWidget {
   final FileTypeExtensionEntry ext;
   final Color                  catColor;
-  const _ExtRow({required this.ext, required this.catColor});
+  final String                 scanRoot;
+  final String                 driveName;
+  final String                 category;
+  const _ExtRow({required this.ext, required this.catColor, required this.scanRoot, required this.driveName, required this.category});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color:        catColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(3),
-                border:       Border.all(color: catColor.withValues(alpha: 0.3)),
+  Widget build(BuildContext context, WidgetRef ref) => InkWell(
+        onTap: () {
+          ref.read(ebSelectedCategoriesProvider.notifier).state = {category};
+          ref.read(ebSearchQueryProvider.notifier).state = ext.ext;
+          Navigator.push(context, MaterialPageRoute(
+            builder: (ctx) => ExtensionBreakdownScreen(scanRoot: scanRoot, driveName: driveName)
+          ));
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color:        catColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border:       Border.all(color: catColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(ext.ext,
+                    style: TextStyle(
+                        color: catColor, fontSize: 10, fontFamily: 'monospace')),
               ),
-              child: Text(ext.ext,
+              const Spacer(),
+              Text(ext.sizeFormatted,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              const SizedBox(width: 12),
+              Text('${ext.percentOfDisk}%',
                   style: TextStyle(
-                      color: catColor, fontSize: 10, fontFamily: 'monospace')),
-            ),
-            const Spacer(),
-            Text(ext.sizeFormatted,
-                style: const TextStyle(color: Colors.white70, fontSize: 11)),
-            const SizedBox(width: 12),
-            Text('${ext.percentOfDisk}%',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4), fontSize: 10)),
-            const SizedBox(width: 12),
-            Text('${ext.fileCount} files',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
-          ],
+                      color: Colors.white.withValues(alpha: 0.4), fontSize: 10)),
+              const SizedBox(width: 12),
+              Text('${ext.fileCount} files',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+            ],
+          ),
         ),
       );
 }
-
-Color _fileTypeColor(String category) => switch (category.toLowerCase()) {
-      'media'       => const Color(0xFF00FFFF),
-      'documents'   => const Color(0xFF4CAF50),
-      'executables' => const Color(0xFFFF5252),
-      'archives'    => const Color(0xFFFFB300),
-      'code'        => const Color(0xFF9C27B0),
-      'system'      => Colors.white38,
-      _             => Colors.white12,
-    };
+

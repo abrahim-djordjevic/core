@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 import 'package:gs_analyzer_ui/models/drive_stats.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
@@ -6,6 +7,7 @@ import 'package:gs_analyzer_ui/models/nuke_result.dart';
 import 'package:http/http.dart' as http;
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
+import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 
@@ -356,6 +358,25 @@ class ApiService {
     );
   }
 
+  Future<ExtensionBreakdownResult> getExtensionBreakdown(String root) async {
+    final uri = Uri.parse('$storageUrl/scan/extensions')
+        .replace(queryParameters: {'root': root});
+
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 409) {
+      throw const FileTypeNoScanException();
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'ExtensionBreakdown fetch failed [${response.statusCode}]: ${response.body}',
+      );
+    }
+
+    return compute(_parseBreakdown, response.body);
+  }
+
   Future<bool> clearCache() async {
   try {
     final response = await _client.post(Uri.parse('$settingsUrl/cache/clear'));
@@ -393,6 +414,12 @@ class ApiService {
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
+}
+
+ExtensionBreakdownResult _parseBreakdown(String body) {
+  return ExtensionBreakdownResult.fromJson(
+    jsonDecode(body) as Map<String, dynamic>
+  );
 }
 
 

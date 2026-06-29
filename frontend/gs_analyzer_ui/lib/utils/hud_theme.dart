@@ -110,4 +110,16 @@ class HudTheme {
       default:            return Colors.cyanAccent;
     }
   }
+
+  static Color fileTypeColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'media':       return const Color(0xFF00FFFF);
+      case 'documents':   return const Color(0xFF4CAF50);
+      case 'executables': return const Color(0xFFFF5252);
+      case 'archives':    return const Color(0xFFFFB300);
+      case 'code':        return const Color(0xFF9C27B0);
+      case 'system':      return Colors.white38;
+      default:            return Colors.white12;
+    }
+  }
 }
