@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Security.Principal;
-using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Hubs;
+using GSSystemAnalyzer.Interfaces;
+using Microsoft.AspNetCore.SignalR;
 
 #if WINDOWS
 using System.Security.AccessControl;
@@ -25,7 +27,8 @@ public class PermissionAuditService : IPermissionAuditService
     {
         @"C:\Windows",
         @"C:\Program Files",
-        @"C:\Program Files (x86)"
+        @"C:\Program Files (x86)",
+        @"C:\ProgramData"
     };
 
     // Linux: paths where executables are expected
@@ -43,61 +46,96 @@ public class PermissionAuditService : IPermissionAuditService
         "Users"
     };
 
-    public PermissionAuditService(ISettingService settings, ILogger<PermissionAuditService> logger)
+    private readonly IHubContext<SystemHub> _hubContext;
+
+    public PermissionAuditService(ISettingService settings, ILogger<PermissionAuditService> logger, IHubContext<SystemHub> hubContext)
     {
         _settings = settings;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     public async Task<PermissionAuditResult> AuditAsync(string rootPath, CancellationToken cancellationToken = default)
     {
         var config = _settings.Current.Scan;
 
-        return await Task.Run(() =>
+        return await Task.Run(async () =>
         {
             var issues = new List<PermissionIssue>();
             int totalScanned = 0;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            long lastReportTime = 0;
+
+            var excludedPaths = config.ExcludedPaths
+                .Select(p => Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                .ToList();
+
+            var systemPaths = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WindowsSystemPaths : LinuxSystemPaths;
+
+            var stack = new Stack<string>();
+            stack.Push(rootPath);
 
             var options = new EnumerationOptions
             {
                 IgnoreInaccessible = true,
-                RecurseSubdirectories = true,
+                RecurseSubdirectories = false,
                 ReturnSpecialDirectories = false,
-                MaxRecursionDepth = config.Depth,
-                AttributesToSkip = 0
+                AttributesToSkip = FileAttributes.ReparsePoint
             };
 
             if (config.SkipHiddenFiles) options.AttributesToSkip |= FileAttributes.Hidden;
             if (config.SkipSystemFiles) options.AttributesToSkip |= FileAttributes.System;
 
-            // Normalize excluded paths for fast prefix matching
-            var excludedPaths = config.ExcludedPaths
-                .Select(p => Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-                .ToList();
-
-            var rootDir = new DirectoryInfo(rootPath);
-
-            // Audit directories
-            foreach (var dir in rootDir.EnumerateDirectories("*", options))
+            while (stack.Count > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var currentDir = stack.Pop();
 
-                if (IsExcluded(dir.FullName, excludedPaths)) continue;
+                // Send progress via SignalR every 250ms
+                if (stopwatch.ElapsedMilliseconds - lastReportTime > 250)
+                {
+                    lastReportTime = stopwatch.ElapsedMilliseconds;
+                    _ = _hubContext.Clients.All.SendAsync("AuditProgress", new { scanned = totalScanned, issues = issues.Count }, cancellationToken);
+                }
 
-                totalScanned++;
-                AuditEntry(dir.FullName, isDirectory: true, issues);
+                try
+                {
+                    var dirInfo = new DirectoryInfo(currentDir);
+
+                    foreach (var entry in dirInfo.EnumerateFileSystemInfos("*", options))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        var fullPath = entry.FullName;
+
+                        // Check skip conditions
+                        if (IsExcluded(fullPath, excludedPaths)) continue;
+                        
+                        bool isDir = entry is DirectoryInfo;
+                        
+                        // Prune system directories from traversal
+                        if (isDir && IsSystemPath(fullPath, systemPaths)) continue;
+
+                        totalScanned++;
+                        AuditEntry(fullPath, isDir, issues);
+
+                        if (isDir)
+                        {
+                            // Enforce depth if needed. Simple count of separators works
+                            int depth = fullPath.Split(Path.DirectorySeparatorChar).Length - rootPath.Split(Path.DirectorySeparatorChar).Length;
+                            if (depth < config.Depth)
+                            {
+                                stack.Push(fullPath);
+                            }
+                        }
+                    }
+                }
+                catch (UnauthorizedAccessException) { /* Skip inaccessible */ }
+                catch (DirectoryNotFoundException) { /* Skip removed */ }
             }
 
-            // Audit files
-            foreach (var file in rootDir.EnumerateFiles("*", options))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (IsExcluded(file.FullName, excludedPaths)) continue;
-
-                totalScanned++;
-                AuditEntry(file.FullName, isDirectory: false, issues);
-            }
+            // Final progress push
+            _ = _hubContext.Clients.All.SendAsync("AuditProgress", new { scanned = totalScanned, issues = issues.Count, completed = true }, cancellationToken);
 
             return new PermissionAuditResult
             {
@@ -142,17 +180,19 @@ public class PermissionAuditService : IPermissionAuditService
             else
                 security = new FileInfo(path).GetAccessControl();
 
-            var rules = security.GetAccessRules(true, true, typeof(NTAccount));
+            var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier));
 
             foreach (FileSystemAccessRule rule in rules)
             {
                 if (rule.AccessControlType != AccessControlType.Allow) continue;
 
-                var identity = rule.IdentityReference.Value;
+                var sid = rule.IdentityReference as SecurityIdentifier;
+                if (sid == null) continue;
 
-                // Check if it's a world identity and has write/full control
-                var isWorldIdentity = WorldIdentities.Any(w =>
-                    identity.EndsWith(w, StringComparison.OrdinalIgnoreCase));
+                // Check if it's a world identity (Everyone, Authenticated Users, Builtin Users)
+                bool isWorldIdentity = sid.IsWellKnown(WellKnownSidType.WorldSid) || 
+                                       sid.IsWellKnown(WellKnownSidType.AuthenticatedUserSid) || 
+                                       sid.IsWellKnown(WellKnownSidType.BuiltinUsersSid);
 
                 if (!isWorldIdentity) continue;
 
@@ -168,8 +208,8 @@ public class PermissionAuditService : IPermissionAuditService
                         Severity = "medium",
                         Type = "world_writable",
                         Description = isDirectory
-                            ? $"Directory is writable by all users ({identity}: {rule.FileSystemRights})"
-                            : $"File is writable by all users ({identity}: {rule.FileSystemRights})"
+                            ? $"Directory is writable by wide group (SID: {sid.Value})"
+                            : $"File is writable by wide group (SID: {sid.Value})"
                     });
                     break; // One world-writable flag is enough per entry
                 }
@@ -178,7 +218,7 @@ public class PermissionAuditService : IPermissionAuditService
             // Check for orphaned / no owner
             try
             {
-                var owner = security.GetOwner(typeof(NTAccount));
+                var owner = security.GetOwner(typeof(SecurityIdentifier));
                 if (owner == null)
                 {
                     issues.Add(new PermissionIssue
@@ -186,7 +226,7 @@ public class PermissionAuditService : IPermissionAuditService
                         Path = path,
                         Severity = "low",
                         Type = "no_owner",
-                        Description = "File system entry has no identifiable owner"
+                        Description = "File system entry has no identifiable owner SID"
                     });
                 }
             }
@@ -197,7 +237,7 @@ public class PermissionAuditService : IPermissionAuditService
                     Path = path,
                     Severity = "low",
                     Type = "no_owner",
-                    Description = "Could not resolve owner — possible orphaned SID"
+                    Description = "Could not resolve owner SID — possible orphaned entry"
                 });
             }
         }
@@ -279,5 +319,11 @@ public class PermissionAuditService : IPermissionAuditService
     {
         return excludedPaths.Any(ep =>
             fullPath.StartsWith(ep, StringComparison.OrdinalIgnoreCase));
+    }
+    private static bool IsSystemPath(string fullPath, string[] systemPaths)
+    {
+        return systemPaths.Any(sp =>
+            fullPath.Equals(sp, StringComparison.OrdinalIgnoreCase) || 
+            fullPath.StartsWith(sp + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
     }
 }

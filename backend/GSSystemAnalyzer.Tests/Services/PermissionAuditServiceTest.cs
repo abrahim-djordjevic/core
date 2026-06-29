@@ -1,7 +1,9 @@
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Services;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -31,7 +33,13 @@ namespace GSSystemAnalyzer.Tests.Services
             });
 
             var loggerMock = new Mock<ILogger<PermissionAuditService>>();
-            _service = new PermissionAuditService(settingsMock.Object, loggerMock.Object);
+            var hubMock = new Mock<IHubContext<SystemHub>>();
+            var clientsMock = new Mock<IHubClients>();
+            var clientProxyMock = new Mock<IClientProxy>();
+            clientsMock.Setup(c => c.All).Returns(clientProxyMock.Object);
+            hubMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+
+            _service = new PermissionAuditService(settingsMock.Object, loggerMock.Object, hubMock.Object);
         }
 
         [Fact]
@@ -110,7 +118,11 @@ namespace GSSystemAnalyzer.Tests.Services
                 }
             });
             var loggerMock = new Mock<ILogger<PermissionAuditService>>();
-            var service = new PermissionAuditService(settingsMock.Object, loggerMock.Object);
+            var hubMock = new Mock<IHubContext<SystemHub>>();
+            var clientsMock = new Mock<IHubClients>();
+            clientsMock.Setup(c => c.All).Returns(new Mock<IClientProxy>().Object);
+            hubMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+            var service = new PermissionAuditService(settingsMock.Object, loggerMock.Object, hubMock.Object);
 
             var result = await service.AuditAsync(_testRoot);
 
@@ -138,7 +150,11 @@ namespace GSSystemAnalyzer.Tests.Services
                 }
             });
             var loggerMock = new Mock<ILogger<PermissionAuditService>>();
-            var service = new PermissionAuditService(settingsMock.Object, loggerMock.Object);
+            var hubMock = new Mock<IHubContext<SystemHub>>();
+            var clientsMock = new Mock<IHubClients>();
+            clientsMock.Setup(c => c.All).Returns(new Mock<IClientProxy>().Object);
+            hubMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+            var service = new PermissionAuditService(settingsMock.Object, loggerMock.Object, hubMock.Object);
 
             var result = await service.AuditAsync(_testRoot);
 

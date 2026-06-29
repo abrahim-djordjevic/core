@@ -62,22 +62,50 @@ class PermissionAuditPanel extends ConsumerWidget {
 
           return _buildResultList(context, result);
         },
-        loading: () => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('AUDITING PERMISSIONS...', style: HudTheme.headerCyan),
-              const SizedBox(height: 24),
-              const SizedBox(
-                width: 250,
-                child: LinearProgressIndicator(
-                  color: HudTheme.accentCyan,
-                  backgroundColor: Colors.white10,
+        loading: () {
+          final progress = ref.watch(auditProgressProvider);
+          final scanned = progress?['scanned'] ?? 0;
+          final issues = progress?['issues'] ?? 0;
+
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('AUDITING PERMISSIONS...', style: HudTheme.headerCyan),
+                const SizedBox(height: 24),
+                const SizedBox(
+                  width: 250,
+                  child: LinearProgressIndicator(
+                    color: HudTheme.accentCyan,
+                    backgroundColor: Colors.white10,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('SCANNED: ', style: HudTheme.labelMuted),
+                    Text('$scanned', style: HudTheme.statCyan),
+                    const SizedBox(width: 16),
+                    Text('ISSUES: ', style: HudTheme.labelMuted),
+                    Text('$issues', style: HudTheme.statCyan.copyWith(color: issues > 0 ? HudTheme.accentAmber : HudTheme.statCyan.color)),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: HudTheme.accentRed),
+                  ),
+                  onPressed: () {
+                    ref.read(permissionAuditProvider.notifier).cancelAudit();
+                  },
+                  icon: const Icon(Icons.close, color: HudTheme.accentRed),
+                  label: Text('CANCEL SCAN', style: HudTheme.actionRed),
+                ),
+              ],
+            ),
+          );
+        },
         error: (err, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

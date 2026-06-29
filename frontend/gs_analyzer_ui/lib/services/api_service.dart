@@ -50,27 +50,39 @@ class ApiService {
     }
   }
 
+  http.Client? _auditClient;
+
   Future<PermissionAuditResult> auditPermissions(String root) async {
     final uri = Uri.parse('$auditUrl/permissions');
     print('FIRING PERMISSION AUDIT ON: $uri (root: $root)');
 
-    final response = await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'root': root}),
-    );
+    _auditClient = http.Client();
+    try {
+      final response = await _auditClient!.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'root': root}),
+      );
 
-    if (response.statusCode == 200) {
-      final jsonBody = jsonDecode(response.body);
-      if (jsonBody['success'] == true) {
-        return PermissionAuditResult.fromJson(jsonBody['data']);
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(response.body);
+        return PermissionAuditResult.fromJson(jsonBody);
+      } else if (response.statusCode == 499) {
+        throw Exception('AUDIT CANCELLED BY USER');
       } else {
-        throw Exception(jsonBody['message']);
+        throw Exception('Audit Failed with Status: ${response.statusCode} - ${response.body}');
       }
-    } else if (response.statusCode == 499) {
-      throw Exception('Audit cancelled by user');
-    } else {
-      throw Exception('Audit Failed with Status: ${response.statusCode} - ${response.body}');
+    } finally {
+      _auditClient?.close();
+      _auditClient = null;
+    }
+  }
+
+  void cancelAudit() {
+    if (_auditClient != null) {
+      print('USER ABORT: CANCELLING PERMISSION AUDIT!');
+      _auditClient!.close();
+      _auditClient = null;
     }
   }
 
