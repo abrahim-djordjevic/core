@@ -45,6 +45,13 @@ class HudTheme {
     fontWeight: FontWeight.bold
   );
 
+  // For numeric data values like sizes, percentages, counts
+  static const TextStyle statCyan = TextStyle(
+    fontFamily: fontCore,
+    color: accentCyan,
+    fontSize: 13,
+  );
+
   // for destructive action like 'ABORT SCAN'
   static const TextStyle actionRed = TextStyle(
     fontFamily: fontCore,
@@ -108,6 +115,18 @@ class HudTheme {
       case 'cyber_light': return Colors.grey.shade700;
       case 'cyber_dark':  return Colors.cyanAccent;
       default:            return Colors.cyanAccent;
+    }
+  }
+
+  static Color fileTypeColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'media':       return const Color(0xFF00FFFF);
+      case 'documents':   return const Color(0xFF4CAF50);
+      case 'executables': return const Color(0xFFFF5252);
+      case 'archives':    return const Color(0xFFFFB300);
+      case 'code':        return const Color(0xFF9C27B0);
+      case 'system':      return Colors.white38;
+      default:            return Colors.white12;
     }
   }
 }

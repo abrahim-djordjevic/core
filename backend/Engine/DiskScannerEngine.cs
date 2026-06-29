@@ -195,11 +195,17 @@ public class DiskScannerEngine : IDiskScannerEngine
 
                 if (!extMap.TryGetValue(ext, out var fte))
                 {
-                    fte = new FileTypeEntry { Count = 0, Bytes = 0 };
+                    fte = new FileTypeEntry { Count = 0, Bytes = 0, LargestFileBytes = 0, LargestFilePath = string.Empty };
                     extMap[ext] = fte;
                 }
                 fte.Count++;
                 fte.Bytes += f.Length;
+                
+                if (f.Length > fte.LargestFileBytes)
+                {
+                    fte.LargestFileBytes = f.Length;
+                    fte.LargestFilePath = f.FullName;
+                }
             }
 
             var pulse = Interlocked.Increment(ref _deepScanThrottle);
