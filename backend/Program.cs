@@ -74,6 +74,7 @@ builder.Services.AddHostedService<DriveMonitorService>();
 // Scoped services (per-request)
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
+builder.Services.AddScoped<IPermissionAuditService, PermissionAuditService>();
 
 builder.Services.AddSignalR();
 var app = builder.Build();
