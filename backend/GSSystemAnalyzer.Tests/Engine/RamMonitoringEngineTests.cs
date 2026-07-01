@@ -3,6 +3,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace GSSystemAnalyzer.Tests.Engine;
@@ -28,7 +29,7 @@ public class RamMonitoringEngineTests
 
         var mockHistoryBuffer = new Mock<ITelemetryHistoryBuffer>();
 
-        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object);
+        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object, NullLogger<RamMonitoringEngine>.Instance);
     }
 
 

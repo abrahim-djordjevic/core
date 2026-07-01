@@ -4,6 +4,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services
 {
@@ -11,11 +12,13 @@ namespace GSSystemAnalyzer.Services
     {
         private readonly DiskScannerEngine _scanner;
         private readonly IHubContext<SystemHub> _hubContext;
+        private readonly ILogger<DiskOperationsService> _logger;
 
-        public DiskOperationsService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext)
+        public DiskOperationsService(DiskScannerEngine scanner, IHubContext<SystemHub> hubContext, ILogger<DiskOperationsService> logger)
         {
             _scanner = scanner;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         public DriveTelemetryDto GetDriveTelemetry(string driveLetter)
@@ -110,7 +113,7 @@ namespace GSSystemAnalyzer.Services
                 {
                     _scanner.DirectorySizeCache.TryRemove(key, out _);
                     memoryChanged = true;
-                    Console.WriteLine($"MEMORY PURGED: Removed Ghost Folder -> {key}");
+                    _logger.LogDebug("Cache purged: removed ghost folder {Key}", key);
                 }
             }
 

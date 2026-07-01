@@ -7,6 +7,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -45,7 +46,7 @@ public class NukeProtocolServiceTests : IDisposable
         proxy.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
 
-        return new NukeProtocolService(_scanner.Object, hub.Object, runStartupCleanup: false)
+        return new NukeProtocolService(_scanner.Object, hub.Object, NullLogger<NukeProtocolService>.Instance, runStartupCleanup: false)
         {
             StagingBaseResolver = _ => _stagingBase
         };

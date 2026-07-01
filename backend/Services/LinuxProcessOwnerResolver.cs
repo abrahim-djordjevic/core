@@ -1,4 +1,5 @@
 using GSSystemAnalyzer.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services;
 
@@ -7,9 +8,11 @@ public class LinuxProcessOwnerResolver : IProcessOwnerResolver
 #if !WINDOWS
     private Dictionary<int, string> _uidToUser = new();
     private DateTime _passwdLastMtime = DateTime.MinValue;
+    private readonly ILogger<LinuxProcessOwnerResolver> _logger;
 
-    public LinuxProcessOwnerResolver()
+    public LinuxProcessOwnerResolver(ILogger<LinuxProcessOwnerResolver> logger)
     {
+        _logger = logger;
         ReloadPasswdMap();
     }
 
@@ -80,7 +83,7 @@ public class LinuxProcessOwnerResolver : IProcessOwnerResolver
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PROCESS OWNER] Failed to parse /etc/passwd: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to parse /etc/passwd");
         }
     }
 #else

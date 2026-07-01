@@ -1,9 +1,17 @@
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services
 {
     public class WmiThermalFallback : IWmiThermalFallback
     {
+        private readonly ILogger<WmiThermalFallback> _logger;
+
+        public WmiThermalFallback(ILogger<WmiThermalFallback> logger)
+        {
+            _logger = logger;
+        }
+
         public double? GetCpuTemperatureCelsius()
         {
             try
@@ -24,8 +32,7 @@ namespace GSSystemAnalyzer.Services
             }
             catch (Exception ex)
             {
-                // ?? UNMASKING THE GHOST: Print the exact assassination report to the terminal!
-                Console.WriteLine($"\n[DEFENSE GRID WMI CRASH] -> {ex.GetType().Name}: {ex.Message}\n");
+                _logger.LogError(ex, "WMI thermal fallback query failed");
             }
 
             return null;

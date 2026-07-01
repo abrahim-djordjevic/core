@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Management;
 using System.Runtime.InteropServices;
 using GSSystemAnalyzer.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services;
 
@@ -9,6 +10,12 @@ public class WindowsProcessOwnerResolver : IProcessOwnerResolver
 {
 #if WINDOWS
     private ConcurrentDictionary<int, string> _ownerCache = new();
+    private readonly ILogger<WindowsProcessOwnerResolver> _logger;
+
+    public WindowsProcessOwnerResolver(ILogger<WindowsProcessOwnerResolver> logger)
+    {
+        _logger = logger;
+    }
 
     public void RefreshCache()
     {
@@ -46,7 +53,7 @@ public class WindowsProcessOwnerResolver : IProcessOwnerResolver
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PROCESS OWNER] WMI batch query failed: {ex.Message}");
+            _logger.LogWarning(ex, "WMI batch query failed for process owner resolution");
         }
 
         _ownerCache = newCache;

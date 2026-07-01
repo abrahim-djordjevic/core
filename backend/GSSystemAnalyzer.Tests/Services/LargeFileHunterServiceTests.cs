@@ -5,6 +5,7 @@ using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Xunit;
 using GSSystemAnalyzer.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace GSSystemAnalyzer.Tests.Services;
@@ -23,7 +24,7 @@ public class LargeFileHunterServiceTests : IDisposable
         mockSettings.Setup(s => s.Current)
             .Returns(AppSettingDto.GetFactoryDefaults());
 
-        _hunterService = new LargeFileHunterService(mockSettings.Object);
+        _hunterService = new LargeFileHunterService(mockSettings.Object, NullLogger<LargeFileHunterService>.Instance);
     }
 
     [Fact]

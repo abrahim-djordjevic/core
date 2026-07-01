@@ -1,6 +1,7 @@
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Engine
 {
@@ -9,19 +10,21 @@ namespace GSSystemAnalyzer.Engine
         private readonly ICpuMetricsProvider _cpuProvider;
         private readonly IHubContext<SystemHub> _hubContext;
         private readonly ITelemetryHistoryBuffer _historyBuffer;
+        private readonly ILogger<CpuSamplerEngine> _logger;
         private TimeSpan _pollInterval;
 
-        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext, ISettingService settings, ITelemetryHistoryBuffer historyBuffer)
+        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext, ISettingService settings, ITelemetryHistoryBuffer historyBuffer, ILogger<CpuSamplerEngine> logger)
         {
             _cpuProvider = cpuProvider;
             _hubContext = hubContext;
             _historyBuffer = historyBuffer;
+            _logger = logger;
 
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.CpuPollIntervalMs);
             settings.OnSettingsChanged += (_, s) =>
             {
                 _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.CpuPollIntervalMs);
-                Console.WriteLine($"[CPU SAMPLER] Poll interval updated ? {_pollInterval.TotalMilliseconds}ms");
+                _logger.LogDebug("CPU sampler poll interval updated to {IntervalMs}ms", _pollInterval.TotalMilliseconds);
             };
         }
 
@@ -43,7 +46,7 @@ namespace GSSystemAnalyzer.Engine
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[CPU SAMPLER FAULT] {ex.Message}");
+                    _logger.LogError(ex, "CPU sampler fault");
                 }
 
                 await Task.Delay(_pollInterval, stoppingToken);

@@ -5,6 +5,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Engine
 {
@@ -14,6 +15,7 @@ namespace GSSystemAnalyzer.Engine
         private readonly IHubContext<SystemHub> _hub;
         private readonly IProcessOwnerResolver _ownerResolver;
         private readonly ITelemetryHistoryBuffer _historyBuffer;
+        private readonly ILogger<RamMonitoringEngine> _logger;
         private readonly object _lock = new object();
         private TimeSpan _pollInterval;
 
@@ -23,11 +25,12 @@ namespace GSSystemAnalyzer.Engine
         // Consecutive zero-CPU-tick counter per PID for status heuristic
         private readonly ConcurrentDictionary<int, int> _zeroTickCounts = new();
 
-        public RamMonitoringEngine(IHubContext<SystemHub> hub, ISettingService settings, IProcessOwnerResolver ownerResolver, ITelemetryHistoryBuffer historyBuffer)
+        public RamMonitoringEngine(IHubContext<SystemHub> hub, ISettingService settings, IProcessOwnerResolver ownerResolver, ITelemetryHistoryBuffer historyBuffer, ILogger<RamMonitoringEngine> logger)
         {
             _hub = hub;
             _ownerResolver = ownerResolver;
             _historyBuffer = historyBuffer;
+            _logger = logger;
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.RamPollIntervalMs);
             settings.OnSettingsChanged += (_, s) =>
                 _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.RamPollIntervalMs);
@@ -52,14 +55,14 @@ namespace GSSystemAnalyzer.Engine
 
                 _radarCts = new CancellationTokenSource();
                 _ = RadarLoopAsync(_radarCts.Token);
-                Console.WriteLine("\n[RAM RADAR] ONLINE: Process Explorer Sweep Initiated.");
+                _logger.LogInformation("RAM radar started");
             }
         }
 
         public void StopRadar()
         {
             _radarCts?.Cancel();
-            Console.WriteLine("\n[RAM RADAR] OFFLINE.");
+            _logger.LogInformation("RAM radar stopped");
         }
 
         private async Task RadarLoopAsync(CancellationToken token)
@@ -100,11 +103,11 @@ namespace GSSystemAnalyzer.Engine
                             _historyBuffer.Record("ram_percent", percent);
                         }
 
-                        Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
+                        _logger.LogDebug("RAM sweep at {Time} — sent {ProcessCount} processes", DateTime.Now.ToString("HH:mm:ss"), snapshot.Count);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        Console.WriteLine($"\n[RAM ENGINE] Tick error: {ex.Message}");
+                        _logger.LogWarning(ex, "RAM engine tick error");
                     }
                     await nextTick;
                 }
@@ -112,8 +115,7 @@ namespace GSSystemAnalyzer.Engine
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[RAM ENGINE FATAL RADAR] ERROR: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                _logger.LogError(ex, "RAM engine fatal radar error");
             }
         }
 
@@ -277,14 +279,14 @@ namespace GSSystemAnalyzer.Engine
                     var process = Process.GetProcessById(pid);
                     process.Kill();
                     killCount++;
-                    Console.WriteLine($"[RAM RADAR] ASSASSINATED PID: {pid}");
+                    _logger.LogDebug("Process killed: PID {Pid}", pid);
                 }
                 catch
                 {
                  
                 }
             }
-            Console.WriteLine($"\n[RAM RADAR] TOTAL ASSASSINATIONS: {killCount} targets eliminated.");
+            _logger.LogInformation("Process termination completed: {KillCount} processes terminated", killCount);
             return killCount;
         }
     }

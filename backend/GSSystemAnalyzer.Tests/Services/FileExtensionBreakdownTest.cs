@@ -1,9 +1,10 @@
-﻿using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace GSSystemAnalyzer.Tests.Services
@@ -21,7 +22,7 @@ namespace GSSystemAnalyzer.Tests.Services
             var settings = new Mock<ISettingService>().Object;
 
             _cache = new MemoryCache(new MemoryCacheOptions());
-            _engine = new DiskScannerEngine(hub, settings);
+            _engine = new DiskScannerEngine(hub, settings, NullLogger<DiskScannerEngine>.Instance);
 
             _engine.DirectorySizeCache.Clear();
 

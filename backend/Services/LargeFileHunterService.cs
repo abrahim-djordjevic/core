@@ -5,15 +5,18 @@ using System.Threading.Tasks;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Interfaces;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services;
 public class LargeFileHunterService : ILargeFileHunterService
 {
     private readonly ISettingService _settings;
+    private readonly ILogger<LargeFileHunterService> _logger;
 
-    public LargeFileHunterService(ISettingService settings)
+    public LargeFileHunterService(ISettingService settings, ILogger<LargeFileHunterService> logger)
     {
         _settings = settings;
+        _logger = logger;
     }
 
     public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
@@ -82,7 +85,7 @@ public class LargeFileHunterService : ILargeFileHunterService
             }
 
             stopwatch.Stop();
-            Console.WriteLine($"[PERF] Large File Scan Completed in: {stopwatch.ElapsedMilliseconds}ms");
+            _logger.LogDebug("Large file scan completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
 
             return result;
 
