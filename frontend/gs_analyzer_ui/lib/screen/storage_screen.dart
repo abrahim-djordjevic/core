@@ -58,6 +58,12 @@ class StorageScreen extends ConsumerWidget {
                         icon: Icons.copy_all_outlined,
                         onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.duplicateScanner),
                       ),
+                      _ScanLaunchTile(
+                        title: 'PERMISSION AUDIT',
+                        subtitle: 'Detect world-writable paths and orphaned files',
+                        icon: Icons.security_outlined,
+                        onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.permissionAudit),
+                      ),
                     ],
                   ),
                 ),

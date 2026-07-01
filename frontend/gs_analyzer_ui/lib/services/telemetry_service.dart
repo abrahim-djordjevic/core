@@ -13,6 +13,7 @@ class TelemetryService {
   Function(String path)? onDirectoryStreamComplete;
   Function(Map<String, dynamic>)? onCpuUpdate;
   Function(List<dynamic>)? onDriveUpdate;
+  Function(Map<String, dynamic>)? onAuditProgress;
 
   TelemetryService({
     required this.onProgressUpdate,
@@ -45,6 +46,7 @@ class TelemetryService {
     _hubConnection.on('DirectoryStreamComplete', _handleDirectoryStreamComplete);
     _hubConnection.on('ReceiveCpuTelemetry',     _handleCpuUpdate);
     _hubConnection.on('DriveListUpdate',         _handleDriveUpdate);
+    _hubConnection.on('AuditProgress',           _handleAuditProgress);
   }
 
     Future<void> startListening() async {
@@ -190,5 +192,11 @@ class TelemetryService {
         } catch (e) {
           print('DRIVE TELEMETRY CRASH: $e');
         }
+    }
+
+    void _handleAuditProgress(List<Object?>? arguments) {
+      if (onAuditProgress != null && arguments != null && arguments.isNotEmpty) {
+        onAuditProgress!(arguments[0] as Map<String, dynamic>);
+      }
     }
   }

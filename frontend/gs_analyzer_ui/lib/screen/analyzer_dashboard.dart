@@ -19,6 +19,7 @@ import '../widgets/side_bar_widget.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/widgets/duplicate_scanner_pannel.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
+import 'package:gs_analyzer_ui/widgets/permission_audit_panel.dart';
 
 class AnalyzerDashboard extends ConsumerStatefulWidget {
   const AnalyzerDashboard({super.key});
@@ -108,6 +109,16 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 value: StorageMode.tempFileCleaner,
                 child: Text(
                   'TEMP FILE CLEANER',
+                  style: HudTheme.bodyText.copyWith(
+                    color: HudTheme.accentAmber,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              PopupMenuItem(
+                value: StorageMode.permissionAudit,
+                child: Text(
+                  'PERMISSION AUDIT',
                   style: HudTheme.bodyText.copyWith(
                     color: HudTheme.accentAmber,
                     fontWeight: FontWeight.bold,
@@ -277,6 +288,9 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
       return const Center(
         child: Text('TEMP FILE CLEANER OFFLINE', style: HudTheme.actionRed),
       );
+    }
+    if (currentMode == StorageMode.permissionAudit) {
+      return const PermissionAuditPanel();
     }
     // Default: disk analyzer table.
     if (dirState.isLoading) {

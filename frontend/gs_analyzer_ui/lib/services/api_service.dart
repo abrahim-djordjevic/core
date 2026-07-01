@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/models/file_type_model.dart';
 import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
+import 'package:gs_analyzer_ui/models/permission_audit_models.dart';
 
 class ApiService {
   final http.Client _client;
@@ -21,6 +22,7 @@ class ApiService {
   static const String thermalUrl = 'http://localhost:5200/api/thermal';
   static const String settingsUrl = 'http://localhost:5200/api/settings';
   static const String driveUrl = 'http://localhost:5200/api/drives';
+  static const String auditUrl = 'http://localhost:5200/api/audit';
 
 
   Future<List<StorageNode>> scanDirectory(String path) async {
@@ -45,6 +47,42 @@ class ApiService {
       }
     } else {
       throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  http.Client? _auditClient;
+
+  Future<PermissionAuditResult> auditPermissions(String root) async {
+    final uri = Uri.parse('$auditUrl/permissions');
+    print('FIRING PERMISSION AUDIT ON: $uri (root: $root)');
+
+    _auditClient = http.Client();
+    try {
+      final response = await _auditClient!.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'root': root}),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(response.body);
+        return PermissionAuditResult.fromJson(jsonBody);
+      } else if (response.statusCode == 499) {
+        throw Exception('AUDIT CANCELLED BY USER');
+      } else {
+        throw Exception('Audit Failed with Status: ${response.statusCode} - ${response.body}');
+      }
+    } finally {
+      _auditClient?.close();
+      _auditClient = null;
+    }
+  }
+
+  void cancelAudit() {
+    if (_auditClient != null) {
+      print('USER ABORT: CANCELLING PERMISSION AUDIT!');
+      _auditClient!.close();
+      _auditClient = null;
     }
   }
 

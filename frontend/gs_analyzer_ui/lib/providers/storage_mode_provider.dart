@@ -4,7 +4,8 @@ enum StorageMode {
   diskAnalyzer,
   duplicateScanner,
   largeFileScanner,
-  tempFileCleaner
+  tempFileCleaner,
+  permissionAudit
 }
 
 final storageModeProvider = StateProvider<StorageMode>((ref) => StorageMode.diskAnalyzer);
