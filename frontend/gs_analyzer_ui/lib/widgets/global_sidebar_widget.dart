@@ -18,14 +18,14 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
   @override
   Widget build(BuildContext context) {
     final currentRoute = ref.watch(navigationProvider);
-    final double width = _isExpanded ? 220.0 : 54.0;
+    final double width = _isExpanded ? 240.0 : 54.0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       width: width,
       decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E), // Slightly lighter dark background matching Win11 TaskMgr sidebar
+        color: Color(0xFF0F0F0F),
         border: Border(right: BorderSide(color: Colors.white10)),
       ),
       child: Column(
@@ -69,14 +69,14 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildNavItem(AppRoute.process, 'Processes', Icons.monitor_heart_outlined, currentRoute),
-                  _buildNavItem(AppRoute.cpuMetics, 'Performance', Icons.show_chart_outlined, currentRoute),
-                  _buildNavItem(AppRoute.telemetryHistory, 'App history', Icons.history_outlined, currentRoute),
-                  _buildNavItem(AppRoute.dashboard, 'Startup apps', Icons.speed_outlined, currentRoute),
-                  _buildNavItem(AppRoute.network, 'Users', Icons.people_outline, currentRoute),
-                  _buildNavItem(AppRoute.memory, 'Details', Icons.list_outlined, currentRoute),
-                  _buildNavItem(AppRoute.storage, 'Services', Icons.settings_system_daydream_outlined, currentRoute),
-                  _buildNavItem(AppRoute.thermal, 'Thermal', Icons.thermostat_outlined, currentRoute),
+                  _buildNavItem(AppRoute.dashboard, 'DASHBOARD', Icons.dashboard_outlined, currentRoute),
+                  _buildNavItem(AppRoute.process, 'PROCESS EXPLORER', Icons.monitor_heart_outlined, currentRoute),
+                  _buildNavItem(AppRoute.cpuMetics, 'CPU METRICS', Icons.memory_outlined, currentRoute),
+                  _buildNavItem(AppRoute.memory, 'MEMORY', Icons.bar_chart_outlined, currentRoute),
+                  _buildNavItem(AppRoute.storage, 'STORAGE', Icons.storage_outlined, currentRoute),
+                  _buildNavItem(AppRoute.network, 'NETWORK', Icons.account_tree_outlined, currentRoute),
+                  _buildNavItem(AppRoute.thermal, 'THERMAL', Icons.thermostat_outlined, currentRoute),
+                  _buildNavItem(AppRoute.telemetryHistory, 'TELEMETRY HISTORY', Icons.history_outlined, currentRoute),
                 ],
               ),
             ),
@@ -84,7 +84,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
 
           _buildSettingsNavItem(currentRoute),
           
-          _buildNavItem(null, 'Help', Icons.help_outline_outlined, currentRoute, isAction: true),
+          _buildNavItem(null, 'HELP', Icons.help_outline_outlined, currentRoute, isAction: true),
           const SizedBox(height: 12),
         ],
       ),
@@ -137,8 +137,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                   ),
                 ),
               ),
-            ] else
-               const SizedBox(width: 12),
+            ]
           ],
         ),
       ),
@@ -187,17 +186,17 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  'Settings',
+                  'SETTINGS',
                   overflow: TextOverflow.ellipsis,
                   style: HudTheme.bodyText.copyWith(
                     color: color,
                     fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    letterSpacing: 2.0,
                   ),
                 ),
               ),
-            ] else
-              const SizedBox(width: 12),
+            ]
           ],
         ),
       ),
