@@ -32,6 +32,7 @@ void main() {
         return null;
       });
 
+      container.listen(telemetryHistoryProvider('cpu'), (_, __) {});
       final state = container.read(telemetryHistoryProvider('cpu'));
       
       expect(state.isLoading, true);
@@ -51,6 +52,7 @@ void main() {
       when(() => mockApiService.fetchTelemetryHistory('cpu', 5))
           .thenAnswer((_) async => mockResponse);
 
+      container.listen(telemetryHistoryProvider('cpu'), (_, __) {});
       final notifier = container.read(telemetryHistoryProvider('cpu').notifier);
       await Future.delayed(Duration.zero);
 
@@ -72,6 +74,7 @@ void main() {
       when(() => mockApiService.fetchTelemetryHistory('cpu', 30))
           .thenAnswer((_) async => mockResponse);
 
+      container.listen(telemetryHistoryProvider('cpu'), (_, __) {});
       final notifier = container.read(telemetryHistoryProvider('cpu').notifier);
       
       notifier.setMinutes(30);
