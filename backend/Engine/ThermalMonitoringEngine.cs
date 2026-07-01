@@ -11,12 +11,14 @@ namespace GSSystemAnalyzer.Engine
     {
         private readonly IHubContext<SystemHub> _hubContext;
         private readonly IThermalProvider _thermalProvider;
+        private readonly ITelemetryHistoryBuffer _historyBuffer;
         private TimeSpan _pollInterval;
 
-        public ThermalMonitoringEngine(IHubContext<SystemHub> hubContext, IThermalProvider thermalProvider, ISettingService settings)
+        public ThermalMonitoringEngine(IHubContext<SystemHub> hubContext, IThermalProvider thermalProvider, ISettingService settings, ITelemetryHistoryBuffer historyBuffer)
         {
             _hubContext = hubContext;
             _thermalProvider = thermalProvider;
+            _historyBuffer = historyBuffer;
             
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.ThermalPollIntervalMs);
 
@@ -45,6 +47,10 @@ namespace GSSystemAnalyzer.Engine
                     if (payload != null)
                     {
                         await _hubContext.Clients.All.SendAsync("ReceiveThermalTelemetry", payload, stoppingToken);
+
+                        // Record to history buffer for historical charts
+                        if (payload.CpuPackageCelsius != null)
+                            _historyBuffer.Record("thermal_cpu_package", payload.CpuPackageCelsius.Value);
                     }
                 }
                 catch (Exception ex)
@@ -57,3 +63,4 @@ namespace GSSystemAnalyzer.Engine
         }
     }
 }
+

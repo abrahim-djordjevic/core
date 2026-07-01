@@ -8,12 +8,14 @@ namespace GSSystemAnalyzer.Engine
     {
         private readonly ICpuMetricsProvider _cpuProvider;
         private readonly IHubContext<SystemHub> _hubContext;
+        private readonly ITelemetryHistoryBuffer _historyBuffer;
         private TimeSpan _pollInterval;
 
-        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext, ISettingService settings)
+        public CpuSamplerEngine(ICpuMetricsProvider cpuProvider, IHubContext<SystemHub> hubContext, ISettingService settings, ITelemetryHistoryBuffer historyBuffer)
         {
             _cpuProvider = cpuProvider;
             _hubContext = hubContext;
+            _historyBuffer = historyBuffer;
 
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.CpuPollIntervalMs);
             settings.OnSettingsChanged += (_, s) =>
@@ -31,6 +33,9 @@ namespace GSSystemAnalyzer.Engine
                 {
                     var telemetry = await _cpuProvider.GetNextSampleAsync();
                     await _hubContext.Clients.All.SendAsync("ReceiveCpuTelemetry", telemetry, cancellationToken: stoppingToken);
+
+                    // Record to history buffer for historical charts
+                    _historyBuffer.Record("cpu", telemetry.AverageLoad);
                 }
                 catch (OperationCanceledException)
                 {

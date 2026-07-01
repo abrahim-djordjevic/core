@@ -13,6 +13,7 @@ namespace GSSystemAnalyzer.Engine
         private CancellationTokenSource? _radarCts;
         private readonly IHubContext<SystemHub> _hub;
         private readonly IProcessOwnerResolver _ownerResolver;
+        private readonly ITelemetryHistoryBuffer _historyBuffer;
         private readonly object _lock = new object();
         private TimeSpan _pollInterval;
 
@@ -22,10 +23,11 @@ namespace GSSystemAnalyzer.Engine
         // Consecutive zero-CPU-tick counter per PID for status heuristic
         private readonly ConcurrentDictionary<int, int> _zeroTickCounts = new();
 
-        public RamMonitoringEngine(IHubContext<SystemHub> hub, ISettingService settings, IProcessOwnerResolver ownerResolver)
+        public RamMonitoringEngine(IHubContext<SystemHub> hub, ISettingService settings, IProcessOwnerResolver ownerResolver, ITelemetryHistoryBuffer historyBuffer)
         {
             _hub = hub;
             _ownerResolver = ownerResolver;
+            _historyBuffer = historyBuffer;
             _pollInterval = TimeSpan.FromMilliseconds(settings.Current.Monitoring.RamPollIntervalMs);
             settings.OnSettingsChanged += (_, s) =>
                 _pollInterval = TimeSpan.FromMilliseconds(s.Monitoring.RamPollIntervalMs);
@@ -86,6 +88,18 @@ namespace GSSystemAnalyzer.Engine
                         };
 
                         await _hub.Clients.All.SendAsync("RamUpdate", payload, cancellationToken: token);
+
+                        // Record to history buffer for historical charts
+                        if (globalMetrics != null)
+                        {
+                            var metrics = (dynamic)globalMetrics;
+                            double activeGb = (double)metrics.activeGb;
+                            double totalGb  = (double)metrics.totalGb;
+                            double percent  = totalGb > 0 ? Math.Round((activeGb / totalGb) * 100, 1) : 0;
+
+                            _historyBuffer.Record("ram", activeGb);
+                            _historyBuffer.Record("ram_percent", percent);
+                        }
 
                         Console.WriteLine($"[RAM SWEEP {DateTime.Now:HH:mm:ss}] Engine Fired - Sent {snapshot.Count} processes");
                     }
