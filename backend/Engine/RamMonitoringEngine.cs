@@ -77,12 +77,12 @@ namespace GSSystemAnalyzer.Engine
 
                         var payload = new
                         {
-                            Global = globalMetrics ?? new
+                            Global = globalMetrics ?? new SystemMemoryMetrics.GlobalMemoryMetrics
                             {
-                                activeGb = 0.0,
-                                cachedGb = 0.0,
-                                swapGb = 0.0,
-                                totalGb = 16.0,
+                                ActiveGb = 0.0,
+                                CacheGb = 0.0,
+                                SwapGb = 0.0,
+                                TotalGb = 16.0,
                             },
                             Processes = snapshot
                         };
@@ -92,9 +92,8 @@ namespace GSSystemAnalyzer.Engine
                         // Record to history buffer for historical charts
                         if (globalMetrics != null)
                         {
-                            var metrics = (dynamic)globalMetrics;
-                            double activeGb = (double)metrics.activeGb;
-                            double totalGb  = (double)metrics.totalGb;
+                            double activeGb = globalMetrics.ActiveGb;
+                            double totalGb  = globalMetrics.TotalGb;
                             double percent  = totalGb > 0 ? Math.Round((activeGb / totalGb) * 100, 1) : 0;
 
                             _historyBuffer.Record("ram", activeGb);

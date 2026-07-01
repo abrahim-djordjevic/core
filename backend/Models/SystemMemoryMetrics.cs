@@ -19,10 +19,18 @@ namespace GSSystemAnalyzer.Models
             public ulong ullAvailExtendedVirtual;
         }
 
+        public class GlobalMemoryMetrics
+        {
+            public double ActiveGb { get; set; }
+            public double CacheGb { get; set; }
+            public double SwapGb { get; set; }
+            public double TotalGb { get; set; }
+        }
+
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 
-        public static object GetLiveMetrics()
+        public static GlobalMemoryMetrics? GetLiveMetrics()
         {
             var memStatus = new MEMORYSTATUSEX();
             memStatus.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
@@ -36,18 +44,16 @@ namespace GSSystemAnalyzer.Models
                 double availPageGb = memStatus.ulAvailPagePhys / (1024.0 * 1024.0 * 1024.0);
                 double swapGb = totalPageGb - availPageGb;
 
-                return new
+                return new GlobalMemoryMetrics
                 {
-                    activeGb = Math.Round(activeRamGb, 2),
-                    cacheGb = Math.Round(availRamGb, 2),
-                    swapGb = Math.Round(swapGb, 2),
-                    totalGb = Math.Round(totalRamGb, 2)
+                    ActiveGb = Math.Round(activeRamGb, 2),
+                    CacheGb = Math.Round(availRamGb, 2),
+                    SwapGb = Math.Round(swapGb, 2),
+                    TotalGb = Math.Round(totalRamGb, 2)
                 };
             }
 
             return null;
         }
-
-    
     }
 }

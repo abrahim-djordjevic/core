@@ -8,21 +8,29 @@ namespace GSSystemAnalyzer.Services
     {
         // Registry of supported metrics and their display units.
         // Wired metrics are populated by background services.
-        // TODO metrics are registered but not yet wired — will return empty points until a provider is built.
         private static readonly Dictionary<string, string> MetricUnits = new()
         {
             ["cpu"]                 = "%",
             ["ram"]                 = "GB",
             ["ram_percent"]         = "%",
             ["thermal_cpu_package"] = "°C",
-            ["network_rx"]          = "MB/s",   // TODO: wire when Network provider is built
-            ["network_tx"]          = "MB/s",   // TODO: wire when Network provider is built
-            ["disk_io_read"]        = "MB/s",   // TODO: wire when Disk I/O provider is built
-            ["disk_io_write"]       = "MB/s",   // TODO: wire when Disk I/O provider is built
         };
 
         private readonly ConcurrentDictionary<string, ConcurrentQueue<TelemetryPoint>> _buffers = new();
         private static readonly TimeSpan MaxRetention = TimeSpan.FromMinutes(60);
+        private const int MaxQueueLength = 10000;
+
+        private readonly TimeProvider _timeProvider;
+
+        public TelemetryHistoryBuffer(TimeProvider timeProvider)
+        {
+            _timeProvider = timeProvider;
+        }
+
+        // Overload for ease of manual instantiation in tests if needed without Moq
+        public TelemetryHistoryBuffer() : this(TimeProvider.System)
+        {
+        }
 
         /// <inheritdoc />
         public void Record(string metric, double value)
@@ -33,7 +41,7 @@ namespace GSSystemAnalyzer.Services
 
             queue.Enqueue(new TelemetryPoint
             {
-                Timestamp = DateTime.UtcNow,
+                Timestamp = _timeProvider.GetUtcNow().UtcDateTime,
                 Value = Math.Round(value, 2)
             });
 
@@ -48,7 +56,7 @@ namespace GSSystemAnalyzer.Services
 
             minutes = Math.Clamp(minutes, 1, 60);
 
-            var cutoff = DateTime.UtcNow.AddMinutes(-minutes);
+            var cutoff = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(-minutes);
 
             List<TelemetryPoint> points;
 
@@ -91,14 +99,20 @@ namespace GSSystemAnalyzer.Services
         }
 
         /// <summary>
-        /// Removes entries older than 60 minutes from the front of the queue.
+        /// Removes entries older than 60 minutes from the front of the queue, or if queue exceeds max length.
         /// Safe to call concurrently — ConcurrentQueue.TryDequeue is atomic.
         /// </summary>
-        private static void Prune(ConcurrentQueue<TelemetryPoint> queue)
+        private void Prune(ConcurrentQueue<TelemetryPoint> queue)
         {
-            var horizon = DateTime.UtcNow - MaxRetention;
+            var horizon = _timeProvider.GetUtcNow().UtcDateTime - MaxRetention;
 
             while (queue.TryPeek(out var oldest) && oldest.Timestamp < horizon)
+            {
+                queue.TryDequeue(out _);
+            }
+
+            // Hard cap to prevent memory ballooning if interval is misconfigured
+            while (queue.Count > MaxQueueLength)
             {
                 queue.TryDequeue(out _);
             }

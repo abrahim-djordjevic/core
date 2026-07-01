@@ -3,22 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
-class RamScannerScreen extends ConsumerWidget {
+class RamScannerScreen extends ConsumerStatefulWidget {
   const RamScannerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RamScannerScreen> createState() => _RamScannerScreenState();
+}
+
+class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
+  bool _showHistory = false;
+
+  @override
+  Widget build(BuildContext context) {
     final ramState = ref.watch(ramProvider);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Critical banner
-        if (ramState.isCritical)
+        if (ramState.isCritical && !_showHistory)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: HudTheme.accentRed.withValues(alpha: 0.2),
+            color: HudTheme.accentRed.withOpacity(0.2),
             child: const Center(
               child: Text(
                 'RAM CRITICAL ALERT: REDUCE SYSTEM LOAD',
@@ -26,39 +35,63 @@ class RamScannerScreen extends ConsumerWidget {
               ),
             ),
           ),
-
-        // Allocation cards
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.white10)),
-          ),
+          
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: _buildAllocationCard(
-                  'ACTIVE MEMORY',
-                  '${ramState.activeGb.toStringAsFixed(1)} GB',
-                  HudTheme.accentCyan,
-                  ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0,
-                ),
+              const Text('MEMORY SCANNER MODULE', style: HudTheme.headerCyan),
+              Row(
+                children: [
+                  _buildToggleBtn('LIVE VIEW', !_showHistory),
+                  _buildToggleBtn('HISTORY', _showHistory),
+                ],
               ),
-              Expanded(
-                child: _buildAllocationCard(
-                  'CACHE (STANDBY)',
-                  '${ramState.cacheGb.toStringAsFixed(1)} GB',
-                  HudTheme.accentGreen,
-                  ramState.totalGb > 0 ? ramState.cacheGb / ramState.totalGb : 0.0,
+            ],
+          ),
+        ),
+
+        if (_showHistory)
+          const Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: TelemetryHistoryChart(metricKey: 'ram'),
+            ),
+          )
+        else ...[
+          // Allocation cards
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.white10)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildAllocationCard(
+                    'ACTIVE MEMORY',
+                    '${ramState.activeGb.toStringAsFixed(1)} GB',
+                    HudTheme.accentCyan,
+                    ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _buildAllocationCard(
-                  'SWAP / PAGEFILE',
-                  '${ramState.swapGb.toStringAsFixed(1)} GB',
-                  HudTheme.accentAmber,
-                  ramState.totalGb > 0 ? ramState.swapGb / (ramState.totalGb * 2) : 0.0,
+                Expanded(
+                  child: _buildAllocationCard(
+                    'CACHE (STANDBY)',
+                    '${ramState.cacheGb.toStringAsFixed(1)} GB',
+                    HudTheme.accentGreen,
+                    ramState.totalGb > 0 ? ramState.cacheGb / ramState.totalGb : 0.0,
+                  ),
                 ),
-              ),
+                Expanded(
+                  child: _buildAllocationCard(
+                    'SWAP / PAGEFILE',
+                    '${ramState.swapGb.toStringAsFixed(1)} GB',
+                    HudTheme.accentAmber,
+                    ramState.totalGb > 0 ? ramState.swapGb / (ramState.totalGb * 2) : 0.0,
+                  ),
+                ),
             ],
           ),
         ),
@@ -155,8 +188,35 @@ class RamScannerScreen extends ConsumerWidget {
                   },
                 ),
               ),
-            ],
-          );
+        ],
+      ],
+    );
+  }
+
+  Widget _buildToggleBtn(String label, bool isSelected) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _showHistory = label == 'HISTORY';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? HudTheme.accentCyan.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: HudTheme.fontCore,
+            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTableHeader() {

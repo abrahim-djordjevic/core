@@ -1,11 +1,27 @@
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Services;
+using Moq;
 
 namespace GSSystemAnalyzer.Tests.Services
 {
     public class TelemetryHistoryBufferTests
     {
-        private readonly ITelemetryHistoryBuffer _buffer = new TelemetryHistoryBuffer();
+        private readonly Mock<TimeProvider> _mockTime;
+        private readonly ITelemetryHistoryBuffer _buffer;
+        private DateTimeOffset _currentTime;
+
+        public TelemetryHistoryBufferTests()
+        {
+            _mockTime = new Mock<TimeProvider>();
+            _currentTime = new DateTimeOffset(2024, 1, 1, 12, 0, 0, TimeSpan.Zero);
+            _mockTime.Setup(t => t.GetUtcNow()).Returns(() => _currentTime);
+            _buffer = new TelemetryHistoryBuffer(_mockTime.Object);
+        }
+
+        private void AdvanceTime(TimeSpan duration)
+        {
+            _currentTime = _currentTime.Add(duration);
+        }
 
         [Fact]
         public void Record_AddsPointToBuffer()
@@ -17,38 +33,50 @@ namespace GSSystemAnalyzer.Tests.Services
             Assert.NotNull(result);
             Assert.Single(result!.Points);
             Assert.Equal(42.5, result.Points[0].Value);
+            Assert.Equal(_currentTime.UtcDateTime, result.Points[0].Timestamp);
         }
 
         [Fact]
-        public void GetHistory_ReturnsCorrectWindow_5Min()
+        public void GetHistory_ExcludesPointsOutsideRequestedWindow()
         {
-            var buffer = new TelemetryHistoryBuffer();
+            // Record at T=0
+            _buffer.Record("cpu", 10.0);
+            
+            AdvanceTime(TimeSpan.FromMinutes(10));
+            
+            // Record at T=10
+            _buffer.Record("cpu", 20.0);
 
-            // Use reflection-free approach: record points, then query
-            // Points recorded now should appear in a 5-minute window
-            buffer.Record("cpu", 10.0);
-            buffer.Record("cpu", 20.0);
-            buffer.Record("cpu", 30.0);
-
-            var result = buffer.GetHistory("cpu", 5);
-
-            Assert.NotNull(result);
-            Assert.Equal(3, result!.Points.Count);
-            Assert.Equal(5, result.Minutes);
-        }
-
-        [Fact]
-        public void GetHistory_ReturnsCorrectWindow_60Min()
-        {
-            var buffer = new TelemetryHistoryBuffer();
-
-            buffer.Record("cpu", 55.0);
-
-            var result = buffer.GetHistory("cpu", 60);
+            // Query last 5 minutes (from T=10, looks back to T=5)
+            // The T=0 point should be excluded
+            var result = _buffer.GetHistory("cpu", 5);
 
             Assert.NotNull(result);
             Assert.Single(result!.Points);
-            Assert.Equal(60, result.Minutes);
+            Assert.Equal(20.0, result.Points[0].Value); // Only the recent one
+        }
+
+        [Fact]
+        public void Record_PrunesPointsOlderThan60Minutes()
+        {
+            // T=0
+            _buffer.Record("cpu", 10.0);
+            
+            AdvanceTime(TimeSpan.FromMinutes(30));
+            // T=30
+            _buffer.Record("cpu", 20.0);
+            
+            AdvanceTime(TimeSpan.FromMinutes(35));
+            // T=65 (The T=0 point is now older than 60m and should be pruned when we Record)
+            _buffer.Record("cpu", 30.0);
+
+            // Ask for 60 minutes history
+            var result = _buffer.GetHistory("cpu", 60);
+
+            Assert.NotNull(result);
+            Assert.Equal(2, result!.Points.Count); 
+            Assert.Equal(20.0, result.Points[0].Value); // T=30 point
+            Assert.Equal(30.0, result.Points[1].Value); // T=65 point
         }
 
         [Fact]
@@ -79,9 +107,7 @@ namespace GSSystemAnalyzer.Tests.Services
         [Fact]
         public void GetHistory_ReturnsEmptyPointsWhenNoData()
         {
-            // "cpu" is a valid metric but we haven't recorded anything
-            var buffer = new TelemetryHistoryBuffer();
-            var result = buffer.GetHistory("cpu", 5);
+            var result = _buffer.GetHistory("cpu", 5);
 
             Assert.NotNull(result);
             Assert.Empty(result!.Points);
@@ -100,17 +126,12 @@ namespace GSSystemAnalyzer.Tests.Services
             Assert.Contains("ram", metrics);
             Assert.Contains("ram_percent", metrics);
             Assert.Contains("thermal_cpu_package", metrics);
-            Assert.Contains("network_rx", metrics);
-            Assert.Contains("network_tx", metrics);
-            Assert.Contains("disk_io_read", metrics);
-            Assert.Contains("disk_io_write", metrics);
-            Assert.Equal(8, metrics.Count);
+            Assert.Equal(4, metrics.Count); // Unwired metrics were removed
         }
 
         [Fact]
         public void Record_IgnoresUnknownMetric()
         {
-            // Should not throw, just silently ignored
             _buffer.Record("unknown_metric", 99.0);
 
             var result = _buffer.GetHistory("unknown_metric", 5);
@@ -163,38 +184,17 @@ namespace GSSystemAnalyzer.Tests.Services
         }
 
         [Fact]
-        public void GetHistory_PointsAreOrderedByTimestamp()
-        {
-            // Record multiple points rapidly
-            for (int i = 0; i < 10; i++)
-            {
-                _buffer.Record("cpu", i * 10.0);
-            }
-
-            var result = _buffer.GetHistory("cpu", 5);
-
-            Assert.NotNull(result);
-
-            for (int i = 1; i < result!.Points.Count; i++)
-            {
-                Assert.True(result.Points[i].Timestamp >= result.Points[i - 1].Timestamp);
-            }
-        }
-
-        [Fact]
         public void ConcurrentAccess_DoesNotThrow()
         {
-            var buffer = new TelemetryHistoryBuffer();
             var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
 
-            // Parallel writes
             var writeTask = Task.Run(() =>
             {
                 Parallel.For(0, 1000, i =>
                 {
                     try
                     {
-                        buffer.Record("cpu", i % 100);
+                        _buffer.Record("cpu", i % 100);
                     }
                     catch (Exception ex)
                     {
@@ -203,14 +203,13 @@ namespace GSSystemAnalyzer.Tests.Services
                 });
             });
 
-            // Parallel reads
             var readTask = Task.Run(() =>
             {
                 Parallel.For(0, 500, _ =>
                 {
                     try
                     {
-                        buffer.GetHistory("cpu", 5);
+                        _buffer.GetHistory("cpu", 5);
                     }
                     catch (Exception ex)
                     {

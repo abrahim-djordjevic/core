@@ -7,6 +7,7 @@ import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
 import 'package:gs_analyzer_ui/models/thermal_telemetry.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
 class ThermalModuleScreen extends ConsumerStatefulWidget {
   const ThermalModuleScreen({super.key});
@@ -17,6 +18,7 @@ class ThermalModuleScreen extends ConsumerStatefulWidget {
 
 class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
   bool _isAdvancedExpanded = false;
+  bool _showHistory = false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,11 +37,19 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               const Text(
                 'THERMAL RADAR MODULE', style: HudTheme.headerCyan
               ),
-              if (thermalState.isCritical)
+              
+              Row(
+                children: [
+                  _buildToggleBtn('LIVE VIEW', !_showHistory),
+                  _buildToggleBtn('HISTORY', _showHistory),
+                ],
+              ),
+              
+              if (thermalState.isCritical && !_showHistory)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentRed.withValues(alpha: 0.2),
+                    color: HudTheme.accentRed.withOpacity(0.2),
                     border: Border.all(color: HudTheme.accentRed),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -49,7 +59,9 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
           ),
           const SizedBox(height: 24),
 
-          if (telemetry == null)
+          if (_showHistory)
+            const Expanded(child: TelemetryHistoryChart(metricKey: 'thermal_cpu_package'))
+          else if (telemetry == null)
             const Expanded(
               child: Center(
                 child: CircularProgressIndicator(color: HudTheme.accentAmber),
@@ -87,6 +99,32 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
           ),
         ],
       )
+    );
+  }
+
+  Widget _buildToggleBtn(String label, bool isSelected) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _showHistory = label == 'HISTORY';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? HudTheme.accentCyan.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: HudTheme.fontCore,
+            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
     );
   }
 

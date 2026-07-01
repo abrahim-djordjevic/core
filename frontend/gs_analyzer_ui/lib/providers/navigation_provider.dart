@@ -8,6 +8,7 @@ enum AppRoute {
   storage,
   network,
   thermal,
+  telemetryHistory,
   settings,
 }
 

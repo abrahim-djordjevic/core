@@ -27,7 +27,6 @@ namespace GSSystemAnalyzer.Controllers
             {
                 return BadRequest(new
                 {
-                    success = false,
                     message = "The 'metric' query parameter is required.",
                     supportedMetrics = _historyBuffer.GetSupportedMetrics()
                 });
@@ -43,7 +42,6 @@ namespace GSSystemAnalyzer.Controllers
             {
                 return BadRequest(new
                 {
-                    success = false,
                     message = $"Unknown metric '{metric}'.",
                     supportedMetrics = _historyBuffer.GetSupportedMetrics()
                 });
