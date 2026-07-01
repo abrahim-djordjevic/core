@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
@@ -81,7 +82,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
             _isLoading = false;
           });
         }
-        print('Error Loading Children: $e');
+        appLogger.i('Error Loading Children: $e');
       }
     }
   }

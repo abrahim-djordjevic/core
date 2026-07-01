@@ -4,6 +4,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Engine;
 
@@ -32,12 +33,14 @@ public class DiskScannerEngine : IDiskScannerEngine
     private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(500);
     private readonly ISettingService _settings;
     private readonly IHubContext<SystemHub> _hub;
+    private readonly ILogger<DiskScannerEngine> _logger;
     private int _scannedFilesCount = 0;
 
-    public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings)
+    public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger)
     {
         _hub = hub;
         _settings = settings;
+        _logger = logger;
         if (File.Exists(_cacheFilePath))
         {
             try
@@ -49,14 +52,14 @@ public class DiskScannerEngine : IDiskScannerEngine
                 if (savedMemory != null)
                 {
                     DirectorySizeCache = new ConcurrentDictionary<string, CacheEntry>(savedMemory);
-                    Console.WriteLine($"MEMORY RESTORED: {DirectorySizeCache.Count} folders loaded from disk!");
+                    _logger.LogInformation("Cache restored: {Count} folders loaded from disk", DirectorySizeCache.Count);
 
                     PruneStaleCacheEntries();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"MEMORY CORRUPTED: Starting Fresh. Error: {ex.Message}");
+                _logger.LogWarning(ex, "Cache file corrupted, starting fresh");
             }
         }
     }
@@ -164,7 +167,7 @@ public class DiskScannerEngine : IDiskScannerEngine
             if (dir.LastWriteTimeUtc <= entry.LastUpdated)
                 return entry.Size;
 
-            Console.WriteLine("CACHE STALE: Rescanning Directory....");
+            _logger.LogDebug("Cache stale for directory, rescanning");
         }
 
         long size = 0;
@@ -300,7 +303,7 @@ public class DiskScannerEngine : IDiskScannerEngine
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"MEMORY SAVE ERROR: {ex.Message}");
+                _logger.LogError(ex, "Failed to save cache to disk");
             }
         }
     }
@@ -332,12 +335,12 @@ public class DiskScannerEngine : IDiskScannerEngine
                     _liveRader.Changed += OnRadarTriggered;
 
                     _liveRader.EnableRaisingEvents = true;
-                    Console.WriteLine($"RADAR ONLINE: Watching Sector -> {targetPath}");
+                    _logger.LogInformation("File system watcher active on {Path}", targetPath);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"RADAR DEPLOYMENT FAILED: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to deploy file system watcher on {Path}", targetPath);
             }
         }
     }
@@ -354,7 +357,7 @@ public class DiskScannerEngine : IDiskScannerEngine
             _lastRadarAlert = DateTime.UtcNow;
         }
 
-        Console.WriteLine($"RADAR ALERT: {e.ChangeType} detected on {e.Name}");
+        _logger.LogDebug("File system change detected: {ChangeType} on {Name}", e.ChangeType, e.Name);
 
         try
         {
@@ -387,7 +390,7 @@ public class DiskScannerEngine : IDiskScannerEngine
     public void TriggerScanAbort()
     {
         _scanCts?.Cancel();
-        Console.WriteLine("SCAN ABORT SIGNAL RECEIVED");
+        _logger.LogInformation("Scan abort signal received");
     }
 
     public void PruneStaleCacheEntries()
@@ -404,7 +407,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         foreach (var key in stale)
             DirectorySizeCache.TryRemove(key, out _);
 
-        Console.WriteLine($"[CACHE] Pruned {stale.Count} stale entries (TTL = {config.ScanCacheTtlMinutes} min).");
+        _logger.LogDebug("Cache pruned: {Count} stale entries removed (TTL = {TtlMinutes} min)", stale.Count, config.ScanCacheTtlMinutes);
     }
 
     public void ClearCache()
@@ -420,11 +423,11 @@ public class DiskScannerEngine : IDiskScannerEngine
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CACHE] Clear failed: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to delete cache file");
             }
         }
 
-        Console.WriteLine("[CACHE] Cleared — memory wiped, scanner_memory.json deleted.");
+        _logger.LogInformation("Cache cleared — memory wiped, scanner_memory.json deleted");
     }
     public void ExecuteDelete(FileSystemInfo item)
     {
@@ -437,7 +440,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting item: {ex.Message}");
+            _logger.LogError(ex, "Failed to delete item");
         }
     }
 

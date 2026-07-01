@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
@@ -53,13 +54,13 @@ class TelemetryService {
       if (_hubConnection.state == HubConnectionState.Disconnected) {
         try {
           await _hubConnection.start();
-          print('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
+          appLogger.i('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
           
           final api = ApiService();
           api.startRamRadar();
           api.startCpuRadar();
         } catch (e) {
-          print(
+          appLogger.i(
               'TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e');
         }
       }
@@ -68,7 +69,7 @@ class TelemetryService {
     Future<void> stopListening() async {
       if (_hubConnection.state == HubConnectionState.Connected) {
         await _hubConnection.stop();
-        print('TELEMETRY RADIO: DISCONNECTED FROM BASE STATION!');
+        appLogger.i('TELEMETRY RADIO: DISCONNECTED FROM BASE STATION!');
       }
     }
 
@@ -90,7 +91,7 @@ class TelemetryService {
     void _handleSectorChanged(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         String changedFolder = arguments[0].toString();
-        print('RADAR ALERT RECEIVED: Changes in $changedFolder');
+        appLogger.i('RADAR ALERT RECEIVED: Changes in $changedFolder');
 
         if (onSectorChanged != null) {
           onSectorChanged!(changedFolder);
@@ -112,7 +113,7 @@ class TelemetryService {
     }
 
     void _handleNukeAborted(List<Object?>? arguments) {
-      print('RADIO ALERT: NUKE ABORT SIGNAL RECEIVED FROM BACKEND');
+      appLogger.i('RADIO ALERT: NUKE ABORT SIGNAL RECEIVED FROM BACKEND');
       if (onNukeAborted != null) {
         onNukeAborted!();
       }
@@ -131,15 +132,15 @@ class TelemetryService {
         }
 
         else if (rawData is List) {
-          print(
+          appLogger.i(
               'ARCHITECT ALERT: The backend is still sending the old list! The C# engine needs to be rebuilt');
         }
 
         else {
-          print('UNKNOWN PAYLOAD TYPE: ${rawData.runtimeType}');
+          appLogger.i('UNKNOWN PAYLOAD TYPE: ${rawData.runtimeType}');
         }
       } catch (e) {
-        print('RAM PAYLOAD CRASH: $e');
+        appLogger.i('RAM PAYLOAD CRASH: $e');
       }
     }
 
@@ -173,7 +174,7 @@ class TelemetryService {
           }
         }
       } catch (e) {
-        print('CPU TELEMETRY CRASH: $e');
+        appLogger.i('CPU TELEMETRY CRASH: $e');
       }
     }
 
@@ -187,10 +188,10 @@ class TelemetryService {
               onDriveUpdate!(rawData);
             }
           } else {
-            print('UNKNOWN DRIVE PAYLOAD TYPE: ${rawData.runtimeType}');
+            appLogger.i('UNKNOWN DRIVE PAYLOAD TYPE: ${rawData.runtimeType}');
           }
         } catch (e) {
-          print('DRIVE TELEMETRY CRASH: $e');
+          appLogger.i('DRIVE TELEMETRY CRASH: $e');
         }
     }
 

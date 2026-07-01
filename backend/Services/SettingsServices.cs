@@ -1,6 +1,7 @@
 using System.Text.Json;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services
 {
@@ -8,14 +9,16 @@ namespace GSSystemAnalyzer.Services
     {
         private readonly string _settingsFilePath;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly ILogger<SettingsServices> _logger;
         private readonly object _fileLoack = new();
 
         public AppSettingDto Current { get; private set; }
         public event EventHandler<AppSettingDto>? OnSettingsChanged;
 
 
-        public SettingsServices(string? testFilePath = null)
+        public SettingsServices(string? testFilePath = null, ILogger<SettingsServices>? logger = null)
         {
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsServices>.Instance;
             if (testFilePath != null)
             {
                 _settingsFilePath = testFilePath;
@@ -52,7 +55,7 @@ namespace GSSystemAnalyzer.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SETTINGS] Corrupt config file Detected. Restoring defaults. Error: {ex.Message}");
+                _logger.LogWarning(ex, "Corrupt config file detected, restoring defaults");
                 var defaults = AppSettingDto.GetFactoryDefaults();
                 await SaveAsync(defaults);
                 return defaults;

@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
@@ -110,7 +111,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       final normalizedChanged = changedFolder.replaceAll('\\\\', '/').toLowerCase();
 
       if (normalizedCurrent == normalizedChanged) {
-        print('LIVE UPDATE: REFRESHING UI FOR $currentPath');
+        appLogger.i('LIVE UPDATE: REFRESHING UI FOR $currentPath');
         ref.read(directoryProvider.notifier).scanDirectory(currentPath);
       }
 

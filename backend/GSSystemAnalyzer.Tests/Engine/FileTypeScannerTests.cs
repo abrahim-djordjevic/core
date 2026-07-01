@@ -5,6 +5,7 @@ using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace GSSystemAnalyzer.Tests.Engine;
@@ -24,7 +25,7 @@ public class FileTypeScannerTests
         var mockSettings = new Mock<ISettingService>();
         mockSettings.Setup(s => s.Current).Returns(new AppSettingDto());
 
-        var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object);
+        var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
         // Clear the cache to prevent tests from reading the user's actual saved memory from disk
         engine.DirectorySizeCache.Clear();
         return engine;

@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/cpu_snapshot.dart';
@@ -49,7 +50,7 @@ class CpuNotifier extends StateNotifier<CpuState> {
       final snapshot = CpuSnapshot.fromJson(payload);
       state = state.copyWith(snapshot: snapshot);
     } catch (e) {
-      print('CPU PAYLOAD CRASH: $e');
+      appLogger.i('CPU PAYLOAD CRASH: $e');
     }
   }
 }

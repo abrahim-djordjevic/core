@@ -5,6 +5,7 @@ using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -26,7 +27,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             var settingsMock = new Mock<ISettingService>();
             settingsMock.Setup(s => s.Current).Returns(new AppSettingDto());
 
-            var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object);
+            var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object, NullLogger<DiskScannerEngine>.Instance);
             scanner.DirectorySizeCache.Clear();
 
             foreach (var (path, sizeBytes, lastModified) in entries)

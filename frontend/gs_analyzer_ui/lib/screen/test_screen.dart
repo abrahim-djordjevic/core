@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
@@ -16,21 +17,21 @@ class TestScreen extends StatelessWidget {
             backgroundColor: Colors.blueAccent,
           ),
           onPressed: () async {
-            print('INITIATING ANALYZER BRIDGE...');
+            appLogger.i('INITIATING ANALYZER BRIDGE...');
             try {
               final service = ApiService();
               final nodes = await service.scanDirectory('C:/');
               
-              print('BRIDGE SUCCESS! found ${nodes.length} items in root.');
-              print("--------------------------------------------");
+              appLogger.i('BRIDGE SUCCESS! found ${nodes.length} items in root.');
+              appLogger.i("--------------------------------------------");
               
               for (var node in nodes) {
-                print('[${node.type.toUpperCase()}] ${node.name} | ${node.sizeBytes} bytes | ${node.lastModified}');
+                appLogger.i('[${node.type.toUpperCase()}] ${node.name} | ${node.sizeBytes} bytes | ${node.lastModified}');
               }
 
-              print('--------------------------------------------');
+              appLogger.i('--------------------------------------------');
             } catch (e) {
-              print('BRIDGE FAILED: $e');
+              appLogger.i('BRIDGE FAILED: $e');
             }
         },
           child: const Text(

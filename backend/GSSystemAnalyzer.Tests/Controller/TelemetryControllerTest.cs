@@ -5,6 +5,7 @@ using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace GSSystemAnalyzer.Tests.Controller;
@@ -36,7 +37,7 @@ public class TelemetryControllerTests
 
         var mockHistoryBuffer = new Mock<ITelemetryHistoryBuffer>();
 
-        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object);
+        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object, NullLogger<RamMonitoringEngine>.Instance);
     }
 
 

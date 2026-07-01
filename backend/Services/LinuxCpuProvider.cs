@@ -1,5 +1,6 @@
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using Microsoft.Extensions.Logging;
 
 #if !WINDOWS
 using System.IO;
@@ -12,10 +13,12 @@ namespace GSSystemAnalyzer.Services
 #if !WINDOWS
         // Stores the previous tick data for every core to calculate the delta
         private readonly Dictionary<string, (long Idle, long Total)> _prevCoreData = new();
+        private readonly ILogger<LinuxCpuProvider> _logger;
         private double _previousAverage = 0;
 
-        public LinuxCpuProvider()
+        public LinuxCpuProvider(ILogger<LinuxCpuProvider> logger)
         {
+            _logger = logger;
             // Do an initial read to populate the baseline data, just like discarding the first PerformanceCounter read
             var initialSnapshot = ReadProcStat();
             foreach (var core in initialSnapshot)
@@ -165,7 +168,7 @@ namespace GSSystemAnalyzer.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LINUX CPU FAULT] Could not read /proc/stat: {ex.Message}");
+                _logger.LogError(ex, "Failed to read /proc/stat");
             }
             return result;
         }

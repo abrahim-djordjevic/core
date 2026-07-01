@@ -1,6 +1,7 @@
 using System.Management;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services.Oem.Dell
 {
@@ -15,6 +16,13 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
         private static DellOemDto? _cachedReading = null;
         private static DateTime _lastPollTime = DateTime.MinValue;
         private static readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(3);
+        private readonly ILogger<DellOemTelemetry> _logger;
+
+        public DellOemTelemetry(ILogger<DellOemTelemetry> logger)
+        {
+            _logger = logger;
+        }
+
         public DellOemDto? TryGetDellOemTelemetry()
         {
             if (DateTime.UtcNow - _lastPollTime < _cacheDuration && _cachedReading != null)
@@ -84,7 +92,7 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n[DELL OEM FAN CRASH] -> {ex.Message}\n");
+                _logger.LogError(ex, "Dell OEM telemetry query failed");
                 return null;
             }
         }

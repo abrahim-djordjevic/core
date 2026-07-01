@@ -20,11 +20,11 @@ namespace GSSystemAnalyzer.Services
         private ThermalTelemetryDto _lastGoodPayLoad = new ThermalTelemetryDto();
         private float _maxObservedClock = 0f;
 
-        public LibreThermalProvider(IComputerEngine? computer = null, IWmiThermalFallback? wmiFallback = null, IDellOemTelemetry? dellOemFanReader = null)
+        public LibreThermalProvider(IWmiThermalFallback wmiFallback, IDellOemTelemetry dellOemFanReader, IComputerEngine? computer = null)
         {
             _visitor = new UpdateVisitor();
-            _wmiFallback = wmiFallback ?? new WmiThermalFallback();
-            _dellOemTelemetry = dellOemFanReader ?? new DellOemTelemetry();
+            _wmiFallback = wmiFallback;
+            _dellOemTelemetry = dellOemFanReader;
 
             if (computer != null)
             {

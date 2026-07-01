@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:signalr_netcore/signalr_client.dart';
@@ -57,10 +58,10 @@ class ThermalNotifier extends StateNotifier<ThermalState> {
       if (snapshot != null) {
         // Instantly populate the UI while SignalR is still waking up
         state = state.copyWith(telemetry: ThermalTelemetry.fromJson(snapshot));
-        print("🦅🔥 THERMAL RADAR: Instant Snapshot Loaded!");
+        appLogger.i("🦅🔥 THERMAL RADAR: Instant Snapshot Loaded!");
       }
     } catch (e) {
-      print("Failed to load initial thermal snapshot: $e");
+      appLogger.i("Failed to load initial thermal snapshot: $e");
     }
   }
 
@@ -73,9 +74,9 @@ Future<void> _initSignalR() async {
 
     try {
       await _hubConnection?.start();
-      print('THERMAL RADAR CONNECTED TO SYSTEM HUB!');
+      appLogger.i('THERMAL RADAR CONNECTED TO SYSTEM HUB!');
     } catch (e) {
-      print('TELEMETRY ERROR: Failed to connect thermal Radar: $e');
+      appLogger.i('TELEMETRY ERROR: Failed to connect thermal Radar: $e');
     }
   }
 
@@ -85,7 +86,7 @@ Future<void> _initSignalR() async {
         final data = arguments.first as Map<String, dynamic>;
         state = state.copyWith(telemetry: ThermalTelemetry.fromJson(data));
       } catch (e) {
-        print('THERMAL PAYLOAD CRASH: $e');
+        appLogger.i('THERMAL PAYLOAD CRASH: $e');
       }
     }
   }

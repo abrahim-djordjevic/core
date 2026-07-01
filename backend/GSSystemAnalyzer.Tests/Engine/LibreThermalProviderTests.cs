@@ -51,7 +51,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             {
                 dell.Setup(d => d.TryGetDellOemTelemetry()).Returns((DellOemDto?)null);
             }
-            return new LibreThermalProvider(mockComputer.Object, wmi.Object, dell.Object);
+            return new LibreThermalProvider(wmi.Object, dell.Object, mockComputer.Object);
         }
 
         // ??? ORIGINAL CPU & GHOST UI TESTS
@@ -72,7 +72,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             var mockComputer = new Mock<IComputerEngine>();
             mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });
 
-            var provider = new LibreThermalProvider(mockComputer.Object);
+            var provider = new LibreThermalProvider(new Mock<IWmiThermalFallback>().Object, new Mock<IDellOemTelemetry>().Object, mockComputer.Object);
             var result = await provider.GetThermalDataAsync();
 
             Assert.Equal(68.5, result.CpuPackageCelsius);
@@ -96,7 +96,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             var mockComputer = new Mock<IComputerEngine>();
             mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });
 
-            var provider = new LibreThermalProvider(mockComputer.Object);
+            var provider = new LibreThermalProvider(new Mock<IWmiThermalFallback>().Object, new Mock<IDellOemTelemetry>().Object, mockComputer.Object);
             var result = await provider.GetThermalDataAsync();
 
             Assert.NotNull(result.CoreCelsius);
@@ -143,7 +143,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             var mockComputer = new Mock<IComputerEngine>();
             mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });
 
-            var provider = new LibreThermalProvider(mockComputer.Object);
+            var provider = new LibreThermalProvider(new Mock<IWmiThermalFallback>().Object, new Mock<IDellOemTelemetry>().Object, mockComputer.Object);
 
             mockSensor.Setup(s => s.Value).Returns(4000f);
             var result1 = await provider.GetThermalDataAsync();
@@ -182,7 +182,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public void Dispose_CallsComputerClose_ExactlyOnce()
         {
             var mockComputer = new Mock<IComputerEngine>();
-            var provider = new LibreThermalProvider(mockComputer.Object);
+            var provider = new LibreThermalProvider(new Mock<IWmiThermalFallback>().Object, new Mock<IDellOemTelemetry>().Object, mockComputer.Object);
 
             provider.Dispose();
 
@@ -209,7 +209,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public void WmiThermalFallback_ConvertsKelvinToCelsius_Correctly()
         {
             // CRITERIA: (currentTemperature / 10.0) - 273.15
-            double rawWmiKelvin = 3100; // 3100 = 310.0K = 36.85°C. Math.Round(36.85, 1) = 36.9°C
+            double rawWmiKelvin = 3100; // 3100 = 310.0K = 36.85ï¿½C. Math.Round(36.85, 1) = 36.9ï¿½C
 
             var result = WmiThermalFallback.ConvertKelvinToCelsius(rawWmiKelvin);
 
@@ -241,7 +241,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         [Fact]
         public async Task GetThermalData_WhenWmiReturnsNoInstances_ReturnsNull_DoesNotThrow()
         {
-            // CRITERIA: When WMI ACPI returns no instances, fallback returns null — does not throw
+            // CRITERIA: When WMI ACPI returns no instances, fallback returns null ï¿½ does not throw
             var mockComputer = new Mock<IComputerEngine>();
             var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor>());
             mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });

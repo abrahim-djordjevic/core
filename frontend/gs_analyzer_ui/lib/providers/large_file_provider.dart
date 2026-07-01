@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/large_file_model.dart';
@@ -66,7 +67,7 @@ class LargeFileNotifier extends StateNotifier<LargeFileState> {
 
       state = state.copyWith(isLoading: false, largeFiles: parsedFiles);
     } catch (e) {
-      print('LARGE FILE SCAN CRACHED: $e');
+      appLogger.i('LARGE FILE SCAN CRACHED: $e');
       state = state.copyWith(isLoading: false, largeFiles: [], errorMessage: e.toString());
     }
   }

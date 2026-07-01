@@ -12,6 +12,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services;
 
@@ -19,6 +20,7 @@ public class NukeProtocolService : INukeProtocolService
 {
     private readonly IDiskScannerEngine _scanner;
     private readonly IHubContext<SystemHub> _hubContext;
+    private readonly ILogger<NukeProtocolService> _logger;
 
     // Session-scoped undo stack — max 5 entries, not persisted across restarts.
     private readonly Stack<NukeOperation> _undoStack = new();
@@ -229,7 +231,7 @@ public class NukeProtocolService : INukeProtocolService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NUKE ERROR] Failed to Nuke {path}: {ex.Message}");
+                _logger.LogError(ex, "Failed to nuke {Path}", path);
                 skippedFiles++;
             }
         }
@@ -357,13 +359,13 @@ public class NukeProtocolService : INukeProtocolService
                 }
                 else
                 {
-                    Console.WriteLine($"[UNDO] Staged item not found: {stagedPath}");
+                    _logger.LogWarning("Staged item not found during undo: {StagedPath}", stagedPath);
                     failed++;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UNDO ERROR] Failed to restore {originalPath}: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to restore {OriginalPath} during undo", originalPath);
                 failed++;
             }
         }
@@ -384,7 +386,7 @@ public class NukeProtocolService : INukeProtocolService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UNDO] Failed to clean staging directory {stagingDir}: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to clean staging directory {StagingDir}", stagingDir);
             }
         }
 
@@ -528,7 +530,7 @@ public class NukeProtocolService : INukeProtocolService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UNDO] Failed to clean staging {stagingDir} for {operation.OperationId}: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to clean staging {StagingDir} for operation {OperationId}", stagingDir, operation.OperationId);
             }
         }
     }
@@ -555,7 +557,7 @@ public class NukeProtocolService : INukeProtocolService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[NUKE] Failed to count directory {path}: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to count directory contents at {Path}", path);
         }
 
         return (count, size);
@@ -621,7 +623,7 @@ public class NukeProtocolService : INukeProtocolService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[NUKE STARTUP] Failed to clean old staging root: {ex.Message}");
+            _logger.LogWarning(ex, "Failed to clean old staging root on startup");
         }
 
         // 2. Clean up per-volume .gsanalyzer_trash
@@ -640,13 +642,13 @@ public class NukeProtocolService : INukeProtocolService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NUKE STARTUP] Failed to clean staging dir on {drive.Name}: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to clean staging dir on {DriveName} during startup", drive.Name);
             }
         }
 
         if (totalFreed > 0)
         {
-            Console.WriteLine($"[NUKE STARTUP] Cleaned up {FormatSize(totalFreed)} of orphaned nuke trash.");
+            _logger.LogInformation("Startup cleanup completed: freed {FreedSize} of orphaned nuke trash", FormatSize(totalFreed));
         }
     }
 
@@ -671,10 +673,11 @@ public class NukeProtocolService : INukeProtocolService
     public Func<string, string> StagingBaseResolver { get; set; } = p => Path.GetPathRoot(p) ?? "C:\\";
 
     public NukeProtocolService(IDiskScannerEngine scanner, IHubContext<SystemHub> hubContext,
-        bool runStartupCleanup = true)
+        ILogger<NukeProtocolService> logger, bool runStartupCleanup = true)
     {
         _scanner = scanner;
         _hubContext = hubContext;
+        _logger = logger;
         if (runStartupCleanup) Task.Run(() => CleanupOrphanedStagingDirs());
     }
 }

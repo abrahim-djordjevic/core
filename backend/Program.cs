@@ -4,6 +4,7 @@ using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Services.Oem.Dell;
 using LibreHardwareMonitor.Hardware;
 using System.Runtime.InteropServices;
 
@@ -59,6 +60,8 @@ else
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<IThermalProvider, LibreThermalProvider>();
+    builder.Services.AddSingleton<IWmiThermalFallback, WmiThermalFallback>();
+    builder.Services.AddSingleton<IDellOemTelemetry, DellOemTelemetry>();
 }
 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
@@ -98,7 +101,8 @@ var engine = app.Services.GetRequiredService<DiskScannerEngine>();
 
 lifetime.ApplicationStopping.Register(() =>
 {
-    Console.WriteLine("SERVER SHUTTING DOWN: Backing up memory to disk...");
+    var shutdownLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    shutdownLogger.LogInformation("Server shutting down: backing up memory to disk");
     engine.SaveMemoryToDisk();
 });
 

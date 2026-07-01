@@ -46,7 +46,7 @@ namespace GSSystemAnalyzer.Tests.Engine
                 "cpu0 1000 0 200 5000 0 0 0 0\n" +
                 "cpu1 1000 0 200 5000 0 0 0 0\n";
             WriteMockProcStat(baselineTicks);
-            var provider = new LinuxCpuProvider();
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
 
             string activeTicks =
                 "cpu0 1200 0 250 5100 0 0 0 0\n" +
@@ -64,7 +64,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public async Task LinuxProvider_Delta_IsAccurateAndCalculatedCorrectly()
         {
             WriteMockProcStat("cpu0 1000 0 100 5000 0 0 0 0\n");
-            var provider = new LinuxCpuProvider();
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
 
             WriteMockProcStat("cpu0 1100 0 110 5050 0 0 0 0\n");
             var sample1 = await provider.GetNextSampleAsync();
@@ -88,7 +88,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             }
 
             WriteMockProcStat(baseline);
-            var provider = new LinuxCpuProvider();
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
             WriteMockProcStat(active);
 
             var result = await provider.GetNextSampleAsync();
@@ -104,7 +104,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public async Task LinuxProvider_SingleCoreMachine_DoesNotCrashAndGroupsCorrectly()
         {
             WriteMockProcStat("cpu0 1000 0 100 5000 0 0 0 0\n");
-            var provider = new LinuxCpuProvider();
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
             WriteMockProcStat("cpu0 1100 0 150 5050 0 0 0 0\n");
 
             var exception = Record.ExceptionAsync(async () => await provider.GetNextSampleAsync());
@@ -150,7 +150,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             Directory.CreateDirectory(Path.Combine(root, "proc", "not_a_process")); // Engine should ignore this
 
             // Act: Fire up the engine!
-            var provider = new LinuxCpuProvider();
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
             var result = await provider.GetNextSampleAsync();
 
             // Assert: Verify the engine extracted everything from the raw text files
