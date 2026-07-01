@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/process_telemetry.dart';
@@ -75,7 +76,7 @@ class RamNotifier extends StateNotifier<RamState> {
   void updateProcesses(Map<String, dynamic> payload) {
     final global = payload['global'] ?? payload['Global'] ?? {};
 
-    // print('🦅 MATRIX RADAR - Global Memory Payload: $global');
+    // appLogger.i('🦅 MATRIX RADAR - Global Memory Payload: $global');
 
     double parseGb(String lowerKey, String upperKey, double fallback) {
       final val = global[lowerKey] ?? global[upperKey] ?? fallback;
@@ -134,9 +135,9 @@ class RamNotifier extends StateNotifier<RamState> {
 
       await _apiService.killRamProcesses([pid]);
 
-      print('EXECUTE ORDER 66 ON PID: $pid - SUCCESS');
+      appLogger.i('EXECUTE ORDER 66 ON PID: $pid - SUCCESS');
     } catch (e) {
-      print('Failed to kill process: $e');
+      appLogger.i('Failed to kill process: $e');
     }
   }
 
@@ -151,7 +152,7 @@ class RamNotifier extends StateNotifier<RamState> {
 
       await _apiService.killRamProcesses(pidsToKill);
     } catch (e) {
-      print('Failed to kill process group: $e');
+      appLogger.i('Failed to kill process group: $e');
     }
   }
 

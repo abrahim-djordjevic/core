@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/duplicate_model.dart';
@@ -76,7 +77,7 @@ class DuplicateNotifier extends StateNotifier<DuplicateState> {
 
       loadFromBackend(rawData);
     } catch (e) {
-      print('DUPLICATE SCAN CRASHED: $e');
+      appLogger.i('DUPLICATE SCAN CRASHED: $e');
       state = state.copyWith(isLoading: false, duplicateGroups: []);
     }
   }

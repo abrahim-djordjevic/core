@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'dart:convert';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,7 +64,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           isLoading: false,
         );
       } catch (e) {
-        print('Error loading settings cache: $e');
+        appLogger.i('Error loading settings cache: $e');
       }
     }
 

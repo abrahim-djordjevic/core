@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
@@ -32,14 +33,14 @@ class ApiService {
       'minutes': minutes.toString(),
     });
     
-    // print('MATRIX BRIDGE FIRING TO: \$uri');
+    // appLogger.i('MATRIX BRIDGE FIRING TO: \$uri');
     final response = await _client.get(uri);
 
     if (response.statusCode == 200) {
       final jsonBody = jsonDecode(response.body);
       return TelemetryHistoryResponse.fromJson(jsonBody);
     } else {
-      print('Failed to fetch telemetry history: \${response.statusCode} - \${response.body}');
+      appLogger.i('Failed to fetch telemetry history: \${response.statusCode} - \${response.body}');
       return null;
     }
   }
@@ -47,7 +48,7 @@ class ApiService {
 
   Future<List<StorageNode>> scanDirectory(String path) async {
     final uri = Uri.parse('$storageUrl/scan');
-    print('MATRIX BRIDGE FIRING TO: $uri (root: $path)');
+    appLogger.i('MATRIX BRIDGE FIRING TO: $uri (root: $path)');
 
     final response = await _client.post(
       uri,
@@ -59,7 +60,7 @@ class ApiService {
       final jsonBody = jsonDecode(response.body);
 
       if (jsonBody['success'] == true) {
-        print('FEDEX BOX OPENED! Data is: ${jsonBody['data']}');
+        appLogger.i('FEDEX BOX OPENED! Data is: ${jsonBody['data']}');
         List<dynamic> data = jsonBody['data'];
         return data.map((json) => StorageNode.fromJson(json)).toList();
       } else {
@@ -74,7 +75,7 @@ class ApiService {
 
   Future<PermissionAuditResult> auditPermissions(String root) async {
     final uri = Uri.parse('$auditUrl/permissions');
-    print('FIRING PERMISSION AUDIT ON: $uri (root: $root)');
+    appLogger.i('FIRING PERMISSION AUDIT ON: $uri (root: $root)');
 
     _auditClient = http.Client();
     try {
@@ -100,7 +101,7 @@ class ApiService {
 
   void cancelAudit() {
     if (_auditClient != null) {
-      print('USER ABORT: CANCELLING PERMISSION AUDIT!');
+      appLogger.i('USER ABORT: CANCELLING PERMISSION AUDIT!');
       _auditClient!.close();
       _auditClient = null;
     }
@@ -125,7 +126,7 @@ class ApiService {
   Future<NukeResultDto> executeNuke(List<String> paths, String planToken, {bool useRecycleBin = false}) async {
     final uri = Uri.parse('$nukeUrl/execute');
 
-    print("INITIATING NUKE PROTOCOL ON: $uri");
+    appLogger.i("INITIATING NUKE PROTOCOL ON: $uri");
 
     final response = await _client.delete(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode({
       'paths': paths,
@@ -190,25 +191,25 @@ class ApiService {
 
   Future<void> abortNuke() async {
     try {
-      print('SENDING NUKE ABORT SIGNAL....');
+      appLogger.i('SENDING NUKE ABORT SIGNAL....');
       await _client.post(Uri.parse('$nukeUrl/abort'));
     } catch (e) {
-      print('Failed to send abort signal: $e');
+      appLogger.i('Failed to send abort signal: $e');
     }
   }
 
   Future<void> abortScan() async {
     try {
-      print('SENDING SCAN ABORT SIGNAL...');
+      appLogger.i('SENDING SCAN ABORT SIGNAL...');
       await _client.post(Uri.parse('$storageUrl/abort-scan'));
     } catch (e) {
-      print('Failed to send abort signal: $e');
+      appLogger.i('Failed to send abort signal: $e');
     }
   }
   
   Future<bool> killRamProcesses(List<int> pids) async {
     final uri = Uri.parse('$telemetryUrl/ram/kill');
-    print('INITIATING ASSASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
+    appLogger.i('INITIATING ASSASSINATION PROTOCOL ON ${pids.length}: TARGETS AT:  $uri');
 
     final response = await _client.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(pids));
 
@@ -224,10 +225,10 @@ class ApiService {
     try {
       final response = await _client.post(uri);
       if (response.statusCode == 200) {
-        print('FLUTTER COMMAND: RAM Radar Started Successfully!');
+        appLogger.i('FLUTTER COMMAND: RAM Radar Started Successfully!');
       }
       } catch (e) {
-      print('FLUTTER ERROR: Failed to start RAM Radar - $e');
+      appLogger.i('FLUTTER ERROR: Failed to start RAM Radar - $e');
     }
   }
 
@@ -236,12 +237,12 @@ class ApiService {
     try {
       final response = await _client.get(uri);
       if (response.statusCode == 200) {
-        print('FLUTTER COMMAND: CPU Radar Started Successfully!');
+        appLogger.i('FLUTTER COMMAND: CPU Radar Started Successfully!');
       } else {
-        print('FLUTTER COMMAND: Backend returned ${response.statusCode}');
+        appLogger.i('FLUTTER COMMAND: Backend returned ${response.statusCode}');
       }
     } catch (e) {
-      print('FLUTTER ERROR: Failed to start CPU Radar - $e');
+      appLogger.i('FLUTTER ERROR: Failed to start CPU Radar - $e');
     }
   }
 
@@ -254,7 +255,7 @@ class ApiService {
 
   Future<List<dynamic>> scanForDuplicates(String path) async {
     final uri = Uri.parse('$storageUrl/duplicates');
-    print('INITIATING DUPLICATE HUNTER ON: $uri (root: $path)');
+    appLogger.i('INITIATING DUPLICATE HUNTER ON: $uri (root: $path)');
 
     final response = await _client.post(
       uri,
@@ -284,7 +285,7 @@ class ApiService {
       'top': topN.toString(),
     });
 
-    print('INITIATING LARGE FILE HUNTER ON: $uri');
+    appLogger.i('INITIATING LARGE FILE HUNTER ON: $uri');
 
     final response = await _client.get(uri);
 
@@ -303,7 +304,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> getCurrentThermals() async {
     final uri = Uri.parse('$thermalUrl/current');
-    print('MATRIX BRIDGE: Requesting Instant Thermal Snapshot...');
+    appLogger.i('MATRIX BRIDGE: Requesting Instant Thermal Snapshot...');
 
     try {
       final response = await _client.get(uri);
@@ -314,22 +315,22 @@ class ApiService {
         if (jsonBody['success'] == true && jsonBody['data'] != null){
           return jsonBody['data'] as Map<String, dynamic>;
         } else {
-          print('THERMAL SNAPSHOT FAILED: ${jsonBody['message']}');
+          appLogger.i('THERMAL SNAPSHOT FAILED: ${jsonBody['message']}');
           return null;
         }
       } else {
-        print('THERMAL SNAPSHOT FAILED: Status ${response.statusCode}');
+        appLogger.i('THERMAL SNAPSHOT FAILED: Status ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('THERMAL BRIDGE ERROR: $e');
+      appLogger.i('THERMAL BRIDGE ERROR: $e');
       return null;
     }
   }
 
   Future<NukePreviewResponse> previewNuke(List<String> paths) async {
     final uri = Uri.parse('$nukeUrl/preview');
-    print('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETTs');
+    appLogger.i('MATRIX BRIDGE: REQUESTING BLAST RADIUS FOR ${paths.length} TARGETTs');
 
     final response = await _client.post(
       uri,
@@ -355,7 +356,7 @@ class ApiService {
       final response = await _client.get(Uri.parse(settingsUrl));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
-      print('[API] Settings Fetch Error: $e');
+      appLogger.i('[API] Settings Fetch Error: $e');
     }
     return null;
   }
@@ -374,7 +375,7 @@ class ApiService {
       final response = await _client.post(Uri.parse('$settingsUrl/reset'));
       if (response.statusCode == 200) return jsonDecode(response.body)['data'];
     } catch (e) {
-      print('[API] Reset Error: $e');
+      appLogger.i('[API] Reset Error: $e');
     }
     return null;
   }
@@ -390,7 +391,7 @@ class ApiService {
         if (decoded['data'] != null) return decoded['data'];
       }
     } catch (e) {
-      print("[Api] Drives Fetch Error: $e");
+      appLogger.i("[Api] Drives Fetch Error: $e");
     }
     return null;
   }
@@ -439,13 +440,13 @@ class ApiService {
   try {
     final response = await _client.post(Uri.parse('$settingsUrl/cache/clear'));
     if (response.statusCode == 200) {
-      print('[API] Cache cleared successfully.');
+      appLogger.i('[API] Cache cleared successfully.');
       return true;
     }
-    print('[API] Cache clear failed: ${response.statusCode}');
+    appLogger.i('[API] Cache clear failed: ${response.statusCode}');
     return false;
   } catch (e) {
-    print('[API] Cache clear error: $e');
+    appLogger.i('[API] Cache clear error: $e');
     return false;
     }
   }
@@ -454,7 +455,7 @@ class ApiService {
     final uri = Uri.parse('$storageUrl/scan/ageheatmap')
         .replace(queryParameters: {'root': root});
 
-    print('MATRIX BRIDGE: Requesting Age Heatmap for $root');
+    appLogger.i('MATRIX BRIDGE: Requesting Age Heatmap for $root');
 
     final response = await _client.get(uri);
 

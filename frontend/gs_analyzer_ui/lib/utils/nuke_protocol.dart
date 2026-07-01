@@ -1,3 +1,4 @@
+import 'package:gs_analyzer_ui/utils/logger.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,7 +33,7 @@ Future<void> executeNukeProtocol(BuildContext context, WidgetRef ref, {String? f
   );
 
   if (previewResult == null || !previewResult.confirmed) {
-    print('MATRIX: Nuke Sequence Aborted by System Administrator at Preview');
+    appLogger.i('MATRIX: Nuke Sequence Aborted by System Administrator at Preview');
     return;
   }
 
