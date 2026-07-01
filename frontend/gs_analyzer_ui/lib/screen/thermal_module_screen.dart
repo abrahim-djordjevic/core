@@ -49,7 +49,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentRed.withOpacity(0.2),
+                    color: HudTheme.accentRed.withValues(alpha: 0.2),
                     border: Border.all(color: HudTheme.accentRed),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -112,7 +112,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? HudTheme.accentCyan.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? HudTheme.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
           border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
         ),
         child: Text(

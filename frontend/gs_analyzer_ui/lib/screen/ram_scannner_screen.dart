@@ -27,7 +27,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: HudTheme.accentRed.withOpacity(0.2),
+            color: HudTheme.accentRed.withValues(alpha: 0.2),
             child: const Center(
               child: Text(
                 'RAM CRITICAL ALERT: REDUCE SYSTEM LOAD',
@@ -203,7 +203,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? HudTheme.accentCyan.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? HudTheme.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
           border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
         ),
         child: Text(

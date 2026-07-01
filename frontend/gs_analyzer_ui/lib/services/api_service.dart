@@ -32,7 +32,7 @@ class ApiService {
       'minutes': minutes.toString(),
     });
     
-    print('MATRIX BRIDGE FIRING TO: \$uri');
+    // print('MATRIX BRIDGE FIRING TO: \$uri');
     final response = await _client.get(uri);
 
     if (response.statusCode == 200) {

@@ -131,7 +131,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
-              color: isSelected ? HudTheme.accentCyan.withOpacity(0.1) : Colors.transparent,
+              color: isSelected ? HudTheme.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
             ),
             child: Text(
               label,
@@ -151,7 +151,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
     return Row(
       children: [
         Text('$label: ', style: HudTheme.labelMuted),
-        Text('$value $unit', style: HudTheme.statGreen),
+        Text('${value.toStringAsFixed(1)} $unit', style: HudTheme.statGreen),
       ],
     );
   }
@@ -274,7 +274,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: HudTheme.accentCyan.withOpacity(0.08),
+              color: HudTheme.accentCyan.withValues(alpha: 0.08),
             ),
           ),
         ],
