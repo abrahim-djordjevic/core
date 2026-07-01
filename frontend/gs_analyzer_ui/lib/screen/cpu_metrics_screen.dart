@@ -4,12 +4,20 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/models/cpu_snapshot.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
-class CpuMetricsScreen extends ConsumerWidget {
+class CpuMetricsScreen extends ConsumerStatefulWidget {
   const CpuMetricsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CpuMetricsScreen> createState() => _CpuMetricsScreenState();
+}
+
+class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
+  bool _showHistory = false;
+
+  @override
+  Widget build(BuildContext context) {
     final cpuState = ref.watch(cpuProvider);
     final snapshot = cpuState.snapshot;
 
@@ -22,7 +30,16 @@ class CpuMetricsScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('CPU TELEMETRY MODULE', style: HudTheme.headerCyan),
-              if (cpuState.isCritical)
+              
+              // Custom Toggle Strip
+              Row(
+                children: [
+                  _buildToggleBtn('LIVE VIEW', !_showHistory),
+                  _buildToggleBtn('HISTORY', _showHistory),
+                ],
+              ),
+              
+              if (cpuState.isCritical && !_showHistory)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
@@ -35,7 +52,9 @@ class CpuMetricsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 24),
-          if(snapshot == null)
+          if (_showHistory)
+            const Expanded(child: TelemetryHistoryChart(metricKey: 'cpu'))
+          else if(snapshot == null)
             const Expanded(
               child: Center(
                 child: CircularProgressIndicator(color: HudTheme.primaryBorder),
@@ -47,6 +66,32 @@ class CpuMetricsScreen extends ConsumerWidget {
             )
         ],
       )
+    );
+  }
+
+  Widget _buildToggleBtn(String label, bool isSelected) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _showHistory = label == 'HISTORY';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? HudTheme.accentCyan.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? HudTheme.accentCyan : Colors.white10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: HudTheme.fontCore,
+            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
     );
   }
 

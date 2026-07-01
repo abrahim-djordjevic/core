@@ -34,7 +34,9 @@ public class TelemetryControllerTests
         var mockResolver = new Mock<IProcessOwnerResolver>();
         mockResolver.Setup(r => r.Resolve(It.IsAny<int>())).Returns("SYSTEM");
 
-        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object);
+        var mockHistoryBuffer = new Mock<ITelemetryHistoryBuffer>();
+
+        return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object);
     }
 
 

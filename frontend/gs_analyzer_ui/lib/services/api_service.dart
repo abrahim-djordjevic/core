@@ -11,6 +11,7 @@ import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 import 'package:gs_analyzer_ui/models/permission_audit_models.dart';
+import 'package:gs_analyzer_ui/models/telemetry_history_model.dart';
 
 class ApiService {
   final http.Client _client;
@@ -23,6 +24,25 @@ class ApiService {
   static const String settingsUrl = 'http://localhost:5200/api/settings';
   static const String driveUrl = 'http://localhost:5200/api/drives';
   static const String auditUrl = 'http://localhost:5200/api/audit';
+  static const String telemetryHistoryUrl = 'http://localhost:5200/api/telemetry/history';
+
+  Future<TelemetryHistoryResponse?> fetchTelemetryHistory(String metric, int minutes) async {
+    final uri = Uri.parse(telemetryHistoryUrl).replace(queryParameters: {
+      'metric': metric,
+      'minutes': minutes.toString(),
+    });
+    
+    // print('MATRIX BRIDGE FIRING TO: \$uri');
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+      return TelemetryHistoryResponse.fromJson(jsonBody);
+    } else {
+      print('Failed to fetch telemetry history: \${response.statusCode} - \${response.body}');
+      return null;
+    }
+  }
 
 
   Future<List<StorageNode>> scanDirectory(String path) async {

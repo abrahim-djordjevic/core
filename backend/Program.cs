@@ -38,6 +38,9 @@ builder.Services.AddSingleton<IProcessOwnerResolver, ProcessOwnerResolver>();
 builder.Services.AddSingleton<IFileTypeScanner, FileTypeScanner>();
 builder.Services.AddSingleton<IAgeHeatmapEngine, AgeHeatmapEngine>();
 
+// Telemetry history buffer — must be registered before background services that inject it
+builder.Services.AddSingleton<ITelemetryHistoryBuffer, TelemetryHistoryBuffer>();
+
 // Platform-specific CPU provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
