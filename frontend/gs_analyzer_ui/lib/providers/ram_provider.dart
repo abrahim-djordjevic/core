@@ -12,6 +12,7 @@ class RamState {
   final double activeGb;
   final double cacheGb;
   final double swapGb;
+  final double totalSwapGb;
   final double totalGb;
   final List<double> usageHistory;
   final int ramThresholdPercent;
@@ -22,6 +23,7 @@ class RamState {
     this.activeGb = 0.0,
     this.cacheGb = 0.0,
     this.swapGb = 0.0,
+    this.totalSwapGb = 0.0,
     this.totalGb = 16.0, // fix: hard coded total ram size
     this.usageHistory = const [],
     this.ramThresholdPercent = 85,
@@ -37,6 +39,7 @@ class RamState {
     double? activeGb,
     double? cacheGb,
     double? swapGb,
+    double? totalSwapGb,
     double? totalGb,
     List<double>? usageHistory,
     int? ramThresholdPercent,
@@ -47,6 +50,7 @@ class RamState {
       activeGb: activeGb ?? this.activeGb,
       cacheGb: cacheGb ?? this.cacheGb,
       swapGb: swapGb ?? this.swapGb,
+      totalSwapGb: totalSwapGb ?? this.totalSwapGb,
       totalGb: totalGb ?? this.totalGb,
       usageHistory: usageHistory ?? this.usageHistory,
       ramThresholdPercent: ramThresholdPercent ?? this.ramThresholdPercent,
@@ -116,8 +120,9 @@ class RamNotifier extends StateNotifier<RamState> {
       groupedProcesses: groupedList,
       isLoading: false,
       activeGb: parsedActiveGb,
-      cacheGb: (global['cacheGb'] ?? 0.0).toDouble(),
-      swapGb: (global['swapGb'] ?? 0.0).toDouble(),
+      cacheGb: (global['cacheGb'] ?? global['CacheGb'] ?? 0.0).toDouble(),
+      swapGb: (global['swapGb'] ?? global['SwapGb'] ?? 0.0).toDouble(),
+      totalSwapGb: (global['totalSwapGb'] ?? global['TotalSwapGb'] ?? (totalGb * 2)).toDouble(),
       totalGb: totalGb,
       usageHistory: updatedHistory,
     );

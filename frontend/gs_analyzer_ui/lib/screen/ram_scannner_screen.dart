@@ -71,7 +71,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                 Expanded(
                   child: _buildAllocationCard(
                     'ACTIVE MEMORY',
-                    '${ramState.activeGb.toStringAsFixed(1)} GB',
+                    '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
                     HudTheme.accentCyan,
                     ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0,
                   ),
@@ -79,7 +79,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                 Expanded(
                   child: _buildAllocationCard(
                     'CACHE (STANDBY)',
-                    '${ramState.cacheGb.toStringAsFixed(1)} GB',
+                    '${ramState.cacheGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
                     HudTheme.accentGreen,
                     ramState.totalGb > 0 ? ramState.cacheGb / ramState.totalGb : 0.0,
                   ),
@@ -87,9 +87,9 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                 Expanded(
                   child: _buildAllocationCard(
                     'SWAP / PAGEFILE',
-                    '${ramState.swapGb.toStringAsFixed(1)} GB',
+                    '${ramState.swapGb.toStringAsFixed(1)} / ${ramState.totalSwapGb.toStringAsFixed(1)} GB',
                     HudTheme.accentAmber,
-                    ramState.totalGb > 0 ? ramState.swapGb / (ramState.totalGb * 2) : 0.0,
+                    ramState.totalSwapGb > 0 ? ramState.swapGb / ramState.totalSwapGb : 0.0,
                   ),
                 ),
             ],
