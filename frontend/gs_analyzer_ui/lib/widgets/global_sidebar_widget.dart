@@ -32,9 +32,9 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
-          // Hamburger Menu Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+          Container(
+            padding: const EdgeInsets.only(left: 7.0),
+            alignment: Alignment.centerLeft,
             child: IconButton(
               icon: const Icon(Icons.menu, color: HudTheme.textDim, size: 20),
               onPressed: () {
@@ -44,6 +44,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
               },
               tooltip: _isExpanded ? 'Collapse Menu' : 'Expand Menu',
               splashRadius: 20,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             ),
           ),
           const SizedBox(height: 12),
@@ -125,7 +126,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
             const SizedBox(width: 8),
             Icon(icon, color: color, size: 20),
             if (_isExpanded) ...[
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
@@ -183,7 +184,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
               ),
             ),
             if (_isExpanded) ...[
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'SETTINGS',
