@@ -24,6 +24,7 @@ namespace GSSystemAnalyzer.Models
             public double ActiveGb { get; set; }
             public double CacheGb { get; set; }
             public double SwapGb { get; set; }
+            public double TotalSwapGb { get; set; }
             public double TotalGb { get; set; }
         }
 
@@ -40,15 +41,22 @@ namespace GSSystemAnalyzer.Models
                 double availRamGb = memStatus.ullAvailPhys / (1024.0 * 1024.0 * 1024.0);
                 double activeRamGb = totalRamGb - availRamGb;
 
-                double totalPageGb = memStatus.ulTotalPagePhys / (1024.0 * 1024.0 * 1024.0);
-                double availPageGb = memStatus.ulAvailPagePhys / (1024.0 * 1024.0 * 1024.0);
-                double swapGb = totalPageGb - availPageGb;
+                double totalCommitLimitGb = memStatus.ulTotalPagePhys / (1024.0 * 1024.0 * 1024.0);
+                double availCommitLimitGb = memStatus.ulAvailPagePhys / (1024.0 * 1024.0 * 1024.0);
+                
+                double commitChargeGb = totalCommitLimitGb - availCommitLimitGb;
+                
+                // In Windows, Swap/Pagefile usage is most accurately represented to users as the System Commit Charge
+                // TotalSwapGb represents the absolute Commit Limit (Physical RAM + Pagefile bounds)
+                double totalSwapGb = totalCommitLimitGb;
+                double swapGb = commitChargeGb;
 
                 return new GlobalMemoryMetrics
                 {
                     ActiveGb = Math.Round(activeRamGb, 2),
                     CacheGb = Math.Round(availRamGb, 2),
                     SwapGb = Math.Round(swapGb, 2),
+                    TotalSwapGb = Math.Round(totalSwapGb, 2),
                     TotalGb = Math.Round(totalRamGb, 2)
                 };
             }

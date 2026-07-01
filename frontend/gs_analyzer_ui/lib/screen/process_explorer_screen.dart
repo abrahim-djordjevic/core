@@ -95,7 +95,7 @@ class _SystemLoadBar extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(child: _LoadMetric(
             'RAM',
-            '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
+            '${(ramPct * 100).toStringAsFixed(1)}%',
             ramPct.clamp(0.0, 1.0),
             HudTheme.accentGreen,
           )),

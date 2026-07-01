@@ -85,6 +85,7 @@ namespace GSSystemAnalyzer.Engine
                                 ActiveGb = 0.0,
                                 CacheGb = 0.0,
                                 SwapGb = 0.0,
+                                TotalSwapGb = 0.0,
                                 TotalGb = 16.0,
                             },
                             Processes = snapshot

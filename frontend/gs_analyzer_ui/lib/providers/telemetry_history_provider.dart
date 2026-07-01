@@ -84,7 +84,7 @@ class TelemetryHistoryNotifier extends StateNotifier<TelemetryHistoryState> {
 }
 
 // We use FamilyStateNotifier from riverpod to pass the metric as an argument
-final telemetryHistoryProvider = StateNotifierProvider.family<TelemetryHistoryNotifier, TelemetryHistoryState, String>((ref, metric) {
+final telemetryHistoryProvider = StateNotifierProvider.autoDispose.family<TelemetryHistoryNotifier, TelemetryHistoryState, String>((ref, metric) {
   final apiService = ref.watch(apiServiceProvider);
   return TelemetryHistoryNotifier(apiService, metric);
 });
