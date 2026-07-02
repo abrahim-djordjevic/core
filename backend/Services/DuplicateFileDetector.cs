@@ -37,8 +37,14 @@ namespace GSSystemAnalyzer.Services
             // Thread-safe dictionary to handle multiple CPU cores writing at the same time
             var hashedFiles = new ConcurrentDictionary<string, ConcurrentBag<string>>();
 
+            var parallelOptions = new ParallelOptions
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+            };
+
             // Process the remaining files across all available CPU cores
-            await Parallel.ForEachAsync(filesToHash, async (file, ct) =>
+            await Parallel.ForEachAsync(filesToHash, parallelOptions, async (file, ct) =>
             {
                 try
                 {

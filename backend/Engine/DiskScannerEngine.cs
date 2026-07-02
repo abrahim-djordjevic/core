@@ -21,6 +21,7 @@ public class DiskScannerEngine : IDiskScannerEngine
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _nukeCts;
     private CancellationTokenSource? _scanCts;
+    private readonly object _scanCtsLock = new();
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
     private int _deepScanThrottle = 0;
@@ -100,16 +101,21 @@ public class DiskScannerEngine : IDiskScannerEngine
                 _deepScanThrottle = 0;
                 _scannedFilesCount = 0;
 
-                var token = _scanCts?.Token ?? CancellationToken.None;
+                var scanToken = _scanCts?.Token ?? CancellationToken.None;
 
                 await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
 
-                await Parallel.ForEachAsync(directoriesToScan, async (dir, token) =>
+                var options = new ParallelOptions
                 {
-                    if (token.IsCancellationRequested) return;
+                    CancellationToken = scanToken,
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                };
+
+                await Parallel.ForEachAsync(directoriesToScan, options, async (dir, ct) =>
+                {
                     try
                     {
-                        var size = await Task.Run(() => GetDirectorySize(dir, token), token);
+                        var size = await Task.Run(() => GetDirectorySize(dir, ct), ct);
 
                         DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
                         DirectorySizeCache[dir.FullName] = new CacheEntry
@@ -382,14 +388,17 @@ public class DiskScannerEngine : IDiskScannerEngine
 
     public CancellationToken ScanToken()
     {
-        _scanCts?.Cancel();
-        _scanCts  = new CancellationTokenSource();
-        return _scanCts.Token;
+        lock (_scanCtsLock)
+        {
+            _scanCts?.Cancel();
+            _scanCts = new CancellationTokenSource();
+            return _scanCts.Token;
+        }
     }
 
     public void TriggerScanAbort()
     {
-        _scanCts?.Cancel();
+        lock (_scanCtsLock) { _scanCts?.Cancel(); }
         _logger.LogInformation("Scan abort signal received");
     }
 

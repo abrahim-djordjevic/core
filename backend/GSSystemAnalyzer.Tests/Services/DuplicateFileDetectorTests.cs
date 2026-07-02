@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
@@ -123,6 +124,19 @@ namespace GSSystemAnalyzer.Tests.Services
 
             Assert.Equal(20, results[0].WastedBytes);
             Assert.Equal(15, results[1].WastedBytes);
+        }
+
+        [Fact]
+        public async Task Detector_Cancellation_ThrowsOperationCanceledException()
+        {
+            CreateTestFile("cancel1.txt", "ABCDE");
+            CreateTestFile("cancel2.txt", "ABCDE");
+
+            using var cts = new CancellationTokenSource(0);
+            
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                async () => await _detector.FindDuplicatesAsync(_testBaseDir, cts.Token)
+            );
         }
     }
 }
