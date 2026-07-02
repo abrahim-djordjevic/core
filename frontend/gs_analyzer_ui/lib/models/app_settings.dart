@@ -98,8 +98,8 @@ class AppSettings {
   class AppearanceSettings {
   String theme, accentColor;
   bool compactMode, showAnimations;
-  AppearanceSettings({this.theme = 'cyber_dark', this.accentColor = 'cyan', this.compactMode = false, this.showAnimations = true});
-  factory AppearanceSettings.fromJson(Map<String, dynamic> json) => AppearanceSettings(theme: json['theme'] ?? 'cyber_dark', accentColor: json['accentColor'] ?? 'cyan', compactMode: json['compactMode'] ?? false, showAnimations: json['showAnimations'] ?? true);
+  AppearanceSettings({this.theme = 'cyber_dark', this.accentColor = 'cyan', this.compactMode = true, this.showAnimations = true});
+  factory AppearanceSettings.fromJson(Map<String, dynamic> json) => AppearanceSettings(theme: json['theme'] ?? 'cyber_dark', accentColor: json['accentColor'] ?? 'cyan', compactMode: json['compactMode'] ?? true, showAnimations: json['showAnimations'] ?? true);
   Map<String, dynamic> toJson() => {'theme': theme, 'accentColor': accentColor, 'compactMode': compactMode, 'showAnimations': showAnimations};
   }
 

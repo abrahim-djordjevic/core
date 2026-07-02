@@ -9,6 +9,7 @@ import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/widgets/file_type_analyzer_panel.dart';
 import 'package:gs_analyzer_ui/widgets/undo_history_panel.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class StorageScreen extends ConsumerWidget {
   const StorageScreen({Key? key}) : super(key: key);
@@ -16,8 +17,8 @@ class StorageScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentDrive = ref.watch(currentDriveProvider);
-
     final drives = ref.watch(drivesProvider);
+    final d = ref.watch(hudDensityProvider);
 
     Widget buildBody() {
       if (drives.isEmpty) {
@@ -38,30 +39,33 @@ class StorageScreen extends ConsumerWidget {
             child: ListView(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _DriveDetailCard(drive: currentDrive),
+                  padding: EdgeInsets.all(d.panelPad),
+                  child: _DriveDetailCard(drive: currentDrive, d: d),
                 ),
                 FileTypeAnalyzerPanel(driveName: currentDrive.name),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: EdgeInsets.symmetric(horizontal: d.panelPad),
                   child: Column(
                     children: [
                       _ScanLaunchTile(
                         title: 'DIRECTORY SCANNER',
                         subtitle: 'Index every sector on ${currentDrive.name}',
                         icon: Icons.account_tree_outlined,
+                        d: d,
                         onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.diskAnalyzer),
                       ),
                       _ScanLaunchTile(
                         title: 'DUPLICATE HUNTER',
                         subtitle: 'Scan for duplicate files on ${currentDrive.name}',
                         icon: Icons.copy_all_outlined,
+                        d: d,
                         onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.duplicateScanner),
                       ),
                       _ScanLaunchTile(
                         title: 'PERMISSION AUDIT',
                         subtitle: 'Detect world-writable paths and orphaned files',
                         icon: Icons.security_outlined,
+                        d: d,
                         onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.permissionAudit),
                       ),
                     ],
@@ -104,25 +108,27 @@ class _ScanLaunchTile extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final VoidCallback onLaunch;
+  final HudDensity d;
 
   const _ScanLaunchTile({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.onLaunch,
+    required this.d,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: d.gap),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onLaunch,
           borderRadius: BorderRadius.circular(8),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(d.panelPad),
             decoration: HudTheme.hudPanelDecoration,
             child: Row(
               children: [
@@ -245,8 +251,9 @@ class _DriveTab extends ConsumerWidget {
 
 class _DriveDetailCard extends ConsumerWidget {
   final DriveInfo drive;
+  final HudDensity d;
 
-  const _DriveDetailCard({required this.drive});
+  const _DriveDetailCard({required this.drive, required this.d});
 
   String _formatGB(int bytes) => (bytes / (1024 * 1024 * 1024)).toStringAsFixed(1);
 
@@ -260,7 +267,7 @@ class _DriveDetailCard extends ConsumerWidget {
         : (drive.percentageUsed >= redThreshold - 10 ? Colors.amber : HudTheme.accentCyan);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(d.panelPad),
       decoration: HudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,18 +281,18 @@ class _DriveDetailCard extends ConsumerWidget {
                 Text('● CRITICAL SPACE', style: HudTheme.bodyText.copyWith(color: Colors.redAccent, fontWeight: FontWeight.bold)),
             ],
           ),
-          const Divider(color: Colors.white10, height: 24, thickness: 1),
+          Divider(color: Colors.white10, height: d.gap * 3, thickness: 1),
 
-          Row(
+          Wrap(
+            spacing: d.gap * 3,
+            runSpacing: d.gap,
             children: [
               _buildMetaTag('TYPE', drive.type.toUpperCase()),
-              const SizedBox(width: 24),
               _buildMetaTag('FORMAT', drive.format.toUpperCase()),
-              const SizedBox(width: 24),
               _buildMetaTag('MOUNT', drive.name.toUpperCase()),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: d.gap * 2),
 
           Row(
             children: [
@@ -304,10 +311,12 @@ class _DriveDetailCard extends ConsumerWidget {
               Text('${drive.percentageUsed.toStringAsFixed(1)}%', style: HudTheme.bodyText),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: d.gap * 2),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: d.gap * 3,
+            runSpacing: d.gap,
+            alignment: WrapAlignment.spaceBetween,
             children: [
               Text('USED: ${_formatGB(drive.usedBytes)} GB', style: HudTheme.bodyText.copyWith(color: statusColor)),
               Text('FREE: ${_formatGB(drive.freeBytes)} GB', style: HudTheme.bodyText),
