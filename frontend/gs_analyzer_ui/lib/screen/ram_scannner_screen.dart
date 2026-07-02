@@ -4,6 +4,7 @@ import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class RamScannerScreen extends ConsumerStatefulWidget {
   const RamScannerScreen({super.key});
@@ -18,10 +19,11 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final ramState = ref.watch(ramProvider);
+    final d = ref.watch(hudDensityProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+        children: [
         // Critical banner
         if (ramState.isCritical && !_showHistory)
           Container(
@@ -53,59 +55,76 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
         ),
 
         if (_showHistory)
-          const Expanded(
+          Expanded(
             child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: TelemetryHistoryChart(metricKey: 'ram'),
+              padding: EdgeInsets.all(d.panelPad),
+              child: const TelemetryHistoryChart(metricKey: 'ram'),
             ),
           )
         else ...[
           // Allocation cards
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(d.panelPad),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.white10)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildAllocationCard(
-                    'ACTIVE MEMORY',
-                    '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
-                    HudTheme.accentCyan,
-                    ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0,
-                  ),
-                ),
-                Expanded(
-                  child: _buildAllocationCard(
-                    'CACHE (STANDBY)',
-                    '${ramState.cacheGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
-                    HudTheme.accentGreen,
-                    ramState.totalGb > 0 ? ramState.cacheGb / ramState.totalGb : 0.0,
-                  ),
-                ),
-                Expanded(
-                  child: _buildAllocationCard(
-                    'SWAP / PAGEFILE',
-                    '${ramState.swapGb.toStringAsFixed(1)} / ${ramState.totalSwapGb.toStringAsFixed(1)} GB',
-                    HudTheme.accentAmber,
-                    ramState.totalSwapGb > 0 ? ramState.swapGb / ramState.totalSwapGb : 0.0,
-                  ),
-                ),
-            ],
+            child: LayoutBuilder(
+              builder: (ctx, c) {
+                final row = c.maxWidth > 640;
+                return Flex(
+                  direction: row ? Axis.horizontal : Axis.vertical,
+                  children: [
+                    Flexible(
+                      fit: row ? FlexFit.tight : FlexFit.loose,
+                      child: _buildAllocationCard(
+                        'ACTIVE MEMORY',
+                        '${ramState.activeGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
+                        HudTheme.accentCyan,
+                        ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0,
+                        d,
+                      ),
+                    ),
+                    SizedBox(width: d.gap, height: d.gap),
+                    Flexible(
+                      fit: row ? FlexFit.tight : FlexFit.loose,
+                      child: _buildAllocationCard(
+                        'CACHE (STANDBY)',
+                        '${ramState.cacheGb.toStringAsFixed(1)} / ${ramState.totalGb.toStringAsFixed(1)} GB',
+                        HudTheme.accentGreen,
+                        ramState.totalGb > 0 ? ramState.cacheGb / ramState.totalGb : 0.0,
+                        d,
+                      ),
+                    ),
+                    SizedBox(width: d.gap, height: d.gap),
+                    Flexible(
+                      fit: row ? FlexFit.tight : FlexFit.loose,
+                      child: _buildAllocationCard(
+                        'SWAP / PAGEFILE',
+                        '${ramState.swapGb.toStringAsFixed(1)} / ${ramState.totalSwapGb.toStringAsFixed(1)} GB',
+                        HudTheme.accentAmber,
+                        ramState.totalSwapGb > 0 ? ramState.swapGb / ramState.totalSwapGb : 0.0,
+                        d,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
 
-        // Process table
-        Expanded(
-          child: ramState.isLoading && ramState.groupedProcesses.isEmpty
+          // Process table
+          ramState.isLoading && ramState.groupedProcesses.isEmpty
               ? const Center(
-                  child: CircularProgressIndicator(color: HudTheme.primaryBorder),
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(color: HudTheme.primaryBorder),
+                  ),
                 )
-              : ListView.builder(
-                  itemCount: ramState.groupedProcesses.length + 1,
+              : Expanded(
+                  child: ListView.builder(
+                    itemCount: ramState.groupedProcesses.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == 0) return _buildTableHeader();
+                    if (index == 0) return _buildTableHeader(d);
 
                     final group = ramState.groupedProcesses[index - 1];
                     final isMemHot = group.totalPercentMem > 10.0;
@@ -116,7 +135,8 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                         : group.name;
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      height: d.rowHeight + 16,
+                      padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
                       decoration: BoxDecoration(
                         color: isHot
                             ? HudTheme.accentAmber.withValues(alpha: 0.05)
@@ -219,12 +239,13 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
     );
   }
 
-  Widget _buildTableHeader() {
+  Widget _buildTableHeader(HudDensity d) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
+      height: d.rowHeight + 16,
+      decoration: const BoxDecoration(
         color: HudTheme.bgPanel,
-        border: const Border(bottom: BorderSide(color: Colors.white10)),
+        border: Border(bottom: BorderSide(color: Colors.white10)),
       ),
       child: const Row(
         children: [
@@ -244,25 +265,29 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
     String subtitle,
     Color accentColor,
     double percentage,
+    HudDensity d,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(d.panelPad),
       decoration: HudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HudLabel(title),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: accentColor,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              fontFamily: HudTheme.fontCore,
+          SizedBox(height: d.gap),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              subtitle,
+              style: TextStyle(
+                color: accentColor,
+                fontSize: d.titleSize,
+                fontWeight: FontWeight.bold,
+                fontFamily: HudTheme.fontCore,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: d.gap),
           LinearProgressIndicator(
             value: percentage.clamp(0.0, 1.0),
             color: accentColor,

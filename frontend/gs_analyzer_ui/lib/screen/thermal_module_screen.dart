@@ -8,6 +8,7 @@ import 'package:gs_analyzer_ui/models/thermal_telemetry.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class ThermalModuleScreen extends ConsumerStatefulWidget {
   const ThermalModuleScreen({super.key});
@@ -25,9 +26,10 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     final thermalState = ref.watch(thermalProvider);
     final telemetry = thermalState.telemetry;
     final cpuState = ref.watch(cpuProvider).snapshot;
+    final d = ref.watch(hudDensityProvider);
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.all(d.panelPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -73,26 +75,26 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildCpuSection(telemetry, cpuState),
-                  const SizedBox(height: 16),
+                  _buildCpuSection(telemetry, cpuState, d),
+                  SizedBox(height: d.gap),
 
                   if (telemetry.motherBoardCelsius != null || telemetry.chipsetCelsius != null || telemetry.ramCelsius != null || telemetry.ambientCelsius != null) ... [
-                    _buildBoardSection(telemetry),
-                    const SizedBox(height: 16,)
+                    _buildBoardSection(telemetry, d),
+                    SizedBox(height: d.gap)
                   ],
 
                   if (telemetry.nvmeCelsius != null) ...[
-                    _buildStorageSection(telemetry),
-                    const SizedBox(height: 16),
+                    _buildStorageSection(telemetry, d),
+                    SizedBox(height: d.gap),
                   ],
 
                   if (_hasActiveFans(telemetry)) ...[
-                    _buildFansSection(telemetry),
-                    const SizedBox(height: 16),
+                    _buildFansSection(telemetry, d),
+                    SizedBox(height: d.gap),
                   ],
 
-                  _buildAdvancedSection(),
-                  const SizedBox(height: 24),
+                  _buildAdvancedSection(d),
+                  SizedBox(height: d.gap * 2),
                 ],
               ),
             )
@@ -132,10 +134,11 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     return (t.cpuFanRpm ?? 0) > 0 || (t.chassisFan1Rpm ?? 0) > 0 || (t.chassisFan2Rpm ?? 0) > 0 || (t.pumpRpm ?? 0) > 0;
   }
 
-  Widget _buildCpuSection(ThermalTelemetry telemetry, dynamic cpuState) {
+  Widget _buildCpuSection(ThermalTelemetry telemetry, dynamic cpuState, HudDensity d) {
     return _ThermalSection(
       title: 'CPU',
       icon: Icons.memory_outlined,
+      d: d,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,7 +167,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
           ),
 
           if (telemetry.coreCelsius.isNotEmpty) ... [
-            const SizedBox(height: 16),
+            SizedBox(height: d.gap),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -182,13 +185,14 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     );
   }
 
-  Widget _buildBoardSection(ThermalTelemetry telemetry) {
+  Widget _buildBoardSection(ThermalTelemetry telemetry, HudDensity d) {
     return _ThermalSection(
       title: 'SYSTEM ENVIRONMENT',
       icon: Icons.developer_board_outlined,
+      d: d,
       child: Wrap(
         spacing: 32,
-        runSpacing: 16,
+        runSpacing: d.gap,
         children: [
           if (telemetry.motherBoardCelsius != null)
             _buildEnvironmentRow('MOBO', telemetry.motherBoardCelsius!),
@@ -216,10 +220,11 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     );
   }
 
-  Widget _buildStorageSection(ThermalTelemetry telemetry) {
+  Widget _buildStorageSection(ThermalTelemetry telemetry, HudDensity d) {
     return _ThermalSection(
       title: 'STORAGE',
       icon: Icons.storage_outlined,
+      d: d,
       child: Text(
         'NAME: ${telemetry.nvmeCelsius}°C',
         style: HudTheme.bodyText.copyWith(color: HudTheme.textMain, fontSize: 16),
@@ -227,13 +232,14 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     );
   }
 
-  Widget _buildFansSection(ThermalTelemetry telemetry) {
+  Widget _buildFansSection(ThermalTelemetry telemetry, HudDensity d) {
     return _ThermalSection(
       title: 'FANS',
       icon: Icons.air_outlined,
+      d: d,
       child: Wrap(
         spacing: 24,
-        runSpacing: 12,
+        runSpacing: d.gap,
         children: [
           if ((telemetry.cpuFanRpm ?? 0) > 0) _buildFanRow('CPU_FAN', telemetry.cpuFanRpm!),
           if((telemetry.chassisFan1Rpm ?? 0) > 0) _buildFanRow('CHA_FAN1', telemetry.chassisFan1Rpm!),
@@ -258,7 +264,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     );
   }
 
-  Widget _buildAdvancedSection() {
+  Widget _buildAdvancedSection(HudDensity d) {
     return Container(
       decoration: HudTheme.hudPanelDecoration,
       child: Theme(
@@ -277,10 +283,10 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
           ),
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 8),
+              padding: EdgeInsets.only(left: d.panelPad, right: d.panelPad, bottom: d.panelPad, top: 8),
               child: Wrap(
                 spacing: 32,
-                runSpacing: 16,
+                runSpacing: d.gap,
                 children: [
                   _buildAdvancedRow('GPU_CORE', 'N/A'),
                   _buildAdvancedRow('GPU_HOTSPOT', 'N/A'),
@@ -351,13 +357,14 @@ class _ThermalSection extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
+  final HudDensity d;
 
-  const _ThermalSection({required this.title, required this.icon, required this.child});
+  const _ThermalSection({required this.title, required this.icon, required this.child, required this.d});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(d.panelPad),
       decoration: HudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +376,7 @@ class _ThermalSection extends StatelessWidget {
               HudLabel(title)
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: d.gap),
           child,
         ],
       ),

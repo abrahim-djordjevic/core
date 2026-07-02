@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
-class TelemetryHistoryScreen extends StatelessWidget {
+class TelemetryHistoryScreen extends ConsumerWidget {
   const TelemetryHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(hudDensityProvider);
     return Scaffold(
       backgroundColor: HudTheme.bgBase,
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(d.panelPad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -32,17 +35,17 @@ class TelemetryHistoryScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Expanded(
               child: ListView(
-                children: const [
+                children: [
                   SizedBox(
                     height: 400,
                     child: TelemetryHistoryChart(metricKey: 'cpu'),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: d.gap * 2),
                   SizedBox(
                     height: 400,
                     child: TelemetryHistoryChart(metricKey: 'ram'),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: d.gap * 2),
                   SizedBox(
                     height: 400,
                     child: TelemetryHistoryChart(metricKey: 'thermal_cpu_package'),

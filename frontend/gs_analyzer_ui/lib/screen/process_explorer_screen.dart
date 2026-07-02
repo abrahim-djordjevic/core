@@ -8,6 +8,7 @@ import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class ProcessExplorerScreen extends ConsumerWidget {
   const ProcessExplorerScreen({super.key});
@@ -21,6 +22,7 @@ class ProcessExplorerScreen extends ConsumerWidget {
     final selectedPid = ref.watch(selectedProcessPidProvider);
     final showAll = ref.watch(showAllProcessesProvider);
     final totalCount = ramState.groupedProcesses.length;
+    final d = ref.watch(hudDensityProvider);
 
     return Column(
       children: [
@@ -47,6 +49,7 @@ class ProcessExplorerScreen extends ConsumerWidget {
                           return _ProcessRow(
                             group: group,
                             isSelected: isSelected,
+                            d: d,
                             onTap: () {
                               final current = ref.read(selectedProcessPidProvider);
                               ref.read(selectedProcessPidProvider.notifier).state =
@@ -68,14 +71,15 @@ class ProcessExplorerScreen extends ConsumerWidget {
 }
 
 //  System Load Bar
-class _SystemLoadBar extends StatelessWidget {
+class _SystemLoadBar extends ConsumerWidget {
   final RamState ramState;
   final CpuState cpuState;
 
   const _SystemLoadBar({required this.ramState, required this.cpuState});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(hudDensityProvider);
     final load    = cpuState.snapshot?.averageLoad ?? 0.0;
     final cpuPct  = load / 100.0;
     final ramPct  = ramState.totalGb > 0 ? ramState.activeGb / ramState.totalGb : 0.0;
@@ -84,24 +88,37 @@ class _SystemLoadBar extends StatelessWidget {
         : '--';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
       decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Colors.white10))),
-      child: Row(
-        children: [
-          Expanded(child: _LoadMetric(
-            'CPU', cpuText, cpuPct.clamp(0.0, 1.0), HudTheme.accentCyan,
-          )),
-          const SizedBox(width: 16),
-          Expanded(child: _LoadMetric(
-            'RAM',
-            '${(ramPct * 100).toStringAsFixed(1)}%',
-            ramPct.clamp(0.0, 1.0),
-            HudTheme.accentGreen,
-          )),
-          const SizedBox(width: 24),
-          HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth > 520;
+          final cpu = _LoadMetric('CPU', cpuText, cpuPct.clamp(0.0, 1.0), HudTheme.accentCyan);
+          final ram = _LoadMetric('RAM', '${(ramPct * 100).toStringAsFixed(1)}%', ramPct.clamp(0.0, 1.0), HudTheme.accentGreen);
+          
+          if (wide) {
+            return Row(
+              children: [
+                Expanded(child: cpu),
+                SizedBox(width: d.gap),
+                Expanded(child: ram),
+                SizedBox(width: d.gap * 1.5),
+                HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
+              ],
+            );
+          }
+          return Wrap(
+            spacing: d.gap * 2,
+            runSpacing: d.gap,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(width: 200, child: cpu),
+              SizedBox(width: 200, child: ram),
+              HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
+            ],
+          );
+        },
       ),
     );
   }
@@ -251,11 +268,13 @@ class _ToolbarChip extends StatelessWidget {
 }
 
 // Table Header
-class _TableHeader extends StatelessWidget {
+class _TableHeader extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(hudDensityProvider);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
+      height: d.rowHeight + 16,
       decoration: BoxDecoration(
           color: HudTheme.bgPanel,
           border: const Border(bottom: BorderSide(color: Colors.white10))),
@@ -277,11 +296,13 @@ class _ProcessRow extends ConsumerWidget {
   final ProcessGroup group;
   final bool isSelected;
   final VoidCallback onTap;
+  final HudDensity d;
 
   const _ProcessRow({
     required this.group,
     required this.isSelected,
     required this.onTap,
+    required this.d,
   });
 
   @override
@@ -305,7 +326,8 @@ class _ProcessRow extends ConsumerWidget {
           onTap: onTap,
           hoverColor: Colors.white.withValues(alpha: 0.03),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
+            height: d.rowHeight + 16,
+            padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
             decoration: BoxDecoration(
               color: rowColor,
               border: Border(
@@ -356,7 +378,7 @@ class _ProcessRow extends ConsumerWidget {
         ),
 
         // ── Expanded detail drawer
-        if (isSelected) _DetailDrawer(group: group),
+        if (isSelected) _DetailDrawer(group: group, d: d),
       ],
     );
   }
@@ -399,14 +421,15 @@ class _ProcessRow extends ConsumerWidget {
 // Expanded Detail Drawer
 class _DetailDrawer extends ConsumerWidget {
   final ProcessGroup group;
-  const _DetailDrawer({required this.group});
+  final HudDensity d;
+  const _DetailDrawer({required this.group, required this.d});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
       decoration: BoxDecoration(
         color: HudTheme.accentCyan.withValues(alpha: 0.04),
         border: const Border(
@@ -414,18 +437,18 @@ class _DetailDrawer extends ConsumerWidget {
           bottom: BorderSide(color: Colors.white10),
         ),
       ),
-      child: Row(
-        children: [
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
           // Stats
-          Expanded(
-            child: Wrap(spacing: 32, runSpacing: 8, children: [
-              _DrawerStat('PID',          group.count > 1 ? 'GROUPED (${group.count})' : group.primaryPid.toString()),
-              _DrawerStat('WORKING SET',  '${group.totalRamMb.toStringAsFixed(1)} MB'),
-              _DrawerStat('% CPU',        '${group.totalCpuPercent.toStringAsFixed(2)}%'),
-              _DrawerStat('STATUS',       group.dominantStatus),
-              _DrawerStat('USER',         group.primaryUser),
-            ]),
-          ),
+          Wrap(spacing: 32, runSpacing: 8, children: [
+            _DrawerStat('PID',          group.count > 1 ? 'GROUPED (${group.count})' : group.primaryPid.toString()),
+            _DrawerStat('WORKING SET',  '${group.totalRamMb.toStringAsFixed(1)} MB'),
+            _DrawerStat('% CPU',        '${group.totalCpuPercent.toStringAsFixed(2)}%'),
+            _DrawerStat('STATUS',       group.dominantStatus),
+            _DrawerStat('USER',         group.primaryUser),
+          ]),
           const SizedBox(width: 24),
           // Actions
           Row(children: [
@@ -444,6 +467,7 @@ class _DetailDrawer extends ConsumerWidget {
             ),
           ]),
         ],
+      ),
       ),
     );
   }

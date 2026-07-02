@@ -5,6 +5,7 @@ import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/models/cpu_snapshot.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class CpuMetricsScreen extends ConsumerStatefulWidget {
   const CpuMetricsScreen({super.key});
@@ -20,9 +21,10 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
   Widget build(BuildContext context) {
     final cpuState = ref.watch(cpuProvider);
     final snapshot = cpuState.snapshot;
+    final d = ref.watch(hudDensityProvider);
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.all(d.panelPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -51,7 +53,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: d.gap * 2),
           if (_showHistory)
             const Expanded(child: TelemetryHistoryChart(metricKey: 'cpu'))
           else if(snapshot == null)
@@ -61,11 +63,15 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
               ),
             )
           else
-            Expanded(
-              child: _buildDashBoard(context, snapshot),
-            )
+            d.isMax
+                ? Expanded(child: _buildDashBoard(context, snapshot, d))
+                : Expanded(
+                    child: SingleChildScrollView(
+                      child: _buildDashBoard(context, snapshot, d),
+                    ),
+                  )
         ],
-      )
+      ),
     );
   }
 
@@ -95,9 +101,9 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
     );
   }
 
-  Widget _buildDashBoard(BuildContext context, CpuSnapshot snapshot) {
+  Widget _buildDashBoard(BuildContext context, CpuSnapshot snapshot, HudDensity d) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(d.panelPad),
       decoration: HudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,10 +120,10 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('${snapshot.averageLoad.toStringAsFixed(1)}%', style: const TextStyle(color: HudTheme.accentCyan, fontSize: 48, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
+              Text('${snapshot.averageLoad.toStringAsFixed(1)}%', style: TextStyle(color: HudTheme.accentCyan, fontSize: d.valueSize, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: d.gap),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -125,18 +131,18 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
               style: HudTheme.bodyText,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
+          SizedBox(height: d.gap),
+          Wrap(
+            spacing: d.gap,
+            runSpacing: d.gap,
             children: [
               _buildCacheChip('L1', snapshot.l1Cache),
-              const SizedBox(width: 8),
               _buildCacheChip('L2', snapshot.l2Cache),
-              const SizedBox(width: 8),
               _buildCacheChip('L3', snapshot.l3Cache),
             ],
           ),
-          const SizedBox(height: 32),
-          Expanded(child: _buildCoreCharts(snapshot.coreGroups)),
+          SizedBox(height: d.gap * 2),
+          d.isMax ? Expanded(child: _buildCoreCharts(snapshot.coreGroups)) : SizedBox(height: 300, child: _buildCoreCharts(snapshot.coreGroups)),
         ],
       ),
     );
