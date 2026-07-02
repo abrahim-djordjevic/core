@@ -128,6 +128,14 @@ namespace GSSystemAnalyzer.Controllers
 
                 return Ok(response);
             }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Directory Scan Aborted by User."
+                });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new ApiResponse<object>
@@ -136,7 +144,6 @@ namespace GSSystemAnalyzer.Controllers
                     Message = $"Scan failed: {ex.Message}"
                 });
             }
-
 
         }
 
@@ -232,7 +239,7 @@ namespace GSSystemAnalyzer.Controllers
                 }
 
                 var cancelToken = engine.ScanToken();
-                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath);
+                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
 
                 return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
                 {
