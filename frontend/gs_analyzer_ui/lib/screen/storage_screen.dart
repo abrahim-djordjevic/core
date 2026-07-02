@@ -313,15 +313,30 @@ class _DriveDetailCard extends ConsumerWidget {
           ),
           SizedBox(height: d.gap * 2),
 
-          Wrap(
-            spacing: d.gap * 3,
-            runSpacing: d.gap,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              Text('USED: ${_formatGB(drive.usedBytes)} GB', style: HudTheme.bodyText.copyWith(color: statusColor)),
-              Text('FREE: ${_formatGB(drive.freeBytes)} GB', style: HudTheme.bodyText),
-              Text('TOTAL: ${_formatGB(drive.totalBytes)} GB', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth > 520;
+              final used = Text('USED: ${_formatGB(drive.usedBytes)} GB', style: HudTheme.bodyText.copyWith(color: statusColor));
+              final free = Text('FREE: ${_formatGB(drive.freeBytes)} GB', style: HudTheme.bodyText);
+              final total = Text('TOTAL: ${_formatGB(drive.totalBytes)} GB', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim));
+
+              if (wide) {
+                return Row(
+                  children: [
+                    Expanded(child: used),
+                    Expanded(child: free),
+                    Expanded(child: total),
+                  ],
+                );
+              }
+              
+              return Wrap(
+                spacing: d.gap * 3,
+                runSpacing: d.gap,
+                alignment: WrapAlignment.spaceBetween,
+                children: [used, free, total],
+              );
+            },
           ),
         ],
       ),

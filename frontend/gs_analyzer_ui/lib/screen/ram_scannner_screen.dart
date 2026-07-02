@@ -21,9 +21,8 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
     final ramState = ref.watch(ramProvider);
     final d = ref.watch(hudDensityProvider);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
         // Critical banner
         if (ramState.isCritical && !_showHistory)
@@ -56,11 +55,10 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
         ),
 
         if (_showHistory)
-          Padding(
-            padding: EdgeInsets.all(d.panelPad),
-            child: const SizedBox(
-              height: 400,
-              child: TelemetryHistoryChart(metricKey: 'ram'),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(d.panelPad),
+              child: const TelemetryHistoryChart(metricKey: 'ram'),
             ),
           )
         else ...[
@@ -122,10 +120,9 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                     child: CircularProgressIndicator(color: HudTheme.primaryBorder),
                   ),
                 )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: ramState.groupedProcesses.length + 1,
+              : Expanded(
+                  child: ListView.builder(
+                    itemCount: ramState.groupedProcesses.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) return _buildTableHeader(d);
 
@@ -210,9 +207,9 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                     );
                   },
                 ),
+              ),
         ],
       ],
-      ),
     );
   }
 

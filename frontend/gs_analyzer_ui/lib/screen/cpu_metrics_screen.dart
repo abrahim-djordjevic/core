@@ -23,9 +23,8 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
     final snapshot = cpuState.snapshot;
     final d = ref.watch(hudDensityProvider);
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(d.panelPad),
+    return Padding(
+      padding: EdgeInsets.all(d.panelPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -56,21 +55,20 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
           ),
           SizedBox(height: d.gap * 2),
           if (_showHistory)
-            const SizedBox(height: 500, child: TelemetryHistoryChart(metricKey: 'cpu'))
+            const Expanded(child: TelemetryHistoryChart(metricKey: 'cpu'))
           else if(snapshot == null)
-            const SizedBox(
-              height: 500,
+            const Expanded(
               child: Center(
                 child: CircularProgressIndicator(color: HudTheme.primaryBorder),
               ),
             )
           else
-            SizedBox(
-              height: 500,
-              child: _buildDashBoard(context, snapshot, d),
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildDashBoard(context, snapshot, d),
+              ),
             )
         ],
-      ),
       ),
     );
   }
@@ -142,7 +140,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
             ],
           ),
           SizedBox(height: d.gap * 2),
-          Expanded(child: _buildCoreCharts(snapshot.coreGroups)),
+          SizedBox(height: 300, child: _buildCoreCharts(snapshot.coreGroups)),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/providers/window_provider.dart';
 
 class HudDensity {
   final double gap;
@@ -15,7 +16,10 @@ class HudDensity {
 
 final hudDensityProvider = Provider<HudDensity>((ref) {
   final settings = ref.watch(settingsProvider);
-  final isCompact = settings.currentSettings?.appearance.compactMode ?? true;
+  final isMax = ref.watch(windowMaximizedProvider);
+  final savedCompact = settings.currentSettings?.appearance.compactMode ?? true;
+  
+  final isCompact = isMax ? false : savedCompact;
   
   if (isCompact) {
     return const HudDensity(

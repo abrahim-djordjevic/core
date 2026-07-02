@@ -91,15 +91,34 @@ class _SystemLoadBar extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
       decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Colors.white10))),
-      child: Wrap(
-        spacing: d.gap * 2,
-        runSpacing: d.gap,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(width: 200, child: _LoadMetric('CPU', cpuText, cpuPct.clamp(0.0, 1.0), HudTheme.accentCyan)),
-          SizedBox(width: 200, child: _LoadMetric('RAM', '${(ramPct * 100).toStringAsFixed(1)}%', ramPct.clamp(0.0, 1.0), HudTheme.accentGreen)),
-          HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth > 520;
+          final cpu = _LoadMetric('CPU', cpuText, cpuPct.clamp(0.0, 1.0), HudTheme.accentCyan);
+          final ram = _LoadMetric('RAM', '${(ramPct * 100).toStringAsFixed(1)}%', ramPct.clamp(0.0, 1.0), HudTheme.accentGreen);
+          
+          if (wide) {
+            return Row(
+              children: [
+                Expanded(child: cpu),
+                SizedBox(width: d.gap),
+                Expanded(child: ram),
+                SizedBox(width: d.gap * 1.5),
+                HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
+              ],
+            );
+          }
+          return Wrap(
+            spacing: d.gap * 2,
+            runSpacing: d.gap,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(width: 200, child: cpu),
+              SizedBox(width: 200, child: ram),
+              HudLabel('PROCS: ${ramState.groupedProcesses.length}'),
+            ],
+          );
+        },
       ),
     );
   }
