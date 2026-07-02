@@ -63,11 +63,13 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
               ),
             )
           else
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildDashBoard(context, snapshot, d),
-              ),
-            )
+            d.isMax
+                ? Expanded(child: _buildDashBoard(context, snapshot, d))
+                : Expanded(
+                    child: SingleChildScrollView(
+                      child: _buildDashBoard(context, snapshot, d),
+                    ),
+                  )
         ],
       ),
     );
@@ -118,7 +120,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('${snapshot.averageLoad.toStringAsFixed(1)}%', style: const TextStyle(color: HudTheme.accentCyan, fontSize: 48, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
+              Text('${snapshot.averageLoad.toStringAsFixed(1)}%', style: TextStyle(color: HudTheme.accentCyan, fontSize: d.valueSize, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
             ],
           ),
           SizedBox(height: d.gap),
@@ -140,7 +142,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
             ],
           ),
           SizedBox(height: d.gap * 2),
-          SizedBox(height: 300, child: _buildCoreCharts(snapshot.coreGroups)),
+          d.isMax ? Expanded(child: _buildCoreCharts(snapshot.coreGroups)) : SizedBox(height: 300, child: _buildCoreCharts(snapshot.coreGroups)),
         ],
       ),
     );

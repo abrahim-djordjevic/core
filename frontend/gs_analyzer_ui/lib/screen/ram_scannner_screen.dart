@@ -281,7 +281,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
               subtitle,
               style: TextStyle(
                 color: accentColor,
-                fontSize: 16,
+                fontSize: d.titleSize,
                 fontWeight: FontWeight.bold,
                 fontFamily: HudTheme.fontCore,
               ),
