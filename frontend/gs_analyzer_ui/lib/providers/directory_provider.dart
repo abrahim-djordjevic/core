@@ -3,6 +3,15 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'dart:math';
+
+String generateUuid() {
+  final random = Random();
+  final chars = '0123456789abcdef';
+  String randomString(int length) => String.fromCharCodes(Iterable.generate(
+      length, (_) => chars.codeUnitAt(random.nextInt(16))));
+  return '${randomString(8)}-${randomString(4)}-4${randomString(3)}-a${randomString(3)}-${randomString(12)}';
+}
 
 enum SortMethod {
   name,
@@ -155,9 +164,13 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
 
   DateTime? _scanStartTime;
   bool _wasForceRefresh = false;
+  String? _currentScanId;
+  String? get currentScanId => _currentScanId;
 
   Future<void> scanDirectory(String targetPath, {bool forceRefresh = false}) async {
     String safePath = targetPath.replaceAll('\\', '/');
+    final scanId = generateUuid();
+    _currentScanId = scanId;
 
     if (!forceRefresh && _sectorCache.containsKey(safePath)) {
       _applyFiltersAndSort(nodes: _sectorCache[safePath]);
@@ -167,7 +180,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
         errorMessage: null,
       );
 
-      _apiService.scanDirectory(safePath).then((freshNodes) {
+      _apiService.scanDirectory(safePath, scanId).then((freshNodes) {
         _sectorCache[safePath] = freshNodes;
         if (state.currentPath == safePath) _applyFiltersAndSort(nodes: freshNodes);
       }).catchError((_) {});
@@ -189,13 +202,15 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     state = state.copyWith(currentPath: safePath, isLoading: true, searchQuery: '', errorMessage: null, allNodes: [], displayNodes: []);
 
     try {
-      await _apiService.requestDirectoryStream(safePath);
+      await _apiService.requestDirectoryStream(safePath, scanId);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
-  void receiveStreamChunk(String path, List<dynamic> chunkData) {
+  void receiveStreamChunk(String? scanId, String path, List<dynamic> chunkData) {
+    if (scanId != null && scanId != _currentScanId) return;
+
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
     if (incomingPath.endsWith('/')) incomingPath = incomingPath.substring(0, incomingPath.length - 1);
@@ -215,7 +230,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     state = state.copyWith(allNodes: updatedList, displayNodes: updatedList);
   }
 
-  void finalizeStream(String path) async {
+  void finalizeStream(String? scanId, String path) async {
+    if (scanId != null && scanId != _currentScanId) return;
+
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
 
@@ -243,7 +260,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     if (_sectorCache.containsKey(safePath)) {
       return _sectorCache[safePath]!;
     }
-    final nodes = await _apiService.scanDirectory(safePath);
+    final nodes = await _apiService.scanDirectory(safePath, generateUuid());
     _sectorCache[safePath] = nodes;
     return nodes;
   }

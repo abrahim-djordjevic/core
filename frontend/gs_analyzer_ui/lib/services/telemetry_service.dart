@@ -6,12 +6,12 @@ class TelemetryService {
   late HubConnection _hubConnection;
 
   Function(String)? onSectorChanged;
-  final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
+  final Function(String? scanId, String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
   Function(double percentage, String target, int completed)? onNukeProgress;
   Function()? onNukeAborted;
   Function(Map<String, dynamic>)? onRamUpdate;
-  Function(String path, List<dynamic> chunk)? onDirectoryChunk;
-  Function(String path)? onDirectoryStreamComplete;
+  Function(String? scanId, String path, List<dynamic> chunk)? onDirectoryChunk;
+  Function(String? scanId, String path)? onDirectoryStreamComplete;
   Function(Map<String, dynamic>)? onCpuUpdate;
   Function(List<dynamic>)? onDriveUpdate;
   Function(Map<String, dynamic>)? onAuditProgress;
@@ -77,6 +77,7 @@ class TelemetryService {
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
 
+        final scanId = data['scanId'] as String?;
         final status = data['status'] as String?;
         final completed = (data['completed'] as num?)?.toInt();
         final total = (data['total'] as num?)?.toInt();
@@ -84,7 +85,7 @@ class TelemetryService {
             ?.toDouble();
         final target = data['currentTarget'] as String?;
 
-        onProgressUpdate(status, completed, total, percentageComplete, target);
+        onProgressUpdate(scanId, status, completed, total, percentageComplete, target);
       }
     }
 
@@ -147,17 +148,14 @@ class TelemetryService {
     void _handleDirectoryChunk(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
-        if (onDirectoryChunk != null) {
-          onDirectoryChunk!(data['path'], data['chunk']);
-        }
+        onDirectoryChunk?.call(data['scanId'] as String?, data['path'], data['chunk']);
       }
     }
 
     void _handleDirectoryStreamComplete(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
-        if (onDirectoryStreamComplete != null) {
-          onDirectoryStreamComplete!(arguments[0].toString());
-        }
+        final data = arguments[0] as Map<String, dynamic>;
+        onDirectoryStreamComplete?.call(data['scanId'] as String?, data['path'].toString());
       }
     }
 

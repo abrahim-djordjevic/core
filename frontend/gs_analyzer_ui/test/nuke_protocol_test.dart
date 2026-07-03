@@ -18,7 +18,7 @@ void main() {
 
      final nukeList = MockFactory.generateNukeTarget(10, 'C:/Downloads');
 
-     notifier.receiveStreamChunk('c:/Downloads', nukeList);
+     notifier.receiveStreamChunk(null, 'c:/Downloads', nukeList);
 
      final targetCount = notifier.state.displayNodes.where((node) => node.name.contains('target_item')).length;
 
@@ -36,7 +36,7 @@ void main() {
       final folderPath = 'C:/Downloads/OldProject';
       final rootFolder = MockFactory.createFakeNodeMap(name: 'OldProject', path: folderPath, isDirectory: true);
 
-      notifier.receiveStreamChunk('c:/Downloads', [rootFolder]);
+      notifier.receiveStreamChunk(null, 'c:/Downloads', [rootFolder]);
 
       final target = notifier.state.displayNodes.firstWhere((node) => node.name == 'OldProject');
 
@@ -60,7 +60,7 @@ void main() {
       MockFactory.createFakeNodeMap(name: 'Old_Cache_Folder', path: 'C:/Downloads/Old_Cache_Folder', isDirectory: true)
       ];
 
-      notifier.receiveStreamChunk('c:/downloads', mixedChunk);
+      notifier.receiveStreamChunk(null, 'c:/downloads', mixedChunk);
 
       notifier.toggleSelectionMode();
 

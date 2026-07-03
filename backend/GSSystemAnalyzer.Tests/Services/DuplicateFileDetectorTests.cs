@@ -25,7 +25,10 @@ namespace GSSystemAnalyzer.Tests.Services
             mockSettings.Setup(s => s.Current)
                 .Returns(AppSettingDto.GetFactoryDefaults());
 
-            _detector = new DuplicateFileDetector(mockSettings.Object);
+            var mockScanner = new Mock<IDiskScannerEngine>();
+            mockScanner.Setup(s => s.GetScanToken(It.IsAny<Guid>())).Returns(CancellationToken.None);
+
+            _detector = new DuplicateFileDetector(mockSettings.Object, mockScanner.Object);
         }
 
         public void Dispose()
@@ -48,7 +51,7 @@ namespace GSSystemAnalyzer.Tests.Services
             CreateTestFile("beta_copy.log", "MATRIX_CORE_DATA");
             CreateTestFile("unique_file.txt", "ISOLATED_DATA");
 
-            var results = await _detector.FindDuplicatesAsync(_testBaseDir);
+            var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
 
             Assert.Single(results); // Only one group of duplicates should exist
             var group = results.First();
@@ -65,7 +68,7 @@ namespace GSSystemAnalyzer.Tests.Services
             CreateTestFile("valid1.txt", "REAL_DATA");
             CreateTestFile("valid2.txt", "REAL_DATA");
 
-            var results = await _detector.FindDuplicatesAsync(_testBaseDir);
+            var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
 
             Assert.Single(results);
             Assert.DoesNotContain(results.First().FilePaths, p => p.Contains("empty1.txt"));
@@ -82,8 +85,8 @@ namespace GSSystemAnalyzer.Tests.Services
 
             using (var lockedStream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                var exception = await Record.ExceptionAsync(async () => await _detector.FindDuplicatesAsync(_testBaseDir));
-                var results = await _detector.FindDuplicatesAsync(_testBaseDir);
+                var exception = await Record.ExceptionAsync(async () => await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid()));
+                var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
 
                 Assert.Null(exception);
                 Assert.Single(results);
@@ -99,7 +102,7 @@ namespace GSSystemAnalyzer.Tests.Services
             CreateTestFile("fileB.txt", content);
             CreateTestFile("fileC.txt", content); // 3 copies = 1 original + 2 wasted
 
-            var results = await _detector.FindDuplicatesAsync(_testBaseDir);
+            var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
 
             var group = results.First();
             Assert.Equal(10, group.FileSizeBytes);
@@ -118,7 +121,7 @@ namespace GSSystemAnalyzer.Tests.Services
             CreateTestFile("large1.txt", "123456789012345");
             CreateTestFile("large2.txt", "123456789012345");
 
-            var results = await _detector.FindDuplicatesAsync(_testBaseDir);
+            var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
 
             Assert.Equal(2, results.Count);
 
@@ -134,8 +137,18 @@ namespace GSSystemAnalyzer.Tests.Services
 
             using var cts = new CancellationTokenSource(0);
             
+            var mockSettings = new Mock<ISettingService>();
+            mockSettings.Setup(s => s.Current)
+                .Returns(AppSettingDto.GetFactoryDefaults());
+
+            var mockScanner = new Mock<IDiskScannerEngine>();
+            var scanId = Guid.NewGuid();
+            mockScanner.Setup(s => s.GetScanToken(scanId)).Returns(cts.Token);
+
+            var detector = new DuplicateFileDetector(mockSettings.Object, mockScanner.Object);
+
             await Assert.ThrowsAsync<OperationCanceledException>(
-                async () => await _detector.FindDuplicatesAsync(_testBaseDir, cts.Token)
+                async () => await detector.FindDuplicatesAsync(_testBaseDir, scanId)
             );
         }
     }

@@ -46,14 +46,14 @@ class ApiService {
   }
 
 
-  Future<List<StorageNode>> scanDirectory(String path) async {
+  Future<List<StorageNode>> scanDirectory(String path, String scanId) async {
     final uri = Uri.parse('$storageUrl/scan');
-    appLogger.i('MATRIX BRIDGE FIRING TO: $uri (root: $path)');
+    appLogger.i('MATRIX BRIDGE FIRING TO: $uri (root: $path, scanId: $scanId)');
 
     final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'Root': path}),
+      body: jsonEncode({'Root': path, 'ScanId': scanId}),
     );
 
     if (response.statusCode == 200) {
@@ -198,10 +198,14 @@ class ApiService {
     }
   }
 
-  Future<void> abortScan() async {
+  Future<void> abortScan({String? scanId}) async {
     try {
-      appLogger.i('SENDING SCAN ABORT SIGNAL...');
-      await _client.post(Uri.parse('$storageUrl/abort-scan'));
+      appLogger.i('SENDING SCAN ABORT SIGNAL... (scanId: $scanId)');
+      var uri = Uri.parse('$storageUrl/abort-scan');
+      if (scanId != null) {
+        uri = uri.replace(queryParameters: {'scanId': scanId});
+      }
+      await _client.post(uri);
     } catch (e) {
       appLogger.i('Failed to send abort signal: $e');
     }
@@ -246,21 +250,22 @@ class ApiService {
     }
   }
 
-  Future<void> requestDirectoryStream(String path) async {
+  Future<void> requestDirectoryStream(String path, String scanId) async {
     final uri = Uri.parse('$storageUrl/stream-sector').replace(queryParameters: {
-      'path': path
+      'path': path,
+      'scanId': scanId
     });
     await _client.post(uri);
   }
 
-  Future<List<dynamic>> scanForDuplicates(String path) async {
+  Future<List<dynamic>> scanForDuplicates(String path, String scanId) async {
     final uri = Uri.parse('$storageUrl/duplicates');
-    appLogger.i('INITIATING DUPLICATE HUNTER ON: $uri (root: $path)');
+    appLogger.i('INITIATING DUPLICATE HUNTER ON: $uri (root: $path, scanId: $scanId)');
 
     final response = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'Root': path}),
+      body: jsonEncode({'Root': path, 'ScanId': scanId}),
     );
 
     if (response.statusCode == 200) {

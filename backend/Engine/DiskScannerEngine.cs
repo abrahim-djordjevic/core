@@ -20,8 +20,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 {
     public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _nukeCts;
-    private CancellationTokenSource? _scanCts;
-    private readonly object _scanCtsLock = new();
+    private readonly ConcurrentDictionary<Guid, ScanSession> _activeSessions = new();
     private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
     private readonly object _fileWriteLock = new object();
     private int _deepScanThrottle = 0;
@@ -85,7 +84,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         return items;
     }
 
-    public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items)
+    public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId)
     {
         await _scanLock.WaitAsync();
         try
@@ -102,10 +101,10 @@ public class DiskScannerEngine : IDiskScannerEngine
                 _deepScanThrottle = 0;
                 _scannedFilesCount = 0;
 
-                // Fix: scanToken is read directly from _scanCts outside _scanCtsLock, which can lead to a scan without a cancellation token.
-                var scanToken = _scanCts?.Token ?? CancellationToken.None;
+                // Retrieve the specific session's token
+                var scanToken = _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
 
-                await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
+                await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
 
                 var options = new ParallelOptions
                 {
@@ -137,6 +136,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 
                     _ = _hub.Clients.All.SendAsync("ScanProgress", new
                     {
+                        scanId = scanId,
                         completed = completed,
                         total = totalNodes,
                         percentageComplete = percentage,
@@ -147,7 +147,7 @@ public class DiskScannerEngine : IDiskScannerEngine
                 SaveMemoryToDisk();
             }
             
-            await _hub.Clients.All.SendAsync("ScanProgress", new { status = "COMPLETED", count = _scannedFilesCount, currentTarget = "Scan completed" });
+            await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", count = _scannedFilesCount, currentTarget = "Scan completed" });
         }
         finally
         {
@@ -393,20 +393,52 @@ public class DiskScannerEngine : IDiskScannerEngine
         _nukeCts?.Cancel();
     }
 
-    public CancellationToken ScanToken()
+    public Guid BeginScanSession(Guid? scanId = null)
     {
-        lock (_scanCtsLock)
+        var id = scanId ?? Guid.NewGuid();
+
+        if (_activeSessions.TryRemove(id, out var existingSession))
         {
-            _scanCts?.Cancel();
-            _scanCts = new CancellationTokenSource();
-            return _scanCts.Token;
+            existingSession.Dispose();
+        }
+
+        var newSession = new ScanSession(id);
+        _activeSessions[id] = newSession;
+
+        return id;
+    }
+
+    public CancellationToken GetScanToken(Guid scanId)
+    {
+        return _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
+    }
+
+    public void EndScanSession(Guid scanId)
+    {
+        if (_activeSessions.TryRemove(scanId, out var session))
+        {
+            session.Dispose();
         }
     }
 
-    public void TriggerScanAbort()
+    public void TriggerScanAbort(Guid? scanId = null)
     {
-        lock (_scanCtsLock) { _scanCts?.Cancel(); }
-        _logger.LogInformation("Scan abort signal received");
+        if (scanId.HasValue)
+        {
+            if (_activeSessions.TryGetValue(scanId.Value, out var session))
+            {
+                session.Cts.Cancel();
+                _logger.LogInformation("Scan abort signal received for specific scanId: {ScanId}", scanId.Value);
+            }
+        }
+        else
+        {
+            foreach (var session in _activeSessions.Values)
+            {
+                session.Cts.Cancel();
+            }
+            _logger.LogInformation("Global scan abort signal received, all active scans canceled");
+        }
     }
 
     public void PruneStaleCacheEntries()

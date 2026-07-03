@@ -52,8 +52,9 @@ namespace GSSystemAnalyzer.Tests.Controllers
         public async Task ScanDirectory_ReturnsOk_WhenScanSucceeds()
         {
             var disk = new Mock<IDiskOperationService>();
-            disk.Setup(s => s.BeginScan()).Returns(CancellationToken.None);
-            disk.Setup(s => s.ScanDirectory(It.IsAny<string>())).Returns(new List<StorageNode>());
+            var id = Guid.NewGuid();
+            disk.Setup(s => s.BeginScan(It.IsAny<Guid?>())).Returns(id);
+            disk.Setup(s => s.ScanDirectory(It.IsAny<string>(), id)).Returns(new List<StorageNode>());
 
             var controller = BuildController(disk.Object);
 
@@ -67,8 +68,9 @@ namespace GSSystemAnalyzer.Tests.Controllers
         public async Task ScanDirectory_Returns499_WhenScanIsCanceled()
         {
             var disk = new Mock<IDiskOperationService>();
-            disk.Setup(s => s.BeginScan()).Returns(CancellationToken.None);
-            disk.Setup(s => s.ScanDirectory(It.IsAny<string>()))
+            var id = Guid.NewGuid();
+            disk.Setup(s => s.BeginScan(It.IsAny<Guid?>())).Returns(id);
+            disk.Setup(s => s.ScanDirectory(It.IsAny<string>(), id))
                 .Throws<OperationCanceledException>();
 
             var controller = BuildController(disk.Object);
@@ -86,12 +88,13 @@ namespace GSSystemAnalyzer.Tests.Controllers
             // Regression guard for the bug this PR fixes: scan must call BeginScan()
             // BEFORE ScanDirectory, otherwise it runs with a stale/None token.
             var callOrder = new List<string>();
+            var id = Guid.NewGuid();
 
             var disk = new Mock<IDiskOperationService>();
-            disk.Setup(s => s.BeginScan())
+            disk.Setup(s => s.BeginScan(It.IsAny<Guid?>()))
                 .Callback(() => callOrder.Add("BeginScan"))
-                .Returns(CancellationToken.None);
-            disk.Setup(s => s.ScanDirectory(It.IsAny<string>()))
+                .Returns(id);
+            disk.Setup(s => s.ScanDirectory(It.IsAny<string>(), id))
                 .Callback(() => callOrder.Add("ScanDirectory"))
                 .Returns(new List<StorageNode>());
 
@@ -116,7 +119,7 @@ namespace GSSystemAnalyzer.Tests.Controllers
                 new ScanRequest { Root = TempDir }, drive.Object);
 
             Assert.IsType<BadRequestObjectResult>(result);
-            disk.Verify(s => s.BeginScan(), Times.Never); // must not start a scan on bad input
+            disk.Verify(s => s.BeginScan(It.IsAny<Guid?>()), Times.Never); // must not start a scan on bad input
         }
 
         [Fact]
@@ -128,27 +131,29 @@ namespace GSSystemAnalyzer.Tests.Controllers
             var result = controller.AbortScan();
 
             Assert.IsType<OkObjectResult>(result);
-            disk.Verify(s => s.TriggerScanAbort(), Times.Once);
+            disk.Verify(s => s.TriggerScanAbort(null), Times.Once);
         }
 
         [Fact]
         public void StreamSector_ReturnsInitiated_AndBeginsScanSynchronously()
         {
             var disk = new Mock<IDiskOperationService>();
-            disk.Setup(s => s.BeginScan()).Returns(CancellationToken.None);
-            disk.Setup(s => s.ScanDirectory(It.IsAny<string>())).Returns(new List<StorageNode>());
+            var id = Guid.NewGuid();
+            disk.Setup(s => s.BeginScan(It.IsAny<Guid?>())).Returns(id);
+            disk.Setup(s => s.ScanDirectory(It.IsAny<string>(), id)).Returns(new List<StorageNode>());
 
             var controller = BuildController(disk.Object, ScopeFactoryFor(disk.Object).Object);
 
             var result = controller.StreamDirectorySection(
                 Mock.Of<IHubContext<SystemHub>>(),
                 DriveServiceWithReadyRoot().Object,
-                TempDir);
+                TempDir,
+                null);
 
             var ok = Assert.IsType<OkObjectResult>(result);
             var payload = Assert.IsType<ApiResponse<object>>(ok.Value);
             Assert.True(payload.Success);
-            disk.Verify(s => s.BeginScan(), Times.Once); // token established before returning
+            disk.Verify(s => s.BeginScan(It.IsAny<Guid?>()), Times.Once); // token established before returning
         }
     }
 }

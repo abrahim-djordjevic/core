@@ -4,6 +4,6 @@ namespace GSSystemAnalyzer.Interfaces
 {
     public interface IDuplicateFileDetector
     {
-        Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default);
+        Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, Guid scanId);
     }
 }

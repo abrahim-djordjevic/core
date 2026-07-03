@@ -24,12 +24,12 @@ namespace GSSystemAnalyzer.Controllers
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path, [FromQuery] Guid? scanId)
         {
             var validationResult = ValidateDriveAndDirectory(path, driveService);
             if (validationResult != null) return validationResult;
             
-            var cancelToken = _diskService.BeginScan();
+            var id = _diskService.BeginScan(scanId);
 
             _ = Task.Run(async () =>
             {
@@ -37,17 +37,18 @@ namespace GSSystemAnalyzer.Controllers
                 var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
                 try
                 {
-                    var allNodes = scopedDiskService.ScanDirectory(path).ToList();
+                    var allNodes = scopedDiskService.ScanDirectory(path, id).ToList();
                     
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
                     {
-                        if (cancelToken.IsCancellationRequested) break;
+                        var engine = scope.ServiceProvider.GetRequiredService<GSSystemAnalyzer.Interfaces.IDiskScannerEngine>();
+                        if (engine.GetScanToken(id).IsCancellationRequested) break;
 
                         var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
                         await hubContext.Clients.All.SendAsync("DirectoryChunk", new
                         {
-                            path = path, chunk = chunk
+                            scanId = id, path = path, chunk = chunk
                         });
 
                         await Task.Delay(10);
@@ -56,11 +57,11 @@ namespace GSSystemAnalyzer.Controllers
                 catch (Exception ex)
                 {
                     await hubContext.Clients.All.SendAsync("DirectoryStreamError",
-                        new { path = path, error = ex.Message });
+                        new { scanId = id, path = path, error = ex.Message });
                 }
                 finally
                 {
-                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
+                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new { scanId = id, path = path });
                 }
             });
 
@@ -83,8 +84,8 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
-                _diskService.BeginScan();
-                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
+                var id = _diskService.BeginScan(request.ScanId);
+                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath, id));
 
                 var response = new ApiResponse<IEnumerable<StorageNode>>
                 {
@@ -147,9 +148,9 @@ namespace GSSystemAnalyzer.Controllers
 
 
         [HttpPost("abort-scan")]
-        public IActionResult AbortScan()
+        public IActionResult AbortScan([FromQuery] Guid? scanId = null)
         {
-            _diskService.TriggerScanAbort();
+            _diskService.TriggerScanAbort(scanId);
 
             return Ok(new ApiResponse<object>
             {
@@ -170,8 +171,8 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
-                var cancelToken = _diskService.BeginScan();
-                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
+                var id = _diskService.BeginScan(request.ScanId);
+                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, id);
 
                 return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
                 {

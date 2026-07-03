@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/duplicate_model.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 
 class DuplicateState {
   final bool isLoading;
@@ -73,7 +74,7 @@ class DuplicateNotifier extends StateNotifier<DuplicateState> {
 
     try {
       final apiService = ApiService();
-      final rawData = await apiService.scanForDuplicates(rootPath);
+      final rawData = await apiService.scanForDuplicates(rootPath, generateUuid());
 
       loadFromBackend(rawData);
     } catch (e) {
