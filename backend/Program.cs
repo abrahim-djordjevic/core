@@ -39,7 +39,6 @@ builder.Services.AddSingleton<IProcessOwnerResolver, ProcessOwnerResolver>();
 builder.Services.AddSingleton<IFileTypeScanner, FileTypeScanner>();
 builder.Services.AddSingleton<IAgeHeatmapEngine, AgeHeatmapEngine>();
 
-// Telemetry history buffer — must be registered before background services that inject it
 builder.Services.AddSingleton<ITelemetryHistoryBuffer, TelemetryHistoryBuffer>();
 
 // Platform-specific CPU provider
@@ -61,7 +60,7 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
     builder.Services.AddSingleton<IThermalProvider, LibreThermalProvider>();
     builder.Services.AddSingleton<IWmiThermalFallback, WmiThermalFallback>();
-    builder.Services.AddSingleton<IDellOemTelemetry, DellOemTelemetry>();
+    builder.Services.AddSingleton<IDellOemTelemetry, DellOemTelemetry>(); // User needs to have Dell OEM telemetry installed for this to work
 }
 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
