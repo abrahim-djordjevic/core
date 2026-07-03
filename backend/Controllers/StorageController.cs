@@ -42,19 +42,13 @@ namespace GSSystemAnalyzer.Controllers
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
                     {
-                        // To allow cancellation, we need the token from the singleton engine for this session
-                        // Since we are in a background thread and the scoped disk service doesn't easily expose it here, 
-                        // we can let the scoped service retrieve it, or we skip checking here since CalculateMissingSizesAsync 
-                        // handles its own cancellation. But wait, `cancelToken` was used here before.
-                        // Let's resolve the engine directly to check cancellation if we want.
-                        // Actually, I can just resolve the engine from scope.
                         var engine = scope.ServiceProvider.GetRequiredService<GSSystemAnalyzer.Interfaces.IDiskScannerEngine>();
                         if (engine.GetScanToken(id).IsCancellationRequested) break;
 
                         var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
                         await hubContext.Clients.All.SendAsync("DirectoryChunk", new
                         {
-                            path = path, chunk = chunk
+                            scanId = id, path = path, chunk = chunk
                         });
 
                         await Task.Delay(10);
@@ -63,11 +57,11 @@ namespace GSSystemAnalyzer.Controllers
                 catch (Exception ex)
                 {
                     await hubContext.Clients.All.SendAsync("DirectoryStreamError",
-                        new { path = path, error = ex.Message });
+                        new { scanId = id, path = path, error = ex.Message });
                 }
                 finally
                 {
-                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
+                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new { scanId = id, path = path });
                 }
             });
 

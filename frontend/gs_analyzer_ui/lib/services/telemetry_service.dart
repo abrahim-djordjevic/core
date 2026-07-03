@@ -10,8 +10,8 @@ class TelemetryService {
   Function(double percentage, String target, int completed)? onNukeProgress;
   Function()? onNukeAborted;
   Function(Map<String, dynamic>)? onRamUpdate;
-  Function(String path, List<dynamic> chunk)? onDirectoryChunk;
-  Function(String path)? onDirectoryStreamComplete;
+  Function(String? scanId, String path, List<dynamic> chunk)? onDirectoryChunk;
+  Function(String? scanId, String path)? onDirectoryStreamComplete;
   Function(Map<String, dynamic>)? onCpuUpdate;
   Function(List<dynamic>)? onDriveUpdate;
   Function(Map<String, dynamic>)? onAuditProgress;
@@ -148,17 +148,14 @@ class TelemetryService {
     void _handleDirectoryChunk(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
-        if (onDirectoryChunk != null) {
-          onDirectoryChunk!(data['path'], data['chunk']);
-        }
+        onDirectoryChunk?.call(data['scanId'] as String?, data['path'], data['chunk']);
       }
     }
 
     void _handleDirectoryStreamComplete(List<Object?>? arguments) {
       if (arguments != null && arguments.isNotEmpty) {
-        if (onDirectoryStreamComplete != null) {
-          onDirectoryStreamComplete!(arguments[0].toString());
-        }
+        final data = arguments[0] as Map<String, dynamic>;
+        onDirectoryStreamComplete?.call(data['scanId'] as String?, data['path'].toString());
       }
     }
 

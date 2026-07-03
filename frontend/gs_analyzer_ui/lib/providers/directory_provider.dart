@@ -208,7 +208,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     }
   }
 
-  void receiveStreamChunk(String path, List<dynamic> chunkData) {
+  void receiveStreamChunk(String? scanId, String path, List<dynamic> chunkData) {
+    if (scanId != null && scanId != _currentScanId) return;
+
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
     if (incomingPath.endsWith('/')) incomingPath = incomingPath.substring(0, incomingPath.length - 1);
@@ -228,7 +230,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     state = state.copyWith(allNodes: updatedList, displayNodes: updatedList);
   }
 
-  void finalizeStream(String path) async {
+  void finalizeStream(String? scanId, String path) async {
+    if (scanId != null && scanId != _currentScanId) return;
+
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
 

@@ -21,9 +21,9 @@ void main() {
       fakeChunk[2] = MockFactory.createFakeNodeMap(name: 'medium_image.png', path: 'C:/medium_image.png', size: 250000);
       fakeChunk[3] = MockFactory.createFakeNodeMap(name: 'icon.png', path: 'C:/icon.png', size: 1050);
 
-      notifier.receiveStreamChunk('C:/', fakeChunk);
+      notifier.receiveStreamChunk(null, 'C:/', fakeChunk);
 
-      notifier.finalizeStream('C:/');
+      notifier.finalizeStream(null, 'C:/');
 
       notifier.setSortMethod(SortMethod.size);
 
@@ -45,7 +45,7 @@ void main() {
       final notifier = container.read(directoryProvider.notifier);
 
       await notifier.scanDirectory('C:/TestSector');
-      notifier.finalizeStream('C:/TestSector');
+      notifier.finalizeStream(null, 'C:/TestSector');
 
       expect(
           notifier.state.isLoading,
@@ -67,8 +67,8 @@ void main() {
       firstLoadChunk[1] = MockFactory.createFakeNodeMap(name: 'Siren-S1E3-1080.mp4', path: 'C:/Downloads/S3', size: 20000000);
       firstLoadChunk[2] = MockFactory.createFakeNodeMap(name: 'Siren-S1E4-1080.mp4', path: 'C:/Downloads/S4', size: 200000000);
 
-      notifier.receiveStreamChunk('c:/downloads', firstLoadChunk);
-      notifier.finalizeStream('c:/downloads');
+      notifier.receiveStreamChunk(null, 'c:/downloads', firstLoadChunk);
+      notifier.finalizeStream(null, 'c:/downloads');
 
       final loadedFile = notifier.state.displayNodes;
 
@@ -103,8 +103,8 @@ void main() {
       firstLoadChunk[0] = MockFactory.createFakeNodeMap(name: 'PCD_Report.pdf', path: 'C:/Documents/PCD_Report.pdf', size: 15000);
       firstLoadChunk[1] = MockFactory.createFakeNodeMap(name: 'small_file.txt', path: 'C:/Documents/small_file.txt', size: 150);
 
-      notifier.receiveStreamChunk('c:/documents', firstLoadChunk);
-      notifier.finalizeStream('c:/documents');
+      notifier.receiveStreamChunk(null, 'c:/documents', firstLoadChunk);
+      notifier.finalizeStream(null, 'c:/documents');
 
       expect(
           notifier.state.displayNodes.isNotEmpty,

@@ -91,12 +91,12 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       ref.read(cpuProvider.notifier).updateCpu(data);
     };
 
-    _telemetryService?.onDirectoryChunk = (path, chunk) {
-      ref.read(directoryProvider.notifier).receiveStreamChunk(path, chunk);
+    _telemetryService?.onDirectoryChunk = (scanId, path, chunk) {
+      ref.read(directoryProvider.notifier).receiveStreamChunk(scanId, path, chunk);
     };
 
-    _telemetryService?.onDirectoryStreamComplete = (path) {
-      ref.read(directoryProvider.notifier).finalizeStream(path);
+    _telemetryService?.onDirectoryStreamComplete = (scanId, path) {
+      ref.read(directoryProvider.notifier).finalizeStream(scanId, path);
     };
 
     _telemetryService?.onNukeProgress = (percentage, target, completed) {
