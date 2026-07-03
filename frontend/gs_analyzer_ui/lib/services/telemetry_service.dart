@@ -6,7 +6,7 @@ class TelemetryService {
   late HubConnection _hubConnection;
 
   Function(String)? onSectorChanged;
-  final Function(String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
+  final Function(String? scanId, String? status, int? completed, int? total, double? percentComplete, String? target) onProgressUpdate;
   Function(double percentage, String target, int completed)? onNukeProgress;
   Function()? onNukeAborted;
   Function(Map<String, dynamic>)? onRamUpdate;
@@ -77,6 +77,7 @@ class TelemetryService {
       if (arguments != null && arguments.isNotEmpty) {
         final data = arguments[0] as Map<String, dynamic>;
 
+        final scanId = data['scanId'] as String?;
         final status = data['status'] as String?;
         final completed = (data['completed'] as num?)?.toInt();
         final total = (data['total'] as num?)?.toInt();
@@ -84,7 +85,7 @@ class TelemetryService {
             ?.toDouble();
         final target = data['currentTarget'] as String?;
 
-        onProgressUpdate(status, completed, total, percentageComplete, target);
+        onProgressUpdate(scanId, status, completed, total, percentageComplete, target);
       }
     }
 

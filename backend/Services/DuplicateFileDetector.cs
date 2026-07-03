@@ -13,19 +13,22 @@ namespace GSSystemAnalyzer.Services
     public class DuplicateFileDetector : IDuplicateFileDetector
     {
         private readonly ISettingService _settings;
+        private readonly IDiskScannerEngine _scanner;
 
-        public DuplicateFileDetector(ISettingService settings)
+        public DuplicateFileDetector(ISettingService settings, IDiskScannerEngine scanner)
         {
             _settings = settings;
+            _scanner = scanner;
         }
         /// Scans a root directory and returns a dictionary of duplicate files grouped by their SHA256 hash.
-        public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, CancellationToken cancellationToken = default)
+        public async Task<List<DuplicateGroup>> FindDuplicatesAsync(string rootPath, Guid scanId)
         {
-            // 1. Safely gather all files, ignoring protected system folders (This fixes the "Ghost Reading" crash)
-            var allFiles = SafeEnumerateFiles(rootPath, cancellationToken);
+            try
+            {
+                var cancellationToken = _scanner.GetScanToken(scanId);
 
-            // --- PASS 1: The O(n) Size Filter ---
-            // Group files by size. If a size group only has 1 file, throw it away.
+                // 1. Safely gather all files, ignoring protected system folders (This fixes the "Ghost Reading" crash)
+                var allFiles = SafeEnumerateFiles(rootPath, cancellationToken);
             var filesToHash = allFiles
                 .Where(f => f.Length > 0)
                 .GroupBy(f => f.Length)
@@ -91,6 +94,11 @@ namespace GSSystemAnalyzer.Services
                 })
                 .OrderByDescending(d => d.WastedBytes)
                 .ToList();
+            }
+            finally
+            {
+                _scanner.EndScanSession(scanId);
+            }
         }
 
         /// Helper method to traverse directories without crashing on UnauthorizedAccessException.

@@ -16,6 +16,7 @@ class TelemetryState {
   final int total;
   final double percentComplete;
   final String target;
+  final String? currentScanId;
 
   const TelemetryState({
     this.status = 'IDLE',
@@ -23,6 +24,7 @@ class TelemetryState {
     this.total = 0,
     this.percentComplete = 0.0,
     this.target = '',
+    this.currentScanId,
   });
 
   TelemetryState copyWith({
@@ -31,6 +33,7 @@ class TelemetryState {
     int? total,
     double? percentComplete,
     String? target,
+    String? currentScanId,
   }) {
     return TelemetryState(
       status: status ?? this.status,
@@ -38,6 +41,7 @@ class TelemetryState {
       total: total ?? this.total,
       percentComplete: percentComplete ?? this.percentComplete,
       target: target ?? this.target,
+      currentScanId: currentScanId ?? this.currentScanId,
     );
   }
 }
@@ -64,14 +68,18 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       backendPort: backendPort,
       reconnectDelayMs: reconnectDelayMs,
       maxRetries: maxRetries,
-      onProgressUpdate: (status, completed, total, percentComplete, target) {
-        state = state.copyWith(
-          status: status,
-          completed: completed,
-          total: total,
-          percentComplete: percentComplete,
-          target: target,
-        );
+      onProgressUpdate: (scanId, status, completed, total, percentComplete, target) {
+        if (status == 'INITIALIZING' || state.currentScanId == null || state.currentScanId == scanId) {
+          final isDone = status == 'COMPLETED' || status == 'ABORTED' || status == 'FAILED';
+          state = state.copyWith(
+            status: status,
+            completed: completed,
+            total: total,
+            percentComplete: percentComplete,
+            target: target,
+            currentScanId: isDone ? null : scanId,
+          );
+        }
       },
     );
 

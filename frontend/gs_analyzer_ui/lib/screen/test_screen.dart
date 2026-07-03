@@ -20,7 +20,7 @@ class TestScreen extends StatelessWidget {
             appLogger.i('INITIATING ANALYZER BRIDGE...');
             try {
               final service = ApiService();
-              final nodes = await service.scanDirectory('C:/');
+              final nodes = await service.scanDirectory('C:/', '00000000-0000-0000-0000-000000000000');
               
               appLogger.i('BRIDGE SUCCESS! found ${nodes.length} items in root.');
               appLogger.i("--------------------------------------------");

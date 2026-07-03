@@ -38,11 +38,13 @@ namespace GSSystemAnalyzer.Services
             };
         }
 
-        public IEnumerable<StorageNode> ScanDirectory(string path)
+        public IEnumerable<StorageNode> ScanDirectory(string path, Guid scanId)
         {
-            var items = _scanner.LoadDirectoryItems(path);
-            PurgeDeadMemory(path, items);
-            _scanner.CalculateMissingSizesAsync(items).GetAwaiter().GetResult();
+            try
+            {
+                var items = _scanner.LoadDirectoryItems(path);
+                PurgeDeadMemory(path, items);
+                _scanner.CalculateMissingSizesAsync(items, scanId).GetAwaiter().GetResult();
 
             var nodes = items.Select(item =>
             {
@@ -89,6 +91,11 @@ namespace GSSystemAnalyzer.Services
             Task.Run(() => _scanner.SaveMemoryToDisk());
 
             return nodes;
+            }
+            finally
+            {
+                _scanner.EndScanSession(scanId);
+            }
         }
 
         private void PurgeDeadMemory(string currentPath, List<FileSystemInfo> actualItems)
@@ -123,11 +130,11 @@ namespace GSSystemAnalyzer.Services
             }
         }
 
-        public CancellationToken BeginScan() => _scanner.ScanToken();
+        public Guid BeginScan(Guid? scanId = null) => _scanner.BeginScanSession(scanId);
 
-        public void TriggerScanAbort()
+        public void TriggerScanAbort(Guid? scanId = null)
         {
-            _scanner.TriggerScanAbort();
+            _scanner.TriggerScanAbort(scanId);
         }
     }
 }

@@ -24,12 +24,12 @@ namespace GSSystemAnalyzer.Controllers
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path, [FromQuery] Guid? scanId)
         {
             var validationResult = ValidateDriveAndDirectory(path, driveService);
             if (validationResult != null) return validationResult;
             
-            var cancelToken = _diskService.BeginScan();
+            var id = _diskService.BeginScan(scanId);
 
             _ = Task.Run(async () =>
             {
@@ -37,12 +37,19 @@ namespace GSSystemAnalyzer.Controllers
                 var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
                 try
                 {
-                    var allNodes = scopedDiskService.ScanDirectory(path).ToList();
+                    var allNodes = scopedDiskService.ScanDirectory(path, id).ToList();
                     
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
                     {
-                        if (cancelToken.IsCancellationRequested) break;
+                        // To allow cancellation, we need the token from the singleton engine for this session
+                        // Since we are in a background thread and the scoped disk service doesn't easily expose it here, 
+                        // we can let the scoped service retrieve it, or we skip checking here since CalculateMissingSizesAsync 
+                        // handles its own cancellation. But wait, `cancelToken` was used here before.
+                        // Let's resolve the engine directly to check cancellation if we want.
+                        // Actually, I can just resolve the engine from scope.
+                        var engine = scope.ServiceProvider.GetRequiredService<GSSystemAnalyzer.Interfaces.IDiskScannerEngine>();
+                        if (engine.GetScanToken(id).IsCancellationRequested) break;
 
                         var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
                         await hubContext.Clients.All.SendAsync("DirectoryChunk", new
@@ -83,8 +90,8 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
-                _diskService.BeginScan();
-                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
+                var id = _diskService.BeginScan(request.ScanId);
+                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath, id));
 
                 var response = new ApiResponse<IEnumerable<StorageNode>>
                 {
@@ -147,9 +154,9 @@ namespace GSSystemAnalyzer.Controllers
 
 
         [HttpPost("abort-scan")]
-        public IActionResult AbortScan()
+        public IActionResult AbortScan([FromQuery] Guid? scanId = null)
         {
-            _diskService.TriggerScanAbort();
+            _diskService.TriggerScanAbort(scanId);
 
             return Ok(new ApiResponse<object>
             {
@@ -170,8 +177,8 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
-                var cancelToken = _diskService.BeginScan();
-                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
+                var id = _diskService.BeginScan(request.ScanId);
+                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, id);
 
                 return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
                 {
