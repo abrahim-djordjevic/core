@@ -1,10 +1,10 @@
-using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GSSystemAnalyzer.Controllers
 {
@@ -14,25 +14,30 @@ namespace GSSystemAnalyzer.Controllers
     {
         private readonly IDiskOperationService _diskService;
         private readonly IDuplicateFileDetector _duplicateFileDetector;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public StorageController(IDiskOperationService diskService, IDuplicateFileDetector duplicateFileDetector)
+        public StorageController(IDiskOperationService diskService, IDuplicateFileDetector duplicateFileDetector, IServiceScopeFactory scopeFactory)
         {
             _diskService = diskService;
             _duplicateFileDetector = duplicateFileDetector;
+            _scopeFactory = scopeFactory;
         }
 
         [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine,[FromServices] IDriveDetectionService driveService, [FromQuery] string path)
+        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path)
         {
             var validationResult = ValidateDriveAndDirectory(path, driveService);
             if (validationResult != null) return validationResult;
-            var cancelToken = engine.ScanToken();
+            
+            var cancelToken = _diskService.BeginScan();
 
             _ = Task.Run(async () =>
             {
+                using var scope = _scopeFactory.CreateScope();
+                var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
                 try
                 {
-                    var allNodes = _diskService.ScanDirectory(path).ToList();
+                    var allNodes = scopedDiskService.ScanDirectory(path).ToList();
                     
                     var chunkSize = 100;
                     for (var i = 0; i < allNodes.Count; i += chunkSize)
@@ -78,6 +83,7 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
+                _diskService.BeginScan();
                 var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
 
                 var response = new ApiResponse<IEnumerable<StorageNode>>
@@ -155,7 +161,6 @@ namespace GSSystemAnalyzer.Controllers
         [HttpPost("duplicates")]
         public async Task<IActionResult> ScanForDuplicates(
             [FromBody] ScanRequest request,
-            [FromServices] DiskScannerEngine engine,
             [FromServices] IDriveDetectionService driveService)
         {
             try
@@ -165,7 +170,7 @@ namespace GSSystemAnalyzer.Controllers
                 var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
                 if (validationResult != null) return validationResult;
 
-                var cancelToken = engine.ScanToken();
+                var cancelToken = _diskService.BeginScan();
                 var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
 
                 return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>

@@ -14,7 +14,8 @@ namespace GSSystemAnalyzer.Tests.Controllers
         {
             var diskService = new Mock<IDiskOperationService>();
             var duplicateDetector = new Mock<IDuplicateFileDetector>();
-            return new StorageController(diskService.Object, duplicateDetector.Object);
+            var scopeFactory = new Mock<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
+            return new StorageController(diskService.Object, duplicateDetector.Object, scopeFactory.Object);
         }
 
         private static string ExistingRoot => Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar);

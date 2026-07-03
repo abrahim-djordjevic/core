@@ -123,6 +123,8 @@ namespace GSSystemAnalyzer.Services
             }
         }
 
+        public CancellationToken BeginScan() => _scanner.ScanToken();
+
         public void TriggerScanAbort()
         {
             _scanner.TriggerScanAbort();

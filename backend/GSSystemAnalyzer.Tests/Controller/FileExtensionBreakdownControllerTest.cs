@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using GSSystemAnalyzer.Controllers;
@@ -23,7 +23,8 @@ namespace GSSystemAnalyzer.Tests.Controller
 
             var diskService = new Mock<IDiskOperationService>().Object;
             var duplicateDetector = new Mock<IDuplicateFileDetector>().Object;
-            _controller = new StorageController(diskService, duplicateDetector);
+            var scopeFactory = new Mock<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>().Object;
+            _controller = new StorageController(diskService, duplicateDetector, scopeFactory);
 
             _existingRoot = Path.Combine(Path.GetTempPath(), "gsa_ctrltest_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_existingRoot);
