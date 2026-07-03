@@ -18,7 +18,7 @@ public class ScanControllerMultiDriveTests
         _fakeHunterService = new FakeLargeFileHunter();
         
         // Properly injects nulls for unused dependencies
-        _controller = new StorageController(null, null); 
+        _controller = new StorageController(null, null, null); 
     }
 
     [Fact]
