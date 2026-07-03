@@ -24,27 +24,8 @@ namespace GSSystemAnalyzer.Controllers
         [HttpPost("stream-sector")]
         public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine,[FromServices] IDriveDetectionService driveService, [FromQuery] string path)
         {
-            var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
-
-            var readyDrives = driveService.GetReadyDrives();
-
-            if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = $"Drive not ready or not found: {normalizedRoot}"
-                });
-            }
-
-            if (!Directory.Exists(path))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid or missing target directory."
-                });
-            }
+            var validationResult = ValidateDriveAndDirectory(path, driveService);
+            if (validationResult != null) return validationResult;
             var cancelToken = engine.ScanToken();
 
             _ = Task.Run(async () =>
@@ -92,30 +73,10 @@ namespace GSSystemAnalyzer.Controllers
         {
             try
             {
-                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
-                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
-                    : request.Root;
+                var targetPath = ResolveTargetPath(request?.Root);
                 
-                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
-
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or found: {normalizedRoot}"
-                    });
-                }
-
-                if (!System.IO.Directory.Exists(targetPath))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing target directory."
-                    });
-                }
+                var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
+                if (validationResult != null) return validationResult;
 
                 var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
 
@@ -152,22 +113,8 @@ namespace GSSystemAnalyzer.Controllers
         {
             try
             {
-                var normalizedRoot = driveLetter.ToUpperInvariant();
-                if (!normalizedRoot.EndsWith(":\\"))
-                {
-                    normalizedRoot = normalizedRoot.TrimEnd('\\', ':') + ":\\";
-                }
-
-                var readyDrives = driveService.GetReadyDrives();
-
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not reaady or not found: {normalizedRoot}"
-                    });
-                }
+                var validationResult = ValidateDriveReady(NormalizeRoot(driveLetter), driveService);
+                if (validationResult != null) return validationResult;
 
                 var stats = _diskService.GetDriveTelemetry(driveLetter);
 
@@ -213,30 +160,10 @@ namespace GSSystemAnalyzer.Controllers
         {
             try
             {
-                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
-                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
-                    : request.Root;
+                var targetPath = ResolveTargetPath(request?.Root);
                 
-                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
-
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or not found: {normalizedRoot}"
-                    });
-                }
-
-                if (!System.IO.Directory.Exists(targetPath))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing target directory."
-                    });
-                }
+                var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
+                if (validationResult != null) return validationResult;
 
                 var cancelToken = engine.ScanToken();
                 var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
@@ -276,31 +203,10 @@ namespace GSSystemAnalyzer.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(root))
-                {
-                    root = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
-                }
+                root = ResolveTargetPath(root);
 
-                var normalizedRoot = Path.GetPathRoot(root)?.ToUpperInvariant() ?? root.ToUpperInvariant();
-
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or not found: {normalizedRoot}"
-                    });
-                }
-
-                if (!System.IO.Directory.Exists(root))
-                {
-                    return BadRequest( new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing root directory."
-                    });
-                }
+                var validationResult = ValidateDriveAndDirectory(root, driveService);
+                if (validationResult != null) return validationResult;
 
                 var result = await hunter.GetTopLargeFilesAsync(root, top, cancellationToken);
 
@@ -336,19 +242,8 @@ namespace GSSystemAnalyzer.Controllers
             [FromQuery] string root,
             [FromServices] IFileTypeScanner scanner)
         {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
-
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+            var validationResult = ValidateRootForCachedRead(root);
+            if (validationResult != null) return validationResult;
 
             var result = scanner.Analyze(root);
 
@@ -367,19 +262,8 @@ namespace GSSystemAnalyzer.Controllers
             [FromQuery] string root,
             [FromServices] IAgeHeatmapEngine heatmap)
         {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
-
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+            var validationResult = ValidateRootForCachedRead(root);
+            if (validationResult != null) return validationResult;
 
             var result = heatmap.Analyze(root);
 
@@ -398,19 +282,8 @@ namespace GSSystemAnalyzer.Controllers
             [FromQuery] string root,
             [FromServices] IFileTypeScanner scanner)
         {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
-
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+            var validationResult = ValidateRootForCachedRead(root);
+            if (validationResult != null) return validationResult;
 
             var result = scanner.GetExtensionBreakdown(root);
 
@@ -422,6 +295,58 @@ namespace GSSystemAnalyzer.Controllers
                 });
 
             return Ok(result);
+        }
+
+        private static ApiResponse<object> Fail(string message) =>
+            new() { Success = false, Message = message };
+
+        private static string ResolveTargetPath(string? requested) =>
+            string.IsNullOrWhiteSpace(requested)
+                ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
+                : requested;
+
+        private static string NormalizeRoot(string path)
+        {
+            var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+            if (!normalizedRoot.EndsWith(":\\"))
+            {
+                normalizedRoot = normalizedRoot.TrimEnd('\\', ':') + ":\\";
+            }
+            return normalizedRoot;
+        }
+
+        /// <summary>Returns a BadRequest if the drive isn't ready; otherwise null.</summary>
+        private IActionResult? ValidateDriveReady(string normalizedRoot, IDriveDetectionService driveService)
+        {
+            var readyDrives = driveService.GetReadyDrives();
+            if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+                return BadRequest(Fail($"Drive not ready or not found: {normalizedRoot}"));
+
+            return null;
+        }
+
+        /// <summary>Returns a BadRequest if the drive isn't ready or the directory is missing; otherwise null.</summary>
+        private IActionResult? ValidateDriveAndDirectory(string path, IDriveDetectionService driveService)
+        {
+            var driveError = ValidateDriveReady(NormalizeRoot(path), driveService);
+            if (driveError != null) return driveError;
+
+            if (!System.IO.Directory.Exists(path))
+                return BadRequest(Fail("Invalid or missing target directory."));
+
+            return null;
+        }
+
+        /// <summary>Validation for the cached-read endpoints (filetypes / ageheatmap / extensions).</summary>
+        private IActionResult? ValidateRootForCachedRead(string root)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+                return BadRequest(new { error = "ROOT_REQUIRED", message = "root query parameter is required." });
+
+            if (!System.IO.Directory.Exists(root))
+                return BadRequest(new { error = "DRIVE_NOT_FOUND", message = $"Root path '{root}' does not exist or is not accessible." });
+
+            return null;
         }
     }
 }

@@ -72,6 +72,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         var items = new List<FileSystemInfo>();
         try
         {
+            // FIX: hidden/System filter is logically wrong(Should be two separate Check)
             var dirInfo = new DirectoryInfo(path);
             items.AddRange(dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
             items.AddRange(dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
@@ -101,6 +102,7 @@ public class DiskScannerEngine : IDiskScannerEngine
                 _deepScanThrottle = 0;
                 _scannedFilesCount = 0;
 
+                // Fix: scanToken is read directly from _scanCts outside _scanCtsLock, which can lead to a scan without a cancellation token.
                 var scanToken = _scanCts?.Token ?? CancellationToken.None;
 
                 await _hub.Clients.All.SendAsync("ScanProgress", new { status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
@@ -168,6 +170,8 @@ public class DiskScannerEngine : IDiskScannerEngine
                 normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             return 0;
 
+
+        // Fix: The directory LastWriteTimeUts  only changes when its direct children are modified, so we need to check the LastWriteTimeUtc of the directory and its children to determine if the cache is stale.
         if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))
         {
             if (dir.LastWriteTimeUtc <= entry.LastUpdated)
@@ -249,6 +253,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         return size;
     }
 
+    // TODO: Clean up this determining which Scan directory works better.
     private long ScanDirectoryR(DirectoryInfo dir, CancellationToken token, int currentDepth = 1)
     {
         token.ThrowIfCancellationRequested();
@@ -355,6 +360,7 @@ public class DiskScannerEngine : IDiskScannerEngine
     {
         lock (_radarLock)
         {
+            // TODO: Debounce is leading-edge and drops events, if for example a file is created and then deleted quickly, the event will be dropped. We need to implement a trailing-edge debounce to ensure we catch all events and IncludeSubdirectories = false means it only watches the current folder level, deep changes won't fire it.
             if (DateTime.UtcNow - _lastRadarAlert < _radarCooldown)
             {
                 return;
@@ -374,6 +380,7 @@ public class DiskScannerEngine : IDiskScannerEngine
         catch { }
     }
 
+    // Fix: Apply same lock pattern scan path got(To prevent concurrency race)
     public CancellationToken NukeToken()
     {
         _nukeCts?.Cancel();
@@ -438,6 +445,8 @@ public class DiskScannerEngine : IDiskScannerEngine
 
         _logger.LogInformation("Cache cleared — memory wiped, scanner_memory.json deleted");
     }
+
+    // TODO Clean up this since there is a nuke protocol service existing.
     public void ExecuteDelete(FileSystemInfo item)
     {
         if(item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
