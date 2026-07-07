@@ -276,7 +276,7 @@ public class NukeProtocolService : INukeProtocolService
 
     private void MoveToStaging(string originalPath, string operationId, bool isDirectory)
     {
-        var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+        var driveRoot = StagingBaseResolver(originalPath);
         var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operationId);
 
         // Preserve the full path inside staging so we know where to restore.
@@ -329,7 +329,7 @@ public class NukeProtocolService : INukeProtocolService
         {
             try
             {
-                var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+                var driveRoot = StagingBaseResolver(originalPath);
                 var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operation.OperationId);
 
                 var relativePath = originalPath
@@ -374,7 +374,7 @@ public class NukeProtocolService : INukeProtocolService
 
         // Clean up staging directory for this operation
         var drives = operation.OriginalPaths
-            .Select(p => Path.GetPathRoot(p))
+            .Select(p => StagingBaseResolver(p))
             .Where(r => !string.IsNullOrEmpty(r))
             .Distinct();
 
@@ -518,7 +518,7 @@ public class NukeProtocolService : INukeProtocolService
         if (!operation.UsedRecycleBin) return;
 
         var drives = operation.OriginalPaths
-            .Select(p => Path.GetPathRoot(p))
+            .Select(p => StagingBaseResolver(p))
             .Where(r => !string.IsNullOrEmpty(r))
             .Distinct();
 
