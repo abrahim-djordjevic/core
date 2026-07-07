@@ -22,7 +22,13 @@ public class TempFolderCleanerService : ITempFolderCleanerService
     {
         _nukeService = nukeService;
         _logger = logger;
-        _tempPathsOverride = tempPathsOverride?.ToList();
+
+        // The built-in DI container resolves IEnumerable<string> to an EMPTY collection
+        // (never null), so at runtime this arrives as [] and must be treated as "no override".
+        var overrides = tempPathsOverride?
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToList();
+        _tempPathsOverride = overrides is { Count: > 0 } ? overrides : null;
     }
 
     // Static so unit tests can assert the resolved list directly, and consumers can validate paths.
