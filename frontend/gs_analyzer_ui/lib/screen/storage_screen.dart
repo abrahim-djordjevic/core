@@ -62,6 +62,13 @@ class StorageScreen extends ConsumerWidget {
                         onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.duplicateScanner),
                       ),
                       _ScanLaunchTile(
+                        title: 'TEMP CLEANER',
+                        subtitle: 'Purge temporary files across all system cache locations',
+                        icon: Icons.cleaning_services_outlined,
+                        d: d,
+                        onLaunch: () => _enterAnalyzer(ref, currentDrive, StorageMode.tempFileCleaner),
+                      ),
+                      _ScanLaunchTile(
                         title: 'PERMISSION AUDIT',
                         subtitle: 'Detect world-writable paths and orphaned files',
                         icon: Icons.security_outlined,
