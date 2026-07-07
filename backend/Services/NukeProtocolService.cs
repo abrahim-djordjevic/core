@@ -283,7 +283,8 @@ public class NukeProtocolService : INukeProtocolService
         // e.g. "C:/projects/old" → "{stagingDir}/C/projects/old"
         var relativePath = originalPath
             .Replace(":", "_DRIVE_")   // "C:" → "C_DRIVE_"
-            .Replace("\\", "/");
+            .Replace("\\", "/")
+            .TrimStart('/');
 
         var destination = Path.Combine(stagingDir, relativePath);
         var destinationDir = Path.GetDirectoryName(destination);
@@ -334,7 +335,8 @@ public class NukeProtocolService : INukeProtocolService
 
                 var relativePath = originalPath
                     .Replace(":", "_DRIVE_")
-                    .Replace("\\", "/");
+                    .Replace("\\", "/")
+                    .TrimStart('/');
 
                 var stagedPath = Path.Combine(stagingDir, relativePath);
 
@@ -381,14 +383,23 @@ public class NukeProtocolService : INukeProtocolService
         foreach (var drive in drives)
         {
             var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
-            try
+            int retries = 3;
+            while (retries > 0)
             {
-                if (Directory.Exists(stagingDir))
-                    Directory.Delete(stagingDir, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to clean staging directory {StagingDir}", stagingDir);
+                try
+                {
+                    if (Directory.Exists(stagingDir))
+                        Directory.Delete(stagingDir, true);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    if (retries == 0)
+                        _logger.LogWarning(ex, "Failed to clean staging directory {StagingDir}", stagingDir);
+                    else
+                        Thread.Sleep(50);
+                }
             }
         }
 
@@ -525,14 +536,23 @@ public class NukeProtocolService : INukeProtocolService
         foreach (var drive in drives)
         {
             var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
-            try
+            int retries = 3;
+            while (retries > 0)
             {
-                if (Directory.Exists(stagingDir))
-                    Directory.Delete(stagingDir, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to clean staging {StagingDir} for operation {OperationId}", stagingDir, operation.OperationId);
+                try
+                {
+                    if (Directory.Exists(stagingDir))
+                        Directory.Delete(stagingDir, true);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    if (retries == 0)
+                        _logger.LogWarning(ex, "Failed to clean staging {StagingDir} for operation {OperationId}", stagingDir, operation.OperationId);
+                    else
+                        Thread.Sleep(50);
+                }
             }
         }
     }
