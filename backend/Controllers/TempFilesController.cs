@@ -38,12 +38,12 @@ public class TempFilesController : ControllerBase
                 Message = "Temp preview cancelled by client."
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
-                Message = $"Preview failed: {ex.Message}"
+                Message = "Preview failed due to an unexpected error."
             });
         }
     }
@@ -90,12 +90,12 @@ public class TempFilesController : ControllerBase
                 Message = "Clean operation cancelled by client."
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
-                Message = $"Clean failed: {ex.Message}"
+                Message = "Clean failed due to an unexpected error."
             });
         }
     }

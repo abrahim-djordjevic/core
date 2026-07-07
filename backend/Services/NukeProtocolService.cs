@@ -113,7 +113,7 @@ public class NukeProtocolService : INukeProtocolService
         }, cancellationToken);
     }
 
-    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false)
+    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(planToken) || !_activePlanTokens.TryGetValue(planToken, out HashSet<string> validPaths))
         {
@@ -135,6 +135,8 @@ public class NukeProtocolService : INukeProtocolService
         var totalNodes = paths.Count;
         var processedNodes = 0;
         var cancelToken = _scanner.NukeToken();
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, cancellationToken);
+        var combinedToken = linkedCts.Token;
 
         // Throttle progress so we don't await a hub round-trip per file.
         var lastProgressSent = DateTime.MinValue;
@@ -153,7 +155,7 @@ public class NukeProtocolService : INukeProtocolService
 
         foreach (var path in paths)
         {
-            if (cancelToken.IsCancellationRequested)
+            if (combinedToken.IsCancellationRequested)
             {
                 aborted = true;
                 break;

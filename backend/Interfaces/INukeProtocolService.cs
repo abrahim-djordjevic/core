@@ -8,7 +8,7 @@ namespace GSSystemAnalyzer.Interfaces
     public interface INukeProtocolService
     {
         Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default);
-        Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false);
+        Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false, CancellationToken cancellationToken = default);
         void TriggerNukeAbort();
 
         // Undo stack operations

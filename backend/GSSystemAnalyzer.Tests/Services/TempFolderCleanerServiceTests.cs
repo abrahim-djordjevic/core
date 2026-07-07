@@ -48,10 +48,10 @@ public class TempFolderCleanerServiceTests : IDisposable
         return new NukeProtocolService(_scanner.Object, hub.Object, NullLogger<NukeProtocolService>.Instance, runStartupCleanup: false);
     }
 
-    private TempFolderCleanerService CreateService(INukeProtocolService? nukeOverride = null)
+    private TempFolderCleanerService CreateService(INukeProtocolService? nukeOverride = null, IEnumerable<string>? pathsOverride = null)
     {
         var nuke = nukeOverride ?? CreateNukeService();
-        return new TempFolderCleanerService(nuke, NullLogger<TempFolderCleanerService>.Instance);
+        return new TempFolderCleanerService(nuke, NullLogger<TempFolderCleanerService>.Instance, pathsOverride);
     }
 
     private string SeedFile(string relativePath = "test.txt", string content = "hello world")
@@ -165,16 +165,13 @@ public class TempFolderCleanerServiceTests : IDisposable
     [Fact]
     public async Task Clean_DeletesFilesFromRealTemp()
     {
-        // Create a test file in the real system temp
-        var testFile = Path.Combine(
-            Environment.GetEnvironmentVariable("TEMP") ?? Path.GetTempPath(),
-            "gs_cleantest_" + Guid.NewGuid().ToString("N") + ".tmp");
-        File.WriteAllText(testFile, "cleanup test data");
+        // Create a test file in the fake temp dir
+        var testFile = SeedFile("gs_cleantest_" + Guid.NewGuid().ToString("N") + ".tmp", "cleanup test data");
 
         try
         {
-            var svc = CreateService();
-            var tempPath = Path.GetDirectoryName(testFile)!;
+            var svc = CreateService(pathsOverride: new[] { _fakeTempDir });
+            var tempPath = _fakeTempDir;
 
             // Only clean the specific temp directory
             var result = await svc.CleanAsync(new List<string> { tempPath });
@@ -197,12 +194,8 @@ public class TempFolderCleanerServiceTests : IDisposable
     public async Task Clean_TempDirectoryItselfNeverDeleted()
     {
         // This test verifies the acceptance criteria: temp directories are never deleted.
-        var svc = CreateService();
-        var knownPaths = TempFolderCleanerService.ResolveTempPaths();
-
-        // Only attempt paths that exist
-        var existingPaths = knownPaths.Where(Directory.Exists).ToList();
-        if (existingPaths.Count == 0) return; // nothing to test on this machine
+        var svc = CreateService(pathsOverride: new[] { _fakeTempDir });
+        var existingPaths = new List<string> { _fakeTempDir };
 
         await svc.CleanAsync(existingPaths);
 

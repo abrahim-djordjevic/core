@@ -16,10 +16,13 @@ public class TempFolderCleanerService : ITempFolderCleanerService
     private readonly INukeProtocolService _nukeService;
     private readonly ILogger<TempFolderCleanerService> _logger;
 
-    public TempFolderCleanerService(INukeProtocolService nukeService, ILogger<TempFolderCleanerService> logger)
+    private readonly List<string>? _tempPathsOverride;
+
+    public TempFolderCleanerService(INukeProtocolService nukeService, ILogger<TempFolderCleanerService> logger, IEnumerable<string>? tempPathsOverride = null)
     {
         _nukeService = nukeService;
         _logger = logger;
+        _tempPathsOverride = tempPathsOverride?.ToList();
     }
 
     // Static so unit tests can assert the resolved list directly, and consumers can validate paths.
@@ -67,14 +70,14 @@ public class TempFolderCleanerService : ITempFolderCleanerService
         return await Task.Run(() =>
         {
             var response = new TempPreviewResponse();
-            var tempPaths = ResolveTempPaths();
+            var tempPaths = _tempPathsOverride ?? ResolveTempPaths();
 
             var options = new EnumerationOptions
             {
                 IgnoreInaccessible = true,
                 RecurseSubdirectories = true,
                 ReturnSpecialDirectories = false,
-                AttributesToSkip = 0
+                AttributesToSkip = FileAttributes.ReparsePoint
             };
 
             foreach (var tempDir in tempPaths)
@@ -131,7 +134,7 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 
     public async Task<TempCleanResult> CleanAsync(List<string> paths, CancellationToken cancellationToken = default)
     {
-        var knownPaths = ResolveTempPaths();
+        var knownPaths = _tempPathsOverride ?? ResolveTempPaths();
         var comparer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
@@ -155,13 +158,14 @@ public class TempFolderCleanerService : ITempFolderCleanerService
             IgnoreInaccessible = true,
             RecurseSubdirectories = true,
             ReturnSpecialDirectories = false,
-            AttributesToSkip = 0
+            AttributesToSkip = FileAttributes.ReparsePoint
         };
 
-        foreach (var tempDir in paths)
+        foreach (var p in paths)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            var tempDir = NormalizePath(p);
             if (!Directory.Exists(tempDir))
                 continue;
 
@@ -185,7 +189,7 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 
             // Delegate to the Nuke service: preview (required for plan token) → obliterate.
             var preview = await _nukeService.PreviewNukeAsync(filePaths, cancellationToken);
-            var nukeResult = await _nukeService.ObliterateNodeAsync(filePaths, preview.PlanToken, useRecycleBin: false);
+            var nukeResult = await _nukeService.ObliterateNodeAsync(filePaths, preview.PlanToken, useRecycleBin: false, cancellationToken);
 
             totalDeleted += nukeResult.DeletedFiles;
             totalFreed += nukeResult.FreedBytes;
