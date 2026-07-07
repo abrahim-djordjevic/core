@@ -163,6 +163,9 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                                 itemBuilder: (context, index) {
                                   final loc = tempState.preview!.locations[index];
                                   final isSelected = tempState.selectedPaths.contains(loc.path);
+                                  final isCacheCat = loc.category.toLowerCase() == 'cache';
+                                  final badgeColor = isCacheCat ? HudTheme.accentAmber : HudTheme.accentCyan;
+                                  final badgeLabel = isCacheCat ? 'CACHE' : 'TEMP';
 
                                   return Container(
                                     decoration: HudTheme.listItemDecoration,
@@ -171,18 +174,48 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                                       checkColor: Colors.black,
                                       value: isSelected,
                                       onChanged: (_) => tempNotifier.togglePath(loc.path),
-                                      title: Text(
-                                        loc.path,
-                                        style: HudTheme.bodyText.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                      title: Row(
+                                        children: [
+                                          // Category badge
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            margin: const EdgeInsets.only(right: 8),
+                                            decoration: BoxDecoration(
+                                              color: badgeColor.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(3),
+                                              border: Border.all(color: badgeColor.withValues(alpha: 0.6)),
+                                            ),
+                                            child: Text(
+                                              badgeLabel,
+                                              style: TextStyle(
+                                                color: badgeColor,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: HudTheme.fontCore,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              loc.label.isNotEmpty ? loc.label : loc.path,
+                                              style: HudTheme.bodyText.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      subtitle: Text(
-                                        '${loc.fileCount} files',
-                                        style: HudTheme.bodyText.copyWith(
-                                          color: HudTheme.textDim,
-                                          fontSize: 11,
+                                      subtitle: Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          '${loc.path}  •  ${loc.fileCount} files',
+                                          style: HudTheme.bodyText.copyWith(
+                                            color: HudTheme.textDim,
+                                            fontSize: 11,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       secondary: Container(
@@ -275,7 +308,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'AFFECTED TEMP SECTORS:',
+                'AFFECTED SECTORS:',
                 style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
               const SizedBox(height: 8),
@@ -286,10 +319,11 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                   itemCount: selectedLocations.length,
                   itemBuilder: (context, index) {
                     final loc = selectedLocations[index];
+                    final displayName = loc.label.isNotEmpty ? loc.label : loc.path;
                     return Padding(
                       padding: const EdgeInsetsGeometry.only(bottom: 8.0),
                       child: Text(
-                        '> ${loc.path} (${loc.fileCount} files — ${loc.sizeFormatted})',
+                        '> $displayName (${loc.fileCount} files — ${loc.sizeFormatted})',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -63,6 +64,8 @@ public class TempFolderCleanerServiceTests : IDisposable
         return fullPath;
     }
 
+    // ── ResolveTempPaths (back-compat shim) ──
+
     [Fact]
     public void ResolveTempPaths_ReturnsNonEmptyList()
     {
@@ -92,20 +95,61 @@ public class TempFolderCleanerServiceTests : IDisposable
 
         var paths = TempFolderCleanerService.ResolveTempPaths();
 
-        // %TEMP% should be included
-        var userTemp = Environment.GetEnvironmentVariable("TEMP");
-        Assert.Contains(paths, p => p.Equals(Path.GetFullPath(userTemp!), StringComparison.OrdinalIgnoreCase));
+        // GetTempPath() result should be included (the fix: no longer relies on raw TEMP env var)
+        var expectedTemp = Path.GetFullPath(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        Assert.Contains(paths, p => p.Equals(expectedTemp, StringComparison.OrdinalIgnoreCase));
 
         // C:\Windows\Temp should be included
         Assert.Contains(paths, p => p.EndsWith("Windows\\Temp", StringComparison.OrdinalIgnoreCase));
     }
 
+    // ── ResolveCleanTargets (typed discovery) ──
+
+    [Fact]
+    public void ResolveCleanTargets_ReturnsNonEmptyList()
+    {
+        var targets = TempFolderCleanerService.ResolveCleanTargets();
+
+        Assert.NotEmpty(targets);
+        Assert.All(targets, t => Assert.False(string.IsNullOrWhiteSpace(t.Path)));
+    }
+
+    [Fact]
+    public void ResolveCleanTargets_AllHaveLabelsAndValidCategory()
+    {
+        var targets = TempFolderCleanerService.ResolveCleanTargets();
+
+        Assert.All(targets, t =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(t.Label), $"Target {t.Path} has no label");
+            Assert.True(t.Category == CleanCategory.Temp || t.Category == CleanCategory.Cache,
+                $"Target {t.Path} has unexpected category {t.Category}");
+        });
+    }
+
+    [Fact]
+    public void ResolveCleanTargets_NoDuplicatePaths()
+    {
+        var targets = TempFolderCleanerService.ResolveCleanTargets();
+
+        var comparer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
+
+        var paths = targets.Select(t => t.Path).ToList();
+        Assert.Equal(paths.Count, paths.Distinct(comparer).Count());
+    }
+
+    [Fact]
+    public void ResolveCleanTargets_ContainsAtLeastOneTemp()
+    {
+        var targets = TempFolderCleanerService.ResolveCleanTargets();
+        Assert.Contains(targets, t => t.Category == CleanCategory.Temp);
+    }
+
     [Fact]
     public async Task Preview_CorrectlySumsSizes()
     {
-        // We can't inject custom paths into ResolveTempPaths for the full service,
-        // but we can test the preview logic on a real temp dir by ensuring
-        // the system temp (which always exists) returns a valid response.
         var svc = CreateService();
 
         var result = await svc.PreviewAsync();
@@ -124,6 +168,23 @@ public class TempFolderCleanerServiceTests : IDisposable
         var expectedTotal = result.Locations.Sum(l => l.SizeBytes);
         Assert.Equal(expectedTotal, result.TotalBytes);
         Assert.False(string.IsNullOrWhiteSpace(result.TotalFormatted));
+    }
+
+    [Fact]
+    public async Task Preview_IncludesLabelAndCategory()
+    {
+        var svc = CreateService();
+
+        var result = await svc.PreviewAsync();
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Locations);
+        Assert.All(result.Locations, loc =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(loc.Label), $"Location {loc.Path} has no Label");
+            Assert.True(loc.Category == "Temp" || loc.Category == "Cache",
+                $"Location {loc.Path} has unexpected category '{loc.Category}'");
+        });
     }
 
     [Fact]

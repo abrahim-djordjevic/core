@@ -26,51 +26,106 @@ public class TempFolderCleanerService : ITempFolderCleanerService
     }
 
     // Static so unit tests can assert the resolved list directly, and consumers can validate paths.
-    public static List<string> ResolveTempPaths()
+    public static List<CleanTarget> ResolveCleanTargets()
     {
-        var paths = new List<string>();
+        var raw = new List<CleanTarget>();
+
+        // Helper: build a path from parts, skip if any part is null/empty.
+        void Add(string label, CleanCategory cat, params string[] parts)
+        {
+            if (parts.Any(string.IsNullOrWhiteSpace)) return;
+            raw.Add(new CleanTarget(Path.Combine(parts), label, cat));
+        }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            // %TEMP% — typically C:\Users\<user>\AppData\Local\Temp
-            var userTemp = Environment.GetEnvironmentVariable("TEMP");
-            if (!string.IsNullOrEmpty(userTemp))
-                paths.Add(Path.GetFullPath(userTemp));
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var winDir  = Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows";
 
-            // System-wide temp
-            var winTemp = Path.Combine(
-                Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\",
-                "Windows", "Temp");
-            paths.Add(Path.GetFullPath(winTemp));
+            // ---- Temp ----
+            // GetTempPath() cascades TMP -> TEMP -> USERPROFILE -> C:\Windows\Temp,
+            // so it effectively never returns empty (fixes the empty-list bug).
+            raw.Add(new CleanTarget(Path.GetTempPath(), "User temp", CleanCategory.Temp));
+            Add("User temp (Local)", CleanCategory.Temp, local, "Temp");
+            Add("System temp",       CleanCategory.Temp, winDir, "Temp");
+            Add("OneDrive temp",     CleanCategory.Temp, profile, "OneDriveTemp");
+
+            // ---- Developer / package-manager caches (safe: regenerated on demand) ----
+            Add("npm cache",        CleanCategory.Cache, local,   "npm-cache");
+            Add("npm cache",        CleanCategory.Cache, roaming, "npm-cache");
+            Add("Yarn cache",       CleanCategory.Cache, local,   "Yarn", "Cache");
+            Add("pip cache",        CleanCategory.Cache, local,   "pip", "Cache");
+            Add("NuGet HTTP cache", CleanCategory.Cache, local,   "NuGet", "v3-cache"); // NOT global packages
+            Add("Gradle cache",     CleanCategory.Cache, profile, ".gradle", "caches");
+
+            // ---- Browser caches (locked while browser runs -> skipped safely) ----
+            Add("Chrome cache",      CleanCategory.Cache, local, "Google", "Chrome", "User Data", "Default", "Cache");
+            Add("Edge cache",        CleanCategory.Cache, local, "Microsoft", "Edge", "User Data", "Default", "Cache");
+            Add("Windows INetCache", CleanCategory.Cache, local, "Microsoft", "Windows", "INetCache");
+
+            // Firefox keeps one cache2 folder per profile — expand dynamically.
+            var ffProfiles = Path.Combine(local, "Mozilla", "Firefox", "Profiles");
+            if (Directory.Exists(ffProfiles))
+                foreach (var p in Directory.GetDirectories(ffProfiles))
+                    Add($"Firefox cache ({Path.GetFileName(p)})", CleanCategory.Cache, p, "cache2");
         }
         else
         {
             // Linux / macOS
-            var userCache = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".cache");
-            paths.Add(Path.GetFullPath(userCache));
-
-            paths.Add("/tmp");
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            raw.Add(new CleanTarget(Path.GetTempPath(), "User temp", CleanCategory.Temp));
+            Add("XDG cache", CleanCategory.Cache, home, ".cache");
+            Add("npm cache", CleanCategory.Cache, home, ".npm", "_cacache");
+            raw.Add(new CleanTarget("/tmp",     "System temp", CleanCategory.Temp));
+            raw.Add(new CleanTarget("/var/tmp", "System temp", CleanCategory.Temp));
         }
 
-        // De-dupe (case-insensitive on Windows, case-sensitive elsewhere)
         var comparer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
+            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
-        return paths
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .Distinct(comparer)
-            .ToList();
+        // Normalize -> keep existing only -> de-dupe by path (first label wins).
+        var seen = new HashSet<string>(comparer);
+        var result = new List<CleanTarget>();
+        foreach (var t in raw)
+        {
+            string full;
+            try { full = Path.GetFullPath(t.Path); } catch { continue; }
+            if (!seen.Add(full)) continue;
+            if (!Directory.Exists(full)) continue;
+            result.Add(t with { Path = full });
+        }
+        return result;
     }
+
+    /// <summary>Back-compat shim: existing whitelist + unit tests keep working unchanged.</summary>
+    public static List<string> ResolveTempPaths() =>
+        ResolveCleanTargets().Select(t => t.Path).ToList();
 
     public async Task<TempPreviewResponse> PreviewAsync(CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>
         {
             var response = new TempPreviewResponse();
-            var tempPaths = _tempPathsOverride ?? ResolveTempPaths();
+
+            // When _tempPathsOverride is set (tests), fall back to string-only mode
+            // with generic labels. Otherwise, use full typed discovery.
+            List<CleanTarget> targets;
+            if (_tempPathsOverride != null)
+            {
+                targets = _tempPathsOverride
+                    .Where(p => !string.IsNullOrWhiteSpace(p) && Directory.Exists(p))
+                    .Select(p => new CleanTarget(Path.GetFullPath(p), Path.GetFileName(p.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)), CleanCategory.Temp))
+                    .ToList();
+            }
+            else
+            {
+                targets = ResolveCleanTargets();
+            }
+
+            _logger.LogInformation("Cleaner resolved {Count} locations: {Targets}",
+                targets.Count, string.Join(" | ", targets.Select(t => $"{t.Label}={t.Path}")));
 
             var options = new EnumerationOptions
             {
@@ -80,22 +135,16 @@ public class TempFolderCleanerService : ITempFolderCleanerService
                 AttributesToSkip = FileAttributes.ReparsePoint
             };
 
-            foreach (var tempDir in tempPaths)
+            foreach (var target in targets)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                if (!Directory.Exists(tempDir))
-                {
-                    _logger.LogDebug("Temp path does not exist, omitting from preview: {Path}", tempDir);
-                    continue;
-                }
 
                 long sizeBytes = 0;
                 int fileCount = 0;
 
                 try
                 {
-                    foreach (var file in new DirectoryInfo(tempDir).EnumerateFiles("*", options))
+                    foreach (var file in new DirectoryInfo(target.Path).EnumerateFiles("*", options))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         try
@@ -112,13 +161,15 @@ public class TempFolderCleanerService : ITempFolderCleanerService
                 catch (Exception ex)
                 {
                     // Entire directory unreadable (permission denied, etc.) — omit it.
-                    _logger.LogWarning(ex, "Failed to enumerate temp directory, omitting: {Path}", tempDir);
+                    _logger.LogWarning(ex, "Skipping unreadable location {Path}", target.Path);
                     continue;
                 }
 
                 response.Locations.Add(new TempLocationPreview
                 {
-                    Path = tempDir,
+                    Path = target.Path,
+                    Label = target.Label,
+                    Category = target.Category.ToString(),
                     SizeBytes = sizeBytes,
                     SizeFormatted = FormatSize(sizeBytes),
                     FileCount = fileCount
@@ -127,6 +178,7 @@ public class TempFolderCleanerService : ITempFolderCleanerService
                 response.TotalBytes += sizeBytes;
             }
 
+            response.Locations = response.Locations.OrderByDescending(l => l.SizeBytes).ToList();
             response.TotalFormatted = FormatSize(response.TotalBytes);
             return response;
         }, cancellationToken);

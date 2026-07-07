@@ -2,10 +2,12 @@ using System.Collections.Generic;
 
 namespace GSSystemAnalyzer.Models;
 
-/// <summary>Single temp location with its enumerated stats.</summary>
+/// <summary>Single temp/cache location with its enumerated stats.</summary>
 public class TempLocationPreview
 {
     public string Path { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Category { get; set; } = "Temp";
     public long SizeBytes { get; set; }
     public string SizeFormatted { get; set; } = string.Empty;
     public int FileCount { get; set; }

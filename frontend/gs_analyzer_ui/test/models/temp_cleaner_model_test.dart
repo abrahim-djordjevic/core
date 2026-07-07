@@ -6,24 +6,32 @@ void main() {
     test('parses all fields from camelCase and PascalCase keys', () {
       final loc1 = TempLocationPreview.fromJson({
         'path': 'C:\\temp',
+        'label': 'User temp',
+        'category': 'Temp',
         'sizeBytes': 1024,
         'sizeFormatted': '1 KB',
         'fileCount': 5,
       });
 
       expect(loc1.path, 'C:\\temp');
+      expect(loc1.label, 'User temp');
+      expect(loc1.category, 'Temp');
       expect(loc1.sizeBytes, 1024);
       expect(loc1.sizeFormatted, '1 KB');
       expect(loc1.fileCount, 5);
 
       final loc2 = TempLocationPreview.fromJson({
         'Path': 'C:\\cache',
+        'Label': 'npm cache',
+        'Category': 'Cache',
         'SizeBytes': 2048,
         'SizeFormatted': '2 KB',
         'FileCount': 10,
       });
 
       expect(loc2.path, 'C:\\cache');
+      expect(loc2.label, 'npm cache');
+      expect(loc2.category, 'Cache');
       expect(loc2.sizeBytes, 2048);
       expect(loc2.sizeFormatted, '2 KB');
       expect(loc2.fileCount, 10);
@@ -33,9 +41,37 @@ void main() {
       final loc = TempLocationPreview.fromJson({});
       
       expect(loc.path, '');
+      expect(loc.label, '');
+      expect(loc.category, 'Temp');
       expect(loc.sizeBytes, 0);
       expect(loc.sizeFormatted, '');
       expect(loc.fileCount, 0);
+    });
+
+    test('label defaults to empty and category defaults to Temp when missing', () {
+      final loc = TempLocationPreview.fromJson({
+        'path': 'C:\\Windows\\Temp',
+        'sizeBytes': 512,
+        'sizeFormatted': '512 B',
+        'fileCount': 1,
+      });
+
+      expect(loc.label, '');
+      expect(loc.category, 'Temp');
+    });
+
+    test('category field accepts Cache value', () {
+      final loc = TempLocationPreview.fromJson({
+        'path': 'C:\\Users\\test\\AppData\\Local\\npm-cache',
+        'label': 'npm cache',
+        'category': 'Cache',
+        'sizeBytes': 1024,
+        'sizeFormatted': '1 KB',
+        'fileCount': 3,
+      });
+
+      expect(loc.category, 'Cache');
+      expect(loc.label, 'npm cache');
     });
   });
 

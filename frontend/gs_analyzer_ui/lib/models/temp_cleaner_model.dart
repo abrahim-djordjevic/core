@@ -5,12 +5,16 @@
 
 class TempLocationPreview {
   final String path;
+  final String label;
+  final String category;
   final int sizeBytes;
   final String sizeFormatted;
   final int fileCount;
 
   TempLocationPreview({
     required this.path,
+    required this.label,
+    required this.category,
     required this.sizeBytes,
     required this.sizeFormatted,
     required this.fileCount,
@@ -19,6 +23,8 @@ class TempLocationPreview {
   factory TempLocationPreview.fromJson(Map<String, dynamic> json) {
     return TempLocationPreview(
       path: json['path'] ?? json['Path'] ?? '',
+      label: json['label'] ?? json['Label'] ?? '',
+      category: json['category'] ?? json['Category'] ?? 'Temp',
       sizeBytes: json['sizeBytes'] ?? json['SizeBytes'] ?? 0,
       sizeFormatted: json['sizeFormatted'] ?? json['SizeFormatted'] ?? '',
       fileCount: json['fileCount'] ?? json['FileCount'] ?? 0,
