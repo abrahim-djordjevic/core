@@ -76,9 +76,8 @@ jobs:
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'benchmarkdotnet'
-          # Verify this glob on the first run; BenchmarkDotNet writes artifacts
-          # to the current working directory (repo root here).
-          output-file-path: BenchmarkDotNet.Artifacts/results/*-report-full-compressed.json
+          # github-action-benchmark does not expand globs, so we provide the exact filename.
+          output-file-path: BenchmarkDotNet.Artifacts/results/GSSystemAnalyzer.Benchmarks.ScannerBenchmarks-report-full-compressed.json
           external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: false

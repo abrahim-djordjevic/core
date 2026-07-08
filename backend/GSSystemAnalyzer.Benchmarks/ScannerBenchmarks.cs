@@ -7,6 +7,7 @@ namespace GSSystemAnalyzer.Benchmarks;
 // gates BOTH CPU time and allocation churn. True retention leaks are caught by the
 // soak test (LeakTests.cs); this catches per-operation regressions.
 [MemoryDiagnoser]
+[JsonExporterAttribute.FullCompressed]
 public class ScannerBenchmarks
 {
     [Benchmark]
