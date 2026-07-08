@@ -60,6 +60,7 @@ public class DiskScannerEngine : IDiskScannerEngine
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Cache file corrupted, starting fresh");
+                try { File.Delete(_cacheFilePath); } catch { /* best effort */ }
             }
         }
     }
@@ -306,11 +307,17 @@ public class DiskScannerEngine : IDiskScannerEngine
         {
             try
             {
-                // Existing — save directory sizes
+                var dir = Path.GetDirectoryName(_cacheFilePath)!;
+                Directory.CreateDirectory(dir);
+
                 var dirJson = JsonSerializer.Serialize(
                     new Dictionary<string, CacheEntry>(DirectorySizeCache));
-                Directory.CreateDirectory(Path.GetDirectoryName(_cacheFilePath)!);
-                File.WriteAllText(_cacheFilePath, dirJson);
+
+                var tmpPath = _cacheFilePath + ".tmp";
+                File.WriteAllText(tmpPath, dirJson);
+
+                // Atomic swap — readers see either the old file or the new one, never a stump.
+                File.Move(tmpPath, _cacheFilePath, overwrite: true);
             }
             catch (Exception ex)
             {

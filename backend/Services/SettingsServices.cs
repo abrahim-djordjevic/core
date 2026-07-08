@@ -66,12 +66,26 @@ namespace GSSystemAnalyzer.Services
         {
             Current = settings;
             var json = JsonSerializer.Serialize(settings, _jsonOptions);
-            var tempPath = _settingsFilePath + ".tmp";
+            var tempPath = _settingsFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
 
             lock (_fileLoack)
             {
                 File.WriteAllText(tempPath, json);
-                File.Move(tempPath, _settingsFilePath, overwrite: true);
+                int retries = 5;
+                while (true)
+                {
+                    try
+                    {
+                        File.Move(tempPath, _settingsFilePath, overwrite: true);
+                        break;
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
+                    {
+                        retries--;
+                        if (retries == 0) throw;
+                        Thread.Sleep(20);
+                    }
+                }
             }
 
             OnSettingsChanged?.Invoke(this, Current);

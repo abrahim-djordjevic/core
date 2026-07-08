@@ -1,4 +1,5 @@
 import 'package:gs_analyzer_ui/utils/logger.dart';
+import 'package:gs_analyzer_ui/models/temp_cleaner_model.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
@@ -26,6 +27,7 @@ class ApiService {
   static const String driveUrl = 'http://localhost:5200/api/drives';
   static const String auditUrl = 'http://localhost:5200/api/audit';
   static const String telemetryHistoryUrl = 'http://localhost:5200/api/telemetry/history';
+  static const String tempFilesUrl = 'http://localhost:5200/api/tempfiles';
 
   Future<TelemetryHistoryResponse?> fetchTelemetryHistory(String metric, int minutes) async {
     final uri = Uri.parse(telemetryHistoryUrl).replace(queryParameters: {
@@ -477,6 +479,48 @@ class ApiService {
     return AgeHeatmapResult.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  Future<TempPreviewResponse> getTempPreview() async {
+    final uri = Uri.parse('$tempFilesUrl/preview');
+    appLogger.i('MATRIX BRIDGE: Requesting Temp Folder Preview...');
+
+    final response = await _client.get(uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return TempPreviewResponse.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Bridge Failed with Status: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<TempCleanResult> cleanTempFiles(List<String> paths) async {
+    final uri = Uri.parse('$tempFilesUrl/clean');
+    appLogger.i('INITIATING TEMP CLEAN PROTOCOL ON: $uri (${paths.length} locations)');
+
+    final response = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'paths': paths}),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonBody = jsonDecode(response.body);
+
+      if (jsonBody['success'] == true) {
+        return TempCleanResult.fromJson(jsonBody['data']);
+      } else {
+        throw Exception(jsonBody['message']);
+      }
+    } else {
+      throw Exception('Temp Clean Failed: ${response.statusCode} - ${response.body}');
+    }
   }
 }
 

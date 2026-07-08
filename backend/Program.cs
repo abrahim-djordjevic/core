@@ -32,6 +32,7 @@ builder.Services.AddSingleton<RamMonitoringEngine>();
 
 // Service singletons (interface → implementation)
 builder.Services.AddSingleton<ILargeFileHunterService, LargeFileHunterService>();
+builder.Services.AddSingleton<ITempFolderCleanerService, TempFolderCleanerService>();
 builder.Services.AddSingleton<INukeProtocolService, NukeProtocolService>();
 builder.Services.AddSingleton<IDriveDetectionService, DriveDetectionService>();
 builder.Services.AddSingleton<ISettingService, SettingsServices>();

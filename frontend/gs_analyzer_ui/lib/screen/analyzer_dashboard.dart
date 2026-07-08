@@ -20,6 +20,7 @@ import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/widgets/duplicate_scanner_pannel.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/widgets/permission_audit_panel.dart';
+import 'package:gs_analyzer_ui/widgets/temp_cleaner_panel.dart';
 
 class AnalyzerDashboard extends ConsumerStatefulWidget {
   const AnalyzerDashboard({super.key});
@@ -285,9 +286,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
       return const LargeFileScannerPanel();
     }
     if (currentMode == StorageMode.tempFileCleaner) {
-      return const Center(
-        child: Text('TEMP FILE CLEANER OFFLINE', style: HudTheme.actionRed),
-      );
+      return const TempCleanerPanel();
     }
     if (currentMode == StorageMode.permissionAudit) {
       return const PermissionAuditPanel();

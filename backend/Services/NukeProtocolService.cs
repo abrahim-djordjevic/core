@@ -113,7 +113,7 @@ public class NukeProtocolService : INukeProtocolService
         }, cancellationToken);
     }
 
-    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false)
+    public async Task<NukeResultDto> ObliterateNodeAsync(List<string> paths, string planToken, bool useRecycleBin = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(planToken) || !_activePlanTokens.TryGetValue(planToken, out HashSet<string> validPaths))
         {
@@ -135,6 +135,8 @@ public class NukeProtocolService : INukeProtocolService
         var totalNodes = paths.Count;
         var processedNodes = 0;
         var cancelToken = _scanner.NukeToken();
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, cancellationToken);
+        var combinedToken = linkedCts.Token;
 
         // Throttle progress so we don't await a hub round-trip per file.
         var lastProgressSent = DateTime.MinValue;
@@ -153,7 +155,7 @@ public class NukeProtocolService : INukeProtocolService
 
         foreach (var path in paths)
         {
-            if (cancelToken.IsCancellationRequested)
+            if (combinedToken.IsCancellationRequested)
             {
                 aborted = true;
                 break;
@@ -274,14 +276,15 @@ public class NukeProtocolService : INukeProtocolService
 
     private void MoveToStaging(string originalPath, string operationId, bool isDirectory)
     {
-        var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+        var driveRoot = StagingBaseResolver(originalPath);
         var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operationId);
 
         // Preserve the full path inside staging so we know where to restore.
         // e.g. "C:/projects/old" → "{stagingDir}/C/projects/old"
         var relativePath = originalPath
             .Replace(":", "_DRIVE_")   // "C:" → "C_DRIVE_"
-            .Replace("\\", "/");
+            .Replace("\\", "/")
+            .TrimStart('/');
 
         var destination = Path.Combine(stagingDir, relativePath);
         var destinationDir = Path.GetDirectoryName(destination);
@@ -327,12 +330,13 @@ public class NukeProtocolService : INukeProtocolService
         {
             try
             {
-                var driveRoot = Path.GetPathRoot(originalPath) ?? "C:\\";
+                var driveRoot = StagingBaseResolver(originalPath);
                 var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operation.OperationId);
 
                 var relativePath = originalPath
                     .Replace(":", "_DRIVE_")
-                    .Replace("\\", "/");
+                    .Replace("\\", "/")
+                    .TrimStart('/');
 
                 var stagedPath = Path.Combine(stagingDir, relativePath);
 
@@ -372,21 +376,30 @@ public class NukeProtocolService : INukeProtocolService
 
         // Clean up staging directory for this operation
         var drives = operation.OriginalPaths
-            .Select(p => Path.GetPathRoot(p))
+            .Select(p => StagingBaseResolver(p))
             .Where(r => !string.IsNullOrEmpty(r))
             .Distinct();
 
         foreach (var drive in drives)
         {
             var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
-            try
+            int retries = 3;
+            while (retries > 0)
             {
-                if (Directory.Exists(stagingDir))
-                    Directory.Delete(stagingDir, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to clean staging directory {StagingDir}", stagingDir);
+                try
+                {
+                    if (Directory.Exists(stagingDir))
+                        Directory.Delete(stagingDir, true);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    if (retries == 0)
+                        _logger.LogWarning(ex, "Failed to clean staging directory {StagingDir}", stagingDir);
+                    else
+                        Thread.Sleep(50);
+                }
             }
         }
 
@@ -516,21 +529,30 @@ public class NukeProtocolService : INukeProtocolService
         if (!operation.UsedRecycleBin) return;
 
         var drives = operation.OriginalPaths
-            .Select(p => Path.GetPathRoot(p))
+            .Select(p => StagingBaseResolver(p))
             .Where(r => !string.IsNullOrEmpty(r))
             .Distinct();
 
         foreach (var drive in drives)
         {
             var stagingDir = Path.Combine(drive!, ".gsanalyzer_trash", operation.OperationId);
-            try
+            int retries = 3;
+            while (retries > 0)
             {
-                if (Directory.Exists(stagingDir))
-                    Directory.Delete(stagingDir, true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to clean staging {StagingDir} for operation {OperationId}", stagingDir, operation.OperationId);
+                try
+                {
+                    if (Directory.Exists(stagingDir))
+                        Directory.Delete(stagingDir, true);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    retries--;
+                    if (retries == 0)
+                        _logger.LogWarning(ex, "Failed to clean staging {StagingDir} for operation {OperationId}", stagingDir, operation.OperationId);
+                    else
+                        Thread.Sleep(50);
+                }
             }
         }
     }
