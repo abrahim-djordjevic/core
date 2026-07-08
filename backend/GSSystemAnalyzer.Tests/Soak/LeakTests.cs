@@ -13,10 +13,6 @@ using Xunit;
 
 namespace GSSystemAnalyzer.Tests.Soak;
 
-// Soak / leak-detection tests.
-// Excluded from the normal test run and selected in CI via:
-//   dotnet test --filter Category=Soak
-//
 // NOTE on DTO names: the mocked return types below (NukePreviewDto / NukeResultDto)
 // must match the ACTUAL return types of INukeProtocolService.PreviewNukeAsync and
 // ObliterateNodeAsync in your codebase. Adjust the type/property names if yours differ
