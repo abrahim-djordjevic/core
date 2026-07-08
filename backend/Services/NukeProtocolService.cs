@@ -175,13 +175,16 @@ public class NukeProtocolService : INukeProtocolService
 					}
 					else
 					{
-						// Only clear attributes when needed — skip a syscall on normal files.
-						var attributes = File.GetAttributes(path);
-						if ((attributes & FileAttributes.ReadOnly) != 0)
+						ExecuteWithRetry(() =>
 						{
-							File.SetAttributes(path, FileAttributes.Normal);
-						}
-						File.Delete(path);
+							// Only clear attributes when needed — skip a syscall on normal files.
+							var attributes = File.GetAttributes(path);
+							if ((attributes & FileAttributes.ReadOnly) != 0)
+							{
+								File.SetAttributes(path, FileAttributes.Normal);
+							}
+							File.Delete(path);
+						});
 					}
 
 					deletedFiles++;
@@ -293,33 +296,36 @@ public class NukeProtocolService : INukeProtocolService
 		if (!string.IsNullOrEmpty(destinationDir))
 			Directory.CreateDirectory(destinationDir);
 
-		if (isDirectory)
+		ExecuteWithRetry(() =>
 		{
-			// Clear only read-only attributes before moving, preserving others
-			var dir = new DirectoryInfo(originalPath);
-			foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
+			if (isDirectory)
 			{
-				if ((info.Attributes & FileAttributes.ReadOnly) != 0)
+				// Clear only read-only attributes before moving, preserving others
+				var dir = new DirectoryInfo(originalPath);
+				foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
 				{
-					info.Attributes &= ~FileAttributes.ReadOnly;
+					if ((info.Attributes & FileAttributes.ReadOnly) != 0)
+					{
+						info.Attributes &= ~FileAttributes.ReadOnly;
+					}
 				}
-			}
-			if ((dir.Attributes & FileAttributes.ReadOnly) != 0)
-			{
-				dir.Attributes &= ~FileAttributes.ReadOnly;
-			}
+				if ((dir.Attributes & FileAttributes.ReadOnly) != 0)
+				{
+					dir.Attributes &= ~FileAttributes.ReadOnly;
+				}
 
-			Directory.Move(originalPath, destination);
-		}
-		else
-		{
-			var attributes = File.GetAttributes(originalPath);
-			if ((attributes & FileAttributes.ReadOnly) != 0)
-			{
-				File.SetAttributes(originalPath, attributes & ~FileAttributes.ReadOnly);
+				Directory.Move(originalPath, destination);
 			}
-			File.Move(originalPath, destination);
-		}
+			else
+			{
+				var attributes = File.GetAttributes(originalPath);
+				if ((attributes & FileAttributes.ReadOnly) != 0)
+				{
+					File.SetAttributes(originalPath, attributes & ~FileAttributes.ReadOnly);
+				}
+				File.Move(originalPath, destination);
+			}
+		});
 	}
 
 	private (int restoredCount, int failedCount) RestoreFromStaging(NukeOperation operation)
@@ -586,17 +592,36 @@ public class NukeProtocolService : INukeProtocolService
 		return (count, size);
 	}
 
+	private void ExecuteWithRetry(Action action, int maxRetries = 3, int delayMs = 50)
+	{
+		for (int i = 0; i < maxRetries; i++)
+		{
+			try
+			{
+				action();
+				return;
+			}
+			catch (Exception ex) when (i < maxRetries - 1 && (ex is IOException || ex is UnauthorizedAccessException))
+			{
+				Thread.Sleep(delayMs);
+			}
+		}
+	}
+
 	private void AggressiveObliterate(string targetPath)
 	{
-		var dir = new DirectoryInfo(targetPath);
-
-		foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
+		ExecuteWithRetry(() =>
 		{
-			info.Attributes = FileAttributes.Normal;
-		}
+			var dir = new DirectoryInfo(targetPath);
 
-		dir.Attributes = FileAttributes.Normal;
-		dir.Delete(true);
+			foreach (var info in dir.GetFileSystemInfos("*", SearchOption.AllDirectories))
+			{
+				info.Attributes = FileAttributes.Normal;
+			}
+
+			dir.Attributes = FileAttributes.Normal;
+			dir.Delete(true);
+		});
 	}
 
 	private string FormatSize(long bytes)
