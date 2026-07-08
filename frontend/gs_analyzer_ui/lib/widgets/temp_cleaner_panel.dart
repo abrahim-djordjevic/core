@@ -32,7 +32,10 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.cleaning_services_outlined, color: HudTheme.accentGreen),
+                const Icon(
+                  Icons.cleaning_services_outlined,
+                  color: HudTheme.accentGreen,
+                ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
@@ -48,7 +51,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 TextButton.icon(
                   onPressed: () {
                     tempNotifier.reset();
-                    ref.read(storageModeProvider.notifier).state = StorageMode.diskAnalyzer;
+                    ref.read(storageModeProvider.notifier).state =
+                        StorageMode.diskAnalyzer;
                   },
                   icon: const Icon(Icons.close, color: HudTheme.textDim),
                   label: const Text('CLOSE TOOL', style: HudTheme.bodyText),
@@ -82,20 +86,30 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                       fontFamily: HudTheme.fontCore,
                     ),
                   ),
-                  onPressed: tempState.isLoading ? null : () => tempNotifier.fetchPreview(),
+                  onPressed: tempState.isLoading
+                      ? null
+                      : () => tempNotifier.fetchPreview(),
                 ),
                 if (tempState.preview != null) ...[
                   Text(
                     'TOTAL: ${tempState.preview!.totalFormatted}',
-                    style: HudTheme.statGreen.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: HudTheme.statGreen.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     '${tempState.selectedPaths.length} OF ${tempState.preview!.locations.length} SELECTED',
-                    style: HudTheme.bodyText.copyWith(color: HudTheme.textDim, fontSize: 12),
+                    style: HudTheme.bodyText.copyWith(
+                      color: HudTheme.textDim,
+                      fontSize: 12,
+                    ),
                   ),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
+                      backgroundColor: HudTheme.accentRed.withValues(
+                        alpha: 0.2,
+                      ),
                       foregroundColor: HudTheme.accentRed,
                       side: const BorderSide(color: HudTheme.accentRed),
                     ),
@@ -108,9 +122,14 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                         fontFamily: HudTheme.fontCore,
                       ),
                     ),
-                    onPressed: tempState.selectedPaths.isEmpty || tempState.isLoading
+                    onPressed:
+                        tempState.selectedPaths.isEmpty || tempState.isLoading
                         ? null
-                        : () => _showCleanConfirmation(context, tempState, tempNotifier),
+                        : () => _showCleanConfirmation(
+                            context,
+                            tempState,
+                            tempNotifier,
+                          ),
                   ),
                 ],
               ],
@@ -138,106 +157,126 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                     ),
                   )
                 : tempState.errorMessage != null
-                    ? Center(
-                        child: Text(
-                          'ERROR: ${tempState.errorMessage}',
-                          style: HudTheme.actionRed,
-                        ),
-                      )
-                    : tempState.preview == null
-                        ? Center(
-                            child: Text(
-                              'AWAITING TEMP SCAN COMMAND...',
-                              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
-                            ),
-                          )
-                        : tempState.preview!.locations.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'NO TEMP LOCATIONS DETECTED ON THIS PLATFORM',
-                                  style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: tempState.preview!.locations.length,
-                                itemBuilder: (context, index) {
-                                  final loc = tempState.preview!.locations[index];
-                                  final isSelected = tempState.selectedPaths.contains(loc.path);
-                                  final isCacheCat = loc.category.toLowerCase() == 'cache';
-                                  final badgeColor = isCacheCat ? HudTheme.accentAmber : HudTheme.accentCyan;
-                                  final badgeLabel = isCacheCat ? 'CACHE' : 'TEMP';
+                ? Center(
+                    child: Text(
+                      'ERROR: ${tempState.errorMessage}',
+                      style: HudTheme.actionRed,
+                    ),
+                  )
+                : tempState.preview == null
+                ? Center(
+                    child: Text(
+                      'AWAITING TEMP SCAN COMMAND...',
+                      style: HudTheme.bodyText.copyWith(
+                        color: HudTheme.textDim,
+                      ),
+                    ),
+                  )
+                : tempState.preview!.locations.isEmpty
+                ? Center(
+                    child: Text(
+                      'NO TEMP LOCATIONS DETECTED ON THIS PLATFORM',
+                      style: HudTheme.bodyText.copyWith(
+                        color: HudTheme.textDim,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: tempState.preview!.locations.length,
+                    itemBuilder: (context, index) {
+                      final loc = tempState.preview!.locations[index];
+                      final isSelected = tempState.selectedPaths.contains(
+                        loc.path,
+                      );
+                      final isCacheCat = loc.category.toLowerCase() == 'cache';
+                      final badgeColor = isCacheCat
+                          ? HudTheme.accentAmber
+                          : HudTheme.accentCyan;
+                      final badgeLabel = isCacheCat ? 'CACHE' : 'TEMP';
 
-                                  return Container(
-                                    decoration: HudTheme.listItemDecoration,
-                                    child: CheckboxListTile(
-                                      activeColor: HudTheme.accentGreen,
-                                      checkColor: Colors.black,
-                                      value: isSelected,
-                                      onChanged: (_) => tempNotifier.togglePath(loc.path),
-                                      title: Row(
-                                        children: [
-                                          // Category badge
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            margin: const EdgeInsets.only(right: 8),
-                                            decoration: BoxDecoration(
-                                              color: badgeColor.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(3),
-                                              border: Border.all(color: badgeColor.withValues(alpha: 0.6)),
-                                            ),
-                                            child: Text(
-                                              badgeLabel,
-                                              style: TextStyle(
-                                                color: badgeColor,
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: HudTheme.fontCore,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              loc.label.isNotEmpty ? loc.label : loc.path,
-                                              style: HudTheme.bodyText.copyWith(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      subtitle: Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Text(
-                                          '${loc.path}  •  ${loc.fileCount} files',
-                                          style: HudTheme.bodyText.copyWith(
-                                            color: HudTheme.textDim,
-                                            fontSize: 11,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      secondary: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: HudTheme.accentGreen.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(
-                                            color: HudTheme.accentGreen.withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          loc.sizeFormatted,
-                                          style: HudTheme.statGreen.copyWith(
-                                            color: HudTheme.accentGreen,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
+                      return Container(
+                        decoration: HudTheme.listItemDecoration,
+                        child: CheckboxListTile(
+                          activeColor: HudTheme.accentGreen,
+                          checkColor: Colors.black,
+                          value: isSelected,
+                          onChanged: (_) => tempNotifier.togglePath(loc.path),
+                          title: Row(
+                            children: [
+                              // Category badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: badgeColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(
+                                    color: badgeColor.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                                child: Text(
+                                  badgeLabel,
+                                  style: TextStyle(
+                                    color: badgeColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: HudTheme.fontCore,
+                                  ),
+                                ),
                               ),
+                              Expanded(
+                                child: Text(
+                                  loc.label.isNotEmpty ? loc.label : loc.path,
+                                  style: HudTheme.bodyText.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '${loc.path}  •  ${loc.fileCount} files',
+                              style: HudTheme.bodyText.copyWith(
+                                color: HudTheme.textDim,
+                                fontSize: 11,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          secondary: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: HudTheme.accentGreen.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: HudTheme.accentGreen.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              loc.sizeFormatted,
+                              style: HudTheme.statGreen.copyWith(
+                                color: HudTheme.accentGreen,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -255,8 +294,14 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
         .where((loc) => tempState.selectedPaths.contains(loc.path))
         .toList();
 
-    final totalFiles = selectedLocations.fold<int>(0, (sum, loc) => sum + loc.fileCount);
-    final totalBytes = selectedLocations.fold<int>(0, (sum, loc) => sum + loc.sizeBytes);
+    final totalFiles = selectedLocations.fold<int>(
+      0,
+      (sum, loc) => sum + loc.fileCount,
+    );
+    final totalBytes = selectedLocations.fold<int>(
+      0,
+      (sum, loc) => sum + loc.sizeBytes,
+    );
 
     String formatSize(int bytes) {
       const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -280,7 +325,11 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
         ),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_outlined, color: HudTheme.accentRed, size: 28),
+            Icon(
+              Icons.warning_amber_outlined,
+              color: HudTheme.accentRed,
+              size: 28,
+            ),
             SizedBox(width: 12),
             Text('CONFIRM TEMP PURGE', style: HudTheme.actionRed),
           ],
@@ -319,7 +368,9 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                   itemCount: selectedLocations.length,
                   itemBuilder: (context, index) {
                     final loc = selectedLocations[index];
-                    final displayName = loc.label.isNotEmpty ? loc.label : loc.path;
+                    final displayName = loc.label.isNotEmpty
+                        ? loc.label
+                        : loc.path;
                     return Padding(
                       padding: const EdgeInsetsGeometry.only(bottom: 8.0),
                       child: Text(
@@ -391,28 +442,32 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
 
     if (resultState.cleanResult != null) {
       final result = resultState.cleanResult!;
-      snackbarKey.currentState?.showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          'FREED ${result.freedFormatted} — ${result.deletedFiles} FILES REMOVED (${result.skippedFiles} SKIPPED)',
-          style: const TextStyle(
-            fontFamily: HudTheme.fontCore,
-            fontWeight: FontWeight.bold,
+      snackbarKey.currentState?.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            'FREED ${result.freedFormatted} — ${result.deletedFiles} FILES REMOVED (${result.skippedFiles} SKIPPED)',
+            style: const TextStyle(
+              fontFamily: HudTheme.fontCore,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          backgroundColor: HudTheme.accentGreen,
         ),
-        backgroundColor: HudTheme.accentGreen,
-      ));
+      );
 
       // Refresh drives to reflect freed space.
       ref.read(drivesProvider.notifier).refresh();
     } else if (resultState.errorMessage != null) {
-      snackbarKey.currentState?.showSnackBar(SnackBar(
-        content: Text(
-          'TEMP CLEAN FAILED: ${resultState.errorMessage}',
-          style: const TextStyle(fontFamily: HudTheme.fontCore),
+      snackbarKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'TEMP CLEAN FAILED: ${resultState.errorMessage}',
+            style: const TextStyle(fontFamily: HudTheme.fontCore),
+          ),
+          backgroundColor: HudTheme.accentRed,
         ),
-        backgroundColor: HudTheme.accentRed,
-      ));
+      );
     }
   }
 
@@ -420,7 +475,10 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        ),
         const SizedBox(height: 4),
         Text(
           value,

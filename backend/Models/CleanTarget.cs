@@ -3,8 +3,8 @@ namespace GSSystemAnalyzer.Models;
 /// <summary>Distinguishes temp directories from regenerable caches.</summary>
 public enum CleanCategory
 {
-    Temp,
-    Cache
+	Temp,
+	Cache
 }
 
 /// <summary>

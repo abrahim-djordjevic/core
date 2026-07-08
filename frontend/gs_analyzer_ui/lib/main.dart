@@ -36,7 +36,8 @@ class GSAnalyzerApp extends ConsumerStatefulWidget {
   ConsumerState<GSAnalyzerApp> createState() => _GSAnalyzerAppState();
 }
 
-class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp> with WindowListener {
+class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
+    with WindowListener {
   @override
   void initState() {
     super.initState();
@@ -74,7 +75,7 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp> with WindowListen
     );
 
     final accentColor = HudTheme.resolveAccent(appearance?.accentColor);
-    final bgColor     = HudTheme.resolveBgBase(appearance?.theme);
+    final bgColor = HudTheme.resolveBgBase(appearance?.theme);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,

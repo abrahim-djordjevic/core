@@ -66,10 +66,7 @@ class TempCleanerNotifier extends StateNotifier<TempCleanerState> {
       );
     } catch (e) {
       appLogger.i('TEMP PREVIEW CRASHED: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -86,22 +83,22 @@ class TempCleanerNotifier extends StateNotifier<TempCleanerState> {
   Future<void> cleanSelected() async {
     if (state.selectedPaths.isEmpty) return;
 
-    state = state.copyWith(isLoading: true, clearCleanResult: true, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      clearCleanResult: true,
+      clearError: true,
+    );
 
     try {
       final apiService = ApiService();
-      final result = await apiService.cleanTempFiles(state.selectedPaths.toList());
-
-      state = state.copyWith(
-        isLoading: false,
-        cleanResult: result,
+      final result = await apiService.cleanTempFiles(
+        state.selectedPaths.toList(),
       );
+
+      state = state.copyWith(isLoading: false, cleanResult: result);
     } catch (e) {
       appLogger.i('TEMP CLEAN CRASHED: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -112,4 +109,5 @@ class TempCleanerNotifier extends StateNotifier<TempCleanerState> {
 
 final tempCleanerProvider =
     StateNotifierProvider<TempCleanerNotifier, TempCleanerState>(
-        (ref) => TempCleanerNotifier(ref));
+      (ref) => TempCleanerNotifier(ref),
+    );

@@ -9,18 +9,21 @@ void main() {
     test('GETs /api/tempfiles/preview and parses response', () async {
       late Uri capturedUrl;
       late String capturedMethod;
-      
+
       final client = MockClient((req) async {
         capturedUrl = req.url;
         capturedMethod = req.method;
-        return http.Response(jsonEncode({
-          'success': true,
-          'data': {
-            'totalBytes': 1024,
-            'totalFormatted': '1 KB',
-            'locations': []
-          }
-        }), 200);
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'data': {
+              'totalBytes': 1024,
+              'totalFormatted': '1 KB',
+              'locations': [],
+            },
+          }),
+          200,
+        );
       });
 
       final apiService = ApiService(client);
@@ -33,7 +36,9 @@ void main() {
     });
 
     test('throws on non-200', () async {
-      final client = MockClient((_) async => http.Response('Server Error', 500));
+      final client = MockClient(
+        (_) async => http.Response('Server Error', 500),
+      );
       final apiService = ApiService(client);
 
       expect(() => apiService.getTempPreview(), throwsException);
@@ -50,15 +55,18 @@ void main() {
         capturedUrl = req.url;
         capturedMethod = req.method;
         capturedBody = req.body;
-        return http.Response(jsonEncode({
-          'success': true,
-          'data': {
-            'deletedFiles': 10,
-            'freedBytes': 2048,
-            'freedFormatted': '2 KB',
-            'skippedFiles': 1
-          }
-        }), 200);
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'data': {
+              'deletedFiles': 10,
+              'freedBytes': 2048,
+              'freedFormatted': '2 KB',
+              'skippedFiles': 1,
+            },
+          }),
+          200,
+        );
       });
 
       final apiService = ApiService(client);
@@ -67,7 +75,7 @@ void main() {
 
       expect(capturedMethod, 'POST');
       expect(capturedUrl.path, endsWith('/api/tempfiles/clean'));
-      
+
       final bodyMap = jsonDecode(capturedBody);
       expect(bodyMap['paths'], equals(paths));
 

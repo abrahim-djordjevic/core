@@ -39,7 +39,7 @@ void main() {
 
     test('applies safe defaults', () {
       final loc = TempLocationPreview.fromJson({});
-      
+
       expect(loc.path, '');
       expect(loc.label, '');
       expect(loc.category, 'Temp');
@@ -48,17 +48,20 @@ void main() {
       expect(loc.fileCount, 0);
     });
 
-    test('label defaults to empty and category defaults to Temp when missing', () {
-      final loc = TempLocationPreview.fromJson({
-        'path': 'C:\\Windows\\Temp',
-        'sizeBytes': 512,
-        'sizeFormatted': '512 B',
-        'fileCount': 1,
-      });
+    test(
+      'label defaults to empty and category defaults to Temp when missing',
+      () {
+        final loc = TempLocationPreview.fromJson({
+          'path': 'C:\\Windows\\Temp',
+          'sizeBytes': 512,
+          'sizeFormatted': '512 B',
+          'fileCount': 1,
+        });
 
-      expect(loc.label, '');
-      expect(loc.category, 'Temp');
-    });
+        expect(loc.label, '');
+        expect(loc.category, 'Temp');
+      },
+    );
 
     test('category field accepts Cache value', () {
       final loc = TempLocationPreview.fromJson({
@@ -92,8 +95,8 @@ void main() {
             'sizeBytes': 2048,
             'sizeFormatted': '2 KB',
             'fileCount': 10,
-          }
-        ]
+          },
+        ],
       });
 
       expect(response.totalBytes, 3072);
@@ -107,7 +110,7 @@ void main() {
       final response = TempPreviewResponse.fromJson({
         'totalBytes': 0,
         'totalFormatted': '0 B',
-        'locations': []
+        'locations': [],
       });
 
       expect(response.totalBytes, 0);

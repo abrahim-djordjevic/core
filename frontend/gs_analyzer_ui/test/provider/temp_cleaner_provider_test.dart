@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/temp_cleaner_model.dart';
 import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
 
-// Since ApiService is constructed internally in TempCleanerNotifier, 
+// Since ApiService is constructed internally in TempCleanerNotifier,
 // and the app's current test pattern doesn't mock internal ApiService instantiations easily
 // without DI, we can't easily mock ApiService here without changing the provider's implementation.
 // However, looking at the project, the providers don't use DI for ApiService.
@@ -32,22 +32,28 @@ void main() {
 
     test('togglePath adds and removes a path', () {
       final notifier = container.read(tempCleanerProvider.notifier);
-      
-      notifier.togglePath('C:\\temp');
-      expect(container.read(tempCleanerProvider).selectedPaths, contains('C:\\temp'));
 
       notifier.togglePath('C:\\temp');
-      expect(container.read(tempCleanerProvider).selectedPaths, isNot(contains('C:\\temp')));
+      expect(
+        container.read(tempCleanerProvider).selectedPaths,
+        contains('C:\\temp'),
+      );
+
+      notifier.togglePath('C:\\temp');
+      expect(
+        container.read(tempCleanerProvider).selectedPaths,
+        isNot(contains('C:\\temp')),
+      );
     });
 
     test('reset clears all state', () {
       final notifier = container.read(tempCleanerProvider.notifier);
-      
+
       notifier.togglePath('C:\\temp');
       expect(container.read(tempCleanerProvider).selectedPaths, isNotEmpty);
 
       notifier.reset();
-      
+
       final state = container.read(tempCleanerProvider);
       expect(state.isLoading, isFalse);
       expect(state.preview, isNull);

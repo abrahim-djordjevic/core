@@ -5,38 +5,38 @@ using GSSystemAnalyzer.Services;
 
 namespace GSSystemAnalyzer.Tests.Engine
 {
-    public class LinuxCpuProviderTest : IDisposable
-    {
-        private readonly string _mockProcDir;
-        private readonly string _mockStatPath;
-        private readonly string _mockSysDir;
+	public class LinuxCpuProviderTest : IDisposable
+	{
+		private readonly string _mockProcDir;
+		private readonly string _mockStatPath;
+		private readonly string _mockSysDir;
 
-        public LinuxCpuProviderTest()
-        {
-            string root = Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "/";
-            _mockProcDir = Path.Combine(root, "proc");
-            _mockStatPath = Path.Combine(_mockProcDir, "stat");
-            _mockSysDir = Path.Combine(root, "sys");
-        }
+		public LinuxCpuProviderTest()
+		{
+			string root = Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "/";
+			_mockProcDir = Path.Combine(root, "proc");
+			_mockStatPath = Path.Combine(_mockProcDir, "stat");
+			_mockSysDir = Path.Combine(root, "sys");
+		}
 
-        public void Dispose()
-        {
-            if (File.Exists(_mockStatPath)) File.Delete(_mockStatPath);
-            if (Directory.Exists(_mockProcDir)) Directory.Delete(_mockProcDir, true);
-            
-            if(Directory.Exists(_mockSysDir))
-            {
-                Directory.Delete(_mockSysDir, true);
-            }
-        }
+		public void Dispose()
+		{
+			if (File.Exists(_mockStatPath)) File.Delete(_mockStatPath);
+			if (Directory.Exists(_mockProcDir)) Directory.Delete(_mockProcDir, true);
 
-        private void WriteMockProcStat(string content)
-        {
-            Directory.CreateDirectory(_mockProcDir);
-            File.WriteAllText(_mockStatPath, content);
-        }
+			if (Directory.Exists(_mockSysDir))
+			{
+				Directory.Delete(_mockSysDir, true);
+			}
+		}
 
-        #region LINUX METRICS METRICS ENGINE TESTS
+		private void WriteMockProcStat(string content)
+		{
+			Directory.CreateDirectory(_mockProcDir);
+			File.WriteAllText(_mockStatPath, content);
+		}
+
+		#region LINUX METRICS METRICS ENGINE TESTS
 
 #if !WINDOWS
         [Fact]
@@ -163,6 +163,6 @@ namespace GSSystemAnalyzer.Tests.Engine
             Assert.Equal("16M", result.L3Cache);
         }
 #endif
-        #endregion
-    }
+		#endregion
+	}
 }
