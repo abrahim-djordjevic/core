@@ -35,6 +35,10 @@ void main() {
       // Verify loading indicator is present
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('CPU'), findsOneWidget); // title
+
+      // Fix the leak: complete the future and let the widget settle to dispose the AnimationController
+      completer.complete(null);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('renders chart and stats when data is loaded', (
@@ -84,6 +88,10 @@ void main() {
 
       // Should NOT have loading indicator
       expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      // Fix the leak: unmount the chart to dispose fl_chart's GestureRecognizers
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
     });
   });
 }

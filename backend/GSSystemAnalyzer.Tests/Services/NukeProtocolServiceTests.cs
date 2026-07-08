@@ -169,6 +169,17 @@ public class NukeProtocolServiceTests : IDisposable
 		Assert.NotNull(undo);
 		Assert.Equal(1, undo!.DeletedFiles); // reused field = restored count
 		Assert.Equal(0, undo.SkippedFiles);
+
+		// Allow a brief moment for file system propagation in CI
+		for (int i = 0; i < 10 && !File.Exists(file); i++)
+			await Task.Delay(20);
+
+		if (!File.Exists(file))
+		{
+			var files = Directory.GetFiles(Path.GetDirectoryName(file)!);
+			Assert.Fail($"File not found at {file}. Files in dir: {string.Join(", ", files)}");
+		}
+
 		Assert.True(File.Exists(file));
 		Assert.Equal("payload", File.ReadAllText(file));
 		Assert.Null(svc.PeekUndo()); // op consumed

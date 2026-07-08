@@ -184,7 +184,7 @@ namespace GSSystemAnalyzer.Tests.Services
 		}
 
 		[Fact]
-		public void ConcurrentAccess_DoesNotThrow()
+		public async Task ConcurrentAccess_DoesNotThrow()
 		{
 			var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
 
@@ -218,7 +218,7 @@ namespace GSSystemAnalyzer.Tests.Services
 				});
 			});
 
-			Task.WaitAll(writeTask, readTask);
+			await Task.WhenAll(writeTask, readTask);
 
 			Assert.Empty(exceptions);
 		}

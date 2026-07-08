@@ -107,8 +107,8 @@ namespace GSSystemAnalyzer.Tests.Engine
             var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
             WriteMockProcStat("cpu0 1100 0 150 5050 0 0 0 0\n");
 
-            var exception = Record.ExceptionAsync(async () => await provider.GetNextSampleAsync());
-            Assert.Null(exception.Result);
+            var exception = await Record.ExceptionAsync(async () => await provider.GetNextSampleAsync());
+            Assert.Null(exception);
 
             var result = await provider.GetNextSampleAsync();
             Assert.True(result.CoreGroups.ContainsKey("CORE 0-0"));
