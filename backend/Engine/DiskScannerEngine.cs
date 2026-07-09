@@ -11,7 +11,19 @@ namespace GSSystemAnalyzer.Engine;
 public class CacheEntry
 {
 	public long Size { get; set; }
+
+	// When the FOLDER's contents last changed on disk (dir.LastWriteTimeUtc).
+	// Used ONLY for content-staleness detection, never for TTL expiry.
 	public DateTime LastUpdated { get; set; }
+
+	// When WE last scanned/cached this folder. Used for TTL expiry and for
+	// grouping entries into scans. Distinct from LastUpdated.
+	public DateTime CachedAtUtc { get; set; }
+
+	// The top-level scan root (drive / browsed folder) this entry belongs to.
+	// Lets MaxCacheScans evict whole scans instead of individual folders.
+	public string? ScanRoot { get; set; }
+
 	public Dictionary<string, FileTypeEntry>? Extensions { get; set; }
 }
 
@@ -55,6 +67,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 					_logger.LogInformation("Cache restored: {Count} folders loaded from disk", DirectorySizeCache.Count);
 
 					PruneStaleCacheEntries();
+					EnforceMaxCacheScans();
 				}
 			}
 			catch (Exception ex)
@@ -102,6 +115,14 @@ public class DiskScannerEngine : IDiskScannerEngine
 				_deepScanThrottle = 0;
 				_scannedFilesCount = 0;
 
+				// The top-level path being scanned (parent of the scanned items). Every
+				// folder cached during this scan is tagged with this root so MaxCacheScans
+				// can evict whole scans, not individual folders.
+				var scanRoot = directoriesToScan
+					.Select(d => d.Parent?.FullName)
+					.FirstOrDefault(p => !string.IsNullOrEmpty(p))
+					?? directoriesToScan[0].FullName;
+
 				// Retrieve the specific session's token
 				var scanToken = _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
 
@@ -117,13 +138,15 @@ public class DiskScannerEngine : IDiskScannerEngine
 				{
 					try
 					{
-						var size = await Task.Run(() => GetDirectorySize(dir, ct), ct);
+						var size = await Task.Run(() => GetDirectorySize(dir, ct, scanRoot), ct);
 
 						DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
 						DirectorySizeCache[dir.FullName] = new CacheEntry
 						{
 							Size = size,
 							LastUpdated = dir.LastWriteTimeUtc,
+							CachedAtUtc = DateTime.UtcNow,
+							ScanRoot = scanRoot,
 							Extensions = existingEntry?.Extensions
 						};
 					}
@@ -145,6 +168,10 @@ public class DiskScannerEngine : IDiskScannerEngine
 					});
 				});
 
+				// TTL expiry (now based on real scan time) + cap to N most-recent scans.
+				PruneStaleCacheEntries();
+				EnforceMaxCacheScans();
+
 				SaveMemoryToDisk();
 			}
 
@@ -157,7 +184,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 
 	}
 
-	private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, int currentDepth = 1)
+	private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, string scanRoot, int currentDepth = 1)
 	{
 		if (token.IsCancellationRequested)
 			throw new OperationCanceledException("Scan aborted by user");
@@ -238,7 +265,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 			foreach (var subDir in dir.GetDirectories("*", option))
 			{
 				// Pass depth + 1 so each recursive level is tracked
-				size += GetDirectorySize(subDir, token, currentDepth + 1);
+				size += GetDirectorySize(subDir, token, scanRoot, currentDepth + 1);
 			}
 		}
 		catch (OperationCanceledException) { throw; }
@@ -248,6 +275,8 @@ public class DiskScannerEngine : IDiskScannerEngine
 		{
 			Size = size,
 			LastUpdated = dir.LastWriteTimeUtc,
+			CachedAtUtc = DateTime.UtcNow,
+			ScanRoot = scanRoot,
 			Extensions = extMap
 		};
 
@@ -453,9 +482,11 @@ public class DiskScannerEngine : IDiskScannerEngine
 		var config = _settings.Current.Cache;
 		var cutoff = DateTime.UtcNow.AddMinutes(-config.ScanCacheTtlMinutes);
 
-		// Remove entries that are past their TTL
+		// Expire by WHEN WE SCANNED the folder (CachedAtUtc), not by the folder's own
+		// last-write time. Using LastUpdated here was the bug that wiped the whole
+		// cache on every restart, because folders are rarely modified within the TTL.
 		var stale = DirectorySizeCache
-			.Where(kvp => kvp.Value.LastUpdated < cutoff)
+			.Where(kvp => kvp.Value.CachedAtUtc < cutoff)
 			.Select(kvp => kvp.Key)
 			.ToList();
 
@@ -463,6 +494,43 @@ public class DiskScannerEngine : IDiskScannerEngine
 			DirectorySizeCache.TryRemove(key, out _);
 
 		_logger.LogDebug("Cache pruned: {Count} stale entries removed (TTL = {TtlMinutes} min)", stale.Count, config.ScanCacheTtlMinutes);
+	}
+
+	// Enforces CacheSettingDto.MaxCacheScans by keeping only the N most-recently
+	// scanned top-level roots (drive / browsed folder), evicting ALL folder entries
+	// that belong to older scans. This is "5 most-recent scans", not "5 folders".
+	// Previously MaxCacheScans was declared in settings but never read, so it did
+	// nothing.
+	public void EnforceMaxCacheScans()
+	{
+		var maxScans = _settings.Current.Cache.MaxCacheScans;
+		if (maxScans <= 0) return;
+
+		var rootsByRecency = DirectorySizeCache
+			.Where(kvp => !string.IsNullOrEmpty(kvp.Value.ScanRoot))
+			.GroupBy(kvp => kvp.Value.ScanRoot!, StringComparer.OrdinalIgnoreCase)
+			.Select(g => new { Root = g.Key, LastScan = g.Max(kvp => kvp.Value.CachedAtUtc) })
+			.OrderByDescending(x => x.LastScan)
+			.ToList();
+
+		if (rootsByRecency.Count <= maxScans) return;
+
+		var rootsToEvict = rootsByRecency
+			.Skip(maxScans)
+			.Select(x => x.Root)
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+		var keysToRemove = DirectorySizeCache
+			.Where(kvp => kvp.Value.ScanRoot != null && rootsToEvict.Contains(kvp.Value.ScanRoot))
+			.Select(kvp => kvp.Key)
+			.ToList();
+
+		foreach (var key in keysToRemove)
+			DirectorySizeCache.TryRemove(key, out _);
+
+		_logger.LogInformation(
+			"Cache trimmed to {MaxScans} most-recent scan roots: evicted {RootCount} older root(s), {EntryCount} folder entries",
+			maxScans, rootsToEvict.Count, keysToRemove.Count);
 	}
 
 	public void ClearCache()
