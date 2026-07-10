@@ -1,427 +1,360 @@
-using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GSSystemAnalyzer.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class StorageController : ControllerBase
-    {
-        private readonly IDiskOperationService _diskService;
-        private readonly IDuplicateFileDetector _duplicateFileDetector;
+	[ApiController]
+	[Route("api/[controller]")]
+	public class StorageController : ControllerBase
+	{
+		private readonly IDiskOperationService _diskService;
+		private readonly IDuplicateFileDetector _duplicateFileDetector;
+		private readonly IServiceScopeFactory _scopeFactory;
 
-        public StorageController(IDiskOperationService diskService, IDuplicateFileDetector duplicateFileDetector)
-        {
-            _diskService = diskService;
-            _duplicateFileDetector = duplicateFileDetector;
-        }
+		public StorageController(IDiskOperationService diskService, IDuplicateFileDetector duplicateFileDetector, IServiceScopeFactory scopeFactory)
+		{
+			_diskService = diskService;
+			_duplicateFileDetector = duplicateFileDetector;
+			_scopeFactory = scopeFactory;
+		}
 
-        [HttpPost("stream-sector")]
-        public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] DiskScannerEngine engine,[FromServices] IDriveDetectionService driveService, [FromQuery] string path)
-        {
-            var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+		[HttpPost("stream-sector")]
+		public IActionResult StreamDirectorySection([FromServices] IHubContext<SystemHub> hubContext, [FromServices] IDriveDetectionService driveService, [FromQuery] string path, [FromQuery] Guid? scanId)
+		{
+			var validationResult = ValidateDriveAndDirectory(path, driveService);
+			if (validationResult != null) return validationResult;
 
-            var readyDrives = driveService.GetReadyDrives();
+			var id = _diskService.BeginScan(scanId);
 
-            if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = $"Drive not ready or not found: {normalizedRoot}"
-                });
-            }
+			_ = Task.Run(async () =>
+			{
+				using var scope = _scopeFactory.CreateScope();
+				var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
+				try
+				{
+					var allNodes = scopedDiskService.ScanDirectory(path, id).ToList();
 
-            if (!Directory.Exists(path))
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Invalid or missing target directory."
-                });
-            }
-            var cancelToken = engine.ScanToken();
+					var chunkSize = 100;
+					for (var i = 0; i < allNodes.Count; i += chunkSize)
+					{
+						var engine = scope.ServiceProvider.GetRequiredService<GSSystemAnalyzer.Interfaces.IDiskScannerEngine>();
+						if (engine.GetScanToken(id).IsCancellationRequested) break;
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var allNodes = _diskService.ScanDirectory(path).ToList();
-                    
-                    var chunkSize = 100;
-                    for (var i = 0; i < allNodes.Count; i += chunkSize)
-                    {
-                        if (cancelToken.IsCancellationRequested) break;
+						var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
+						await hubContext.Clients.All.SendAsync("DirectoryChunk", new
+						{
+							scanId = id,
+							path = path,
+							chunk = chunk
+						});
 
-                        var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
-                        await hubContext.Clients.All.SendAsync("DirectoryChunk", new
-                        {
-                            path = path, chunk = chunk
-                        });
+						await Task.Delay(10);
+					}
+				}
+				catch (Exception ex)
+				{
+					await hubContext.Clients.All.SendAsync("DirectoryStreamError",
+						new { scanId = id, path = path, error = ex.Message });
+				}
+				finally
+				{
+					await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new { scanId = id, path = path });
+				}
+			});
 
-                        await Task.Delay(10);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await hubContext.Clients.All.SendAsync("DirectoryStreamError",
-                        new { path = path, error = ex.Message });
-                }
-                finally
-                {
-                    await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", path);
-                }
-            });
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Stream Initiated"
+			});
+		}
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "Stream Initiated"
-            });
-        }
+		[HttpPost("scan")]
+		public async Task<IActionResult> ScanDirectory(
+			[FromBody] ScanRequest request,
+			[FromServices] IDriveDetectionService driveService)
+		{
+			try
+			{
+				var targetPath = ResolveTargetPath(request?.Root);
 
-        [HttpPost("scan")]
-        public async Task<IActionResult> ScanDirectory(
-            [FromBody] ScanRequest request, 
-            [FromServices] IDriveDetectionService driveService)
-        {
-            try
-            {
-                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
-                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
-                    : request.Root;
-                
-                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
+				var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
+				if (validationResult != null) return validationResult;
 
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or found: {normalizedRoot}"
-                    });
-                }
+				var id = _diskService.BeginScan(request.ScanId);
+				var result = await Task.Run(() => _diskService.ScanDirectory(targetPath, id));
 
-                if (!System.IO.Directory.Exists(targetPath))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing target directory."
-                    });
-                }
+				var response = new ApiResponse<IEnumerable<StorageNode>>
+				{
+					Success = true,
+					Message = "Directory scanned successfully.",
+					Data = result
+				};
 
-                var result = await Task.Run(() => _diskService.ScanDirectory(targetPath));
+				return Ok(response);
+			}
+			catch (OperationCanceledException)
+			{
+				return StatusCode(499, new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Directory Scan Aborted by User."
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Scan failed: {ex.Message}"
+				});
+			}
 
-                var response = new ApiResponse<IEnumerable<StorageNode>>
-                {
-                    Success = true,
-                    Message = "Directory scanned successfully.",
-                    Data = result
-                };
+		}
 
-                return Ok(response);
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Directory Scan Aborted by User."
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = $"Scan failed: {ex.Message}"
-                });
-            }
+		[HttpGet("drive-stats")]
+		public IActionResult GetDriveStats([FromQuery] string driveLetter, [FromServices] IDriveDetectionService driveService)
+		{
+			try
+			{
+				var validationResult = ValidateDriveReady(NormalizeRoot(driveLetter), driveService);
+				if (validationResult != null) return validationResult;
 
-        }
+				var stats = _diskService.GetDriveTelemetry(driveLetter);
 
-        [HttpGet("drive-stats")]
-        public IActionResult GetDriveStats([FromQuery] string driveLetter, [FromServices] IDriveDetectionService driveService)
-        {
-            try
-            {
-                var normalizedRoot = driveLetter.ToUpperInvariant();
-                if (!normalizedRoot.EndsWith(":\\"))
-                {
-                    normalizedRoot = normalizedRoot.TrimEnd('\\', ':') + ":\\";
-                }
-
-                var readyDrives = driveService.GetReadyDrives();
-
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not reaady or not found: {normalizedRoot}"
-                    });
-                }
-
-                var stats = _diskService.GetDriveTelemetry(driveLetter);
-
-                var response = new ApiResponse<DriveTelemetryDto>
-                {
-                    Success = true,
-                    Message = "Telemetry retrieved Successfully.",
-                    Data = stats
-                };
+				var response = new ApiResponse<DriveTelemetryDto>
+				{
+					Success = true,
+					Message = "Telemetry retrieved Successfully.",
+					Data = stats
+				};
 
 
-                return Ok(response);
-            }
+				return Ok(response);
+			}
 
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Could not read hardware telemetry for drive: " + ex.Message
-                });
-            }
-        }
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Could not read hardware telemetry for drive: " + ex.Message
+				});
+			}
+		}
 
 
-        [HttpPost("abort-scan")]
-        public IActionResult AbortScan()
-        {
-            _diskService.TriggerScanAbort();
+		[HttpPost("abort-scan")]
+		public IActionResult AbortScan([FromQuery] Guid? scanId = null)
+		{
+			_diskService.TriggerScanAbort(scanId);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = "Abort Signal received. Brakes applied."
-            });
-        }
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Abort Signal received. Brakes applied."
+			});
+		}
 
-        [HttpPost("duplicates")]
-        public async Task<IActionResult> ScanForDuplicates(
-            [FromBody] ScanRequest request,
-            [FromServices] DiskScannerEngine engine,
-            [FromServices] IDriveDetectionService driveService)
-        {
-            try
-            {
-                string targetPath = string.IsNullOrWhiteSpace(request?.Root)
-                    ? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
-                    : request.Root;
-                
-                var normalizedRoot = Path.GetPathRoot(targetPath)?.ToUpperInvariant() ?? targetPath.ToUpperInvariant();
+		[HttpPost("duplicates")]
+		public async Task<IActionResult> ScanForDuplicates(
+			[FromBody] ScanRequest request,
+			[FromServices] IDriveDetectionService driveService)
+		{
+			try
+			{
+				var targetPath = ResolveTargetPath(request?.Root);
 
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or not found: {normalizedRoot}"
-                    });
-                }
+				var validationResult = ValidateDriveAndDirectory(targetPath, driveService);
+				if (validationResult != null) return validationResult;
 
-                if (!System.IO.Directory.Exists(targetPath))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing target directory."
-                    });
-                }
+				var id = _diskService.BeginScan(request.ScanId);
+				var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, id);
 
-                var cancelToken = engine.ScanToken();
-                var duplicateGroups = await _duplicateFileDetector.FindDuplicatesAsync(targetPath, cancelToken);
+				return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
+				{
+					Success = true,
+					Message = "Duplicates scanned successfully.",
+					Data = duplicateGroups
+				});
+			}
+			catch (OperationCanceledException)
+			{
+				return StatusCode(499, new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Duplicate Scan Aborted by User."
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Scan failed: {ex.Message}"
+				});
+			}
+		}
 
-                return Ok(new ApiResponse<IEnumerable<DuplicateGroup>>
-                {
-                    Success = true,
-                    Message = "Duplicates scanned successfully.",
-                    Data = duplicateGroups
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Duplicate Scan Aborted by User."
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = $"Scan failed: {ex.Message}"
-                });
-            }
-        }
+		[HttpGet("scan-largefiles")]
+		public async Task<IActionResult> GetLargeFiles(
+			[FromServices] ILargeFileHunterService hunter,
+			[FromServices] IDriveDetectionService driveService,
+			CancellationToken cancellationToken,
+			[FromQuery] string? root = null,
+			[FromQuery] int top = 20)
+		{
+			try
+			{
+				root = ResolveTargetPath(root);
 
-        [HttpGet("scan-largefiles")]
-        public async Task<IActionResult> GetLargeFiles(
-            [FromServices] ILargeFileHunterService hunter,
-            [FromServices] IDriveDetectionService driveService,
-            CancellationToken cancellationToken,
-            [FromQuery] string? root = null,
-            [FromQuery] int top = 20)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(root))
-                {
-                    root = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
-                }
+				var validationResult = ValidateDriveAndDirectory(root, driveService);
+				if (validationResult != null) return validationResult;
 
-                var normalizedRoot = Path.GetPathRoot(root)?.ToUpperInvariant() ?? root.ToUpperInvariant();
+				var result = await hunter.GetTopLargeFilesAsync(root, top, cancellationToken);
 
-                var readyDrives = driveService.GetReadyDrives();
-                if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = $"Drive not ready or not found: {normalizedRoot}"
-                    });
-                }
+				var response = new ApiResponse<IEnumerable<LargeFile>>
+				{
+					Success = true,
+					Message = "Large files scanned successfully.",
+					Data = result
+				};
 
-                if (!System.IO.Directory.Exists(root))
-                {
-                    return BadRequest( new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Scan failed: Invalid or missing root directory."
-                    });
-                }
+				return Ok(response);
+			}
+			catch (OperationCanceledException)
+			{
+				return StatusCode(499, new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Client closed request, Scan Aborted"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Scan failed: {ex.Message}"
+				});
+			}
+		}
 
-                var result = await hunter.GetTopLargeFilesAsync(root, top, cancellationToken);
+		[HttpGet("scan/filetypes")]
+		public IActionResult GetFileTypes(
+			[FromQuery] string root,
+			[FromServices] IFileTypeScanner scanner)
+		{
+			var validationResult = ValidateRootForCachedRead(root);
+			if (validationResult != null) return validationResult;
 
-                var response = new ApiResponse<IEnumerable<LargeFile>>
-                {
-                    Success = true,
-                    Message = "Large files scanned successfully.",
-                    Data = result
-                };
+			var result = scanner.Analyze(root);
 
-                return Ok(response);
-            }
-            catch (OperationCanceledException)
-            {
-                return StatusCode(499, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Client closed request, Scan Aborted"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = $"Scan failed: {ex.Message}"
-                });
-            }
-        }
+			if (result is null)
+				return Conflict(new
+				{
+					error = "NO_SCAN_CACHED",
+					message = "No scan result found for this root. Run a Directory scan first."
+				});
 
-        [HttpGet("scan/filetypes")]
-        public IActionResult GetFileTypes(
-            [FromQuery] string root,
-            [FromServices] IFileTypeScanner scanner)
-        {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
+			return Ok(result);
+		}
 
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+		[HttpGet("scan/ageheatmap")]
+		public IActionResult GetAgeHeatmap(
+			[FromQuery] string root,
+			[FromServices] IAgeHeatmapEngine heatmap)
+		{
+			var validationResult = ValidateRootForCachedRead(root);
+			if (validationResult != null) return validationResult;
 
-            var result = scanner.Analyze(root);
+			var result = heatmap.Analyze(root);
 
-            if (result is null)
-                return Conflict(new
-                {
-                    error = "NO_SCAN_CACHED",
-                    message = "No scan result found for this root. Run a Directory scan first."
-                });
+			if (result is null)
+				return Conflict(new
+				{
+					error = "NO_SCAN_CACHED",
+					message = "No scan result found for this root. Run a Directory scan first."
+				});
 
-            return Ok(result);
-        }
+			return Ok(result);
+		}
 
-        [HttpGet("scan/ageheatmap")]
-        public IActionResult GetAgeHeatmap(
-            [FromQuery] string root,
-            [FromServices] IAgeHeatmapEngine heatmap)
-        {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
+		[HttpGet("scan/extensions")]
+		public IActionResult GetExtensions(
+			[FromQuery] string root,
+			[FromServices] IFileTypeScanner scanner)
+		{
+			var validationResult = ValidateRootForCachedRead(root);
+			if (validationResult != null) return validationResult;
 
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+			var result = scanner.GetExtensionBreakdown(root);
 
-            var result = heatmap.Analyze(root);
+			if (result is null)
+				return Conflict(new
+				{
+					error = "NO_SCAN_CACHED",
+					message = "No scan result found for this root. Run a Directory scan first."
+				});
 
-            if (result is null)
-                return Conflict(new
-                {
-                    error = "NO_SCAN_CACHED",
-                    message = "No scan result found for this root. Run a Directory scan first."
-                });
+			return Ok(result);
+		}
 
-            return Ok(result);
-        }
+		private static ApiResponse<object> Fail(string message) =>
+			new() { Success = false, Message = message };
 
-        [HttpGet("scan/extensions")]
-        public IActionResult GetExtensions(
-            [FromQuery] string root,
-            [FromServices] IFileTypeScanner scanner)
-        {
-            if (string.IsNullOrWhiteSpace(root))
-                return BadRequest(new
-                {
-                    error = "ROOT_REQUIRED",
-                    message = "root query parameter is required."
-                });
+		private static string ResolveTargetPath(string? requested) =>
+			string.IsNullOrWhiteSpace(requested)
+				? (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\")
+				: requested;
 
-            if (!Directory.Exists(root))
-                return BadRequest(new
-                {
-                    error = "DRIVE_NOT_FOUND",
-                    message = $"Root path '{root}' does not exist or is not accessible."
-                });
+		private static string NormalizeRoot(string path)
+		{
+			var normalizedRoot = Path.GetPathRoot(path)?.ToUpperInvariant() ?? path.ToUpperInvariant();
+			if (!normalizedRoot.EndsWith(":\\"))
+			{
+				normalizedRoot = normalizedRoot.TrimEnd('\\', ':') + ":\\";
+			}
+			return normalizedRoot;
+		}
 
-            var result = scanner.GetExtensionBreakdown(root);
+		/// <summary>Returns a BadRequest if the drive isn't ready; otherwise null.</summary>
+		private IActionResult? ValidateDriveReady(string normalizedRoot, IDriveDetectionService driveService)
+		{
+			var readyDrives = driveService.GetReadyDrives();
+			if (!readyDrives.Any(d => d.Name.ToUpperInvariant() == normalizedRoot))
+				return BadRequest(Fail($"Drive not ready or not found: {normalizedRoot}"));
 
-            if (result is null)
-                return Conflict(new
-                {
-                    error = "NO_SCAN_CACHED",
-                    message = "No scan result found for this root. Run a Directory scan first."
-                });
+			return null;
+		}
 
-            return Ok(result);
-        }
-    }
+		/// <summary>Returns a BadRequest if the drive isn't ready or the directory is missing; otherwise null.</summary>
+		private IActionResult? ValidateDriveAndDirectory(string path, IDriveDetectionService driveService)
+		{
+			var driveError = ValidateDriveReady(NormalizeRoot(path), driveService);
+			if (driveError != null) return driveError;
+
+			if (!System.IO.Directory.Exists(path))
+				return BadRequest(Fail("Invalid or missing target directory."));
+
+			return null;
+		}
+
+		/// <summary>Validation for the cached-read endpoints (filetypes / ageheatmap / extensions).</summary>
+		private IActionResult? ValidateRootForCachedRead(string root)
+		{
+			if (string.IsNullOrWhiteSpace(root))
+				return BadRequest(new { error = "ROOT_REQUIRED", message = "root query parameter is required." });
+
+			if (!System.IO.Directory.Exists(root))
+				return BadRequest(new { error = "DRIVE_NOT_FOUND", message = $"Root path '{root}' does not exist or is not accessible." });
+
+			return null;
+		}
+	}
 }

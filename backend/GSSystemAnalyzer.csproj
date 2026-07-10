@@ -14,6 +14,11 @@
     <Content Remove="GSSystemAnalyzer.Tests\**" />
     <EmbeddedResource Remove="GSSystemAnalyzer.Tests\**" />
     <None Remove="GSSystemAnalyzer.Tests\**" />
+
+    <Compile Remove="GSSystemAnalyzer.Benchmarks\**" />
+    <Content Remove="GSSystemAnalyzer.Benchmarks\**" />
+    <EmbeddedResource Remove="GSSystemAnalyzer.Benchmarks\**" />
+    <None Remove="GSSystemAnalyzer.Benchmarks\**" />
   </ItemGroup>
 
 

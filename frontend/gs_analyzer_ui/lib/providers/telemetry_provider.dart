@@ -16,6 +16,7 @@ class TelemetryState {
   final int total;
   final double percentComplete;
   final String target;
+  final String? currentScanId;
 
   const TelemetryState({
     this.status = 'IDLE',
@@ -23,6 +24,7 @@ class TelemetryState {
     this.total = 0,
     this.percentComplete = 0.0,
     this.target = '',
+    this.currentScanId,
   });
 
   TelemetryState copyWith({
@@ -31,6 +33,7 @@ class TelemetryState {
     int? total,
     double? percentComplete,
     String? target,
+    String? currentScanId,
   }) {
     return TelemetryState(
       status: status ?? this.status,
@@ -38,6 +41,7 @@ class TelemetryState {
       total: total ?? this.total,
       percentComplete: percentComplete ?? this.percentComplete,
       target: target ?? this.target,
+      currentScanId: currentScanId ?? this.currentScanId,
     );
   }
 }
@@ -56,23 +60,33 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
     final settingsState = ref.read(settingsProvider);
     final adv = settingsState.savedSettings?.advanced;
 
-    final backendPort        = adv?.backendPort            ?? 5200;
-    final reconnectDelayMs   = adv?.signalrReconnectDelaysMs ?? 3000;
-    final maxRetries         = adv?.maxSignalrRetries        ?? 10;
+    final backendPort = adv?.backendPort ?? 5200;
+    final reconnectDelayMs = adv?.signalrReconnectDelaysMs ?? 3000;
+    final maxRetries = adv?.maxSignalrRetries ?? 10;
 
     _telemetryService = TelemetryService(
       backendPort: backendPort,
       reconnectDelayMs: reconnectDelayMs,
       maxRetries: maxRetries,
-      onProgressUpdate: (status, completed, total, percentComplete, target) {
-        state = state.copyWith(
-          status: status,
-          completed: completed,
-          total: total,
-          percentComplete: percentComplete,
-          target: target,
-        );
-      },
+      onProgressUpdate:
+          (scanId, status, completed, total, percentComplete, target) {
+            if (status == 'INITIALIZING' ||
+                state.currentScanId == null ||
+                state.currentScanId == scanId) {
+              final isDone =
+                  status == 'COMPLETED' ||
+                  status == 'ABORTED' ||
+                  status == 'FAILED';
+              state = state.copyWith(
+                status: status,
+                completed: completed,
+                total: total,
+                percentComplete: percentComplete,
+                target: target,
+                currentScanId: isDone ? null : scanId,
+              );
+            }
+          },
     );
 
     _telemetryService?.onRamUpdate = (data) {
@@ -83,12 +97,14 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       ref.read(cpuProvider.notifier).updateCpu(data);
     };
 
-    _telemetryService?.onDirectoryChunk = (path, chunk) {
-      ref.read(directoryProvider.notifier).receiveStreamChunk(path, chunk);
+    _telemetryService?.onDirectoryChunk = (scanId, path, chunk) {
+      ref
+          .read(directoryProvider.notifier)
+          .receiveStreamChunk(scanId, path, chunk);
     };
 
-    _telemetryService?.onDirectoryStreamComplete = (path) {
-      ref.read(directoryProvider.notifier).finalizeStream(path);
+    _telemetryService?.onDirectoryStreamComplete = (scanId, path) {
+      ref.read(directoryProvider.notifier).finalizeStream(scanId, path);
     };
 
     _telemetryService?.onNukeProgress = (percentage, target, completed) {
@@ -107,8 +123,12 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       if (currentProgress > 0.0 && currentProgress < 100.0) return;
 
       final currentPath = ref.read(directoryProvider).currentPath;
-      final normalizedCurrent = currentPath.replaceAll('\\\\', '/').toLowerCase();
-      final normalizedChanged = changedFolder.replaceAll('\\\\', '/').toLowerCase();
+      final normalizedCurrent = currentPath
+          .replaceAll('\\\\', '/')
+          .toLowerCase();
+      final normalizedChanged = changedFolder
+          .replaceAll('\\\\', '/')
+          .toLowerCase();
 
       if (normalizedCurrent == normalizedChanged) {
         appLogger.i('LIVE UPDATE: REFRESHING UI FOR $currentPath');
@@ -130,5 +150,5 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
 final telemetryProvider =
     StateNotifierProvider<TelemetryNotifier, TelemetryState>((ref) {
-  return TelemetryNotifier(ref);
-});
+      return TelemetryNotifier(ref);
+    });

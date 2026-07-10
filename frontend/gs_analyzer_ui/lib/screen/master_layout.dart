@@ -52,11 +52,13 @@ class MasterLayout extends ConsumerWidget {
         return const CpuMetricsScreen();
 
       case AppRoute.network:
-        return const Center(child: Text('NETWORK MODULE OFFLINE', style: HudTheme.headerCyan,));
+        return const Center(
+          child: Text('NETWORK MODULE OFFLINE', style: HudTheme.headerCyan),
+        );
 
       case AppRoute.thermal:
         return const ThermalModuleScreen();
-        
+
       case AppRoute.telemetryHistory:
         return const TelemetryHistoryScreen();
 
@@ -67,7 +69,9 @@ class MasterLayout extends ConsumerWidget {
         return const SettingsScreen();
 
       case AppRoute.dashboard:
-        return const Center(child: Text('MAIN DASHBOARD OFFLINE', style: HudTheme.headerCyan));
+        return const Center(
+          child: Text('MAIN DASHBOARD OFFLINE', style: HudTheme.headerCyan),
+        );
     }
   }
 }
