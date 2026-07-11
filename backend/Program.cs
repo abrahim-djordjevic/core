@@ -56,6 +56,19 @@ else
 	throw new PlatformNotSupportedException("OS not supported for CPU telemetry");
 }
 
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+{
+    builder.Services.AddScoped<IStartupManager, WindowsStartupManager>();
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Services.AddScoped<IStartupManager, LinuxStartupManager>();
+}
+else
+{
+    throw new PlatformNotSupportedException("OS not supported for startup management");
+}
+
 // Platform-specific thermal provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
