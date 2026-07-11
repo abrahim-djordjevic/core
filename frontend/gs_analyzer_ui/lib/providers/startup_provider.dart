@@ -4,8 +4,6 @@ import 'package:gs_analyzer_ui/models/startup_program.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/logger.dart';
 
-/// Holds the list of startup programs as an AsyncValue so the UI can render
-/// loading / error / data states. Loads immediately on first read.
 final startupProvider =
     StateNotifierProvider<StartupNotifier, AsyncValue<List<StartupProgram>>>(
   (ref) => StartupNotifier(ApiService())..load(),
@@ -27,8 +25,6 @@ class StartupNotifier extends StateNotifier<AsyncValue<List<StartupProgram>>> {
     }
   }
 
-  /// Optimistically flips the toggle, then calls the backend. Reverts the row
-  /// (and rethrows) if the call fails, so the caller can surface a message.
   Future<void> toggle(StartupProgram program) async {
     final target = !program.isEnabled;
     _patch(program.id, program.copyWith(isEnabled: target));
@@ -40,8 +36,6 @@ class StartupNotifier extends StateNotifier<AsyncValue<List<StartupProgram>>> {
     }
   }
 
-  /// Optimistically removes the row, then calls the backend. On failure it
-  /// reloads the authoritative list and rethrows.
   Future<void> remove(StartupProgram program) async {
     final current = state.value ?? const <StartupProgram>[];
     state = AsyncValue.data(
