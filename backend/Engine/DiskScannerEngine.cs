@@ -12,16 +12,8 @@ public class CacheEntry
 {
 	public long Size { get; set; }
 
-	// When the FOLDER's contents last changed on disk (dir.LastWriteTimeUtc).
-	// Used ONLY for content-staleness detection, never for TTL expiry.
 	public DateTime LastUpdated { get; set; }
-
-	// When WE last scanned/cached this folder. Used for TTL expiry and for
-	// grouping entries into scans. Distinct from LastUpdated.
 	public DateTime CachedAtUtc { get; set; }
-
-	// The top-level scan root (drive / browsed folder) this entry belongs to.
-	// Lets MaxCacheScans evict whole scans instead of individual folders.
 	public string? ScanRoot { get; set; }
 
 	public Dictionary<string, FileTypeEntry>? Extensions { get; set; }

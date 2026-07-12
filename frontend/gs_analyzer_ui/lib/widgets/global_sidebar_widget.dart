@@ -118,6 +118,12 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                     currentRoute,
                   ),
                   _buildNavItem(
+                    AppRoute.startup,
+                    'STARTUP',
+                    Icons.rocket_launch_outlined,
+                    currentRoute,
+                  ),
+                  _buildNavItem(
                     AppRoute.network,
                     'NETWORK',
                     Icons.account_tree_outlined,

@@ -14,6 +14,7 @@ import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 import 'package:gs_analyzer_ui/models/permission_audit_models.dart';
 import 'package:gs_analyzer_ui/models/telemetry_history_model.dart';
+import 'package:gs_analyzer_ui/models/startup_program.dart';
 
 class ApiService {
   final http.Client _client;
@@ -29,6 +30,7 @@ class ApiService {
   static const String telemetryHistoryUrl =
       'http://localhost:5200/api/telemetry/history';
   static const String tempFilesUrl = 'http://localhost:5200/api/tempfiles';
+  static const String startupUrl = 'http://localhost:5200/api/startup';
 
   Future<TelemetryHistoryResponse?> fetchTelemetryHistory(
     String metric,
@@ -575,10 +577,69 @@ class ApiService {
       );
     }
   }
+
+  Future<List<StartupProgram>> getStartupPrograms() async {
+    final response = await _client.get(Uri.parse(startupUrl));
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      final List data = decoded is List ? decoded : (decoded['data'] ?? []);
+      return data
+          .map((e) => StartupProgram.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception(
+      'Startup fetch failed [${response.statusCode}]: ${response.body}',
+    );
+  }
+
+  Future<void> setStartupEnabled(String id, bool enable) async {
+    final action = enable ? 'enable' : 'disable';
+    final uri = Uri.parse('$startupUrl/${Uri.encodeComponent(id)}/$action');
+    appLogger.i('STARTUP BRIDGE: ${action.toUpperCase()} -> $uri');
+    final response = await _client.post(uri);
+    _ensureStartupSuccess(response);
+  }
+
+  Future<void> deleteStartupProgram(String id) async {
+    final uri = Uri.parse('$startupUrl/${Uri.encodeComponent(id)}');
+    appLogger.i('STARTUP BRIDGE: DELETE -> $uri');
+    final response = await _client.delete(uri);
+    _ensureStartupSuccess(response);
+  }
+
+  void _ensureStartupSuccess(http.Response response) {
+    if (response.statusCode == 200) return;
+
+    String message;
+    try {
+      final body = jsonDecode(response.body);
+      message = body['error'] ?? body['message'] ?? response.body;
+    } catch (_) {
+      message = response.body;
+    }
+
+    if (response.statusCode == 403) {
+      throw StartupAdminRequiredException(message);
+    }
+    throw Exception('Startup action failed [${response.statusCode}]: $message');
+  }
 }
 
 ExtensionBreakdownResult _parseBreakdown(String body) {
   return ExtensionBreakdownResult.fromJson(
     jsonDecode(body) as Map<String, dynamic>,
   );
+}
+
+class StartupAdminRequiredException implements Exception {
+  final String message;
+  const StartupAdminRequiredException([
+    this.message =
+        'Administrator privileges are required to modify system-scope startup entries.',
+  ]);
+
+  @override
+  String toString() => message;
 }
