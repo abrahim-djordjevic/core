@@ -82,9 +82,9 @@ public class DiskScannerEngine : IDiskScannerEngine
 			items.AddRange(dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
 			items.AddRange(dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
 		}
-		catch (UnauthorizedAccessException)
+		catch (UnauthorizedAccessException ex)
 		{
-
+			_logger.LogDebug(ex, "Access denied while listing {Path}", path);
 		}
 
 		return items;
@@ -358,7 +358,10 @@ public class DiskScannerEngine : IDiskScannerEngine
 
 			_ = _hub.Clients.All.SendAsync("SectorChanged", folderThatChanged.Replace("\\", "/"));
 		}
-		catch { }
+		catch(Exception ex)
+		{
+			_logger.LogDebug(ex, "Failed to handle file system change: {ChangeType} on {Name}", e.ChangeType, e.Name);
+		}
 	}
 
 	// Fix: Apply same lock pattern scan path got(To prevent concurrency race)
