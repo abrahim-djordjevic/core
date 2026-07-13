@@ -39,7 +39,6 @@ public class DiskScannerEngine : IDiskScannerEngine
 	private readonly IHubContext<SystemHub> _hub;
 	private readonly ILogger<DiskScannerEngine> _logger;
 	private int _scannedFilesCount = 0;
-	private const string EmptyFolderSentinel = "EMPTY_FOLDER_NO_FILES_HERE";
 
 	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger)
 	{
@@ -497,22 +496,6 @@ public class DiskScannerEngine : IDiskScannerEngine
 		}
 
 		_logger.LogInformation("Cache cleared — memory wiped, scanner_memory.json deleted");
-	}
-
-	// TODO Clean up this since there is a nuke protocol service existing.
-	public void ExecuteDelete(FileSystemInfo item)
-	{
-		if (item.Name == EmptyFolderSentinel) return;
-
-		try
-		{
-			if (item is DirectoryInfo dir) dir.Delete(true);
-			else if (item is FileInfo file) file.Delete();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Failed to delete item");
-		}
 	}
 
 	public void InvalidatePaths(IEnumerable<string> paths)
