@@ -498,22 +498,6 @@ public class DiskScannerEngine : IDiskScannerEngine
 		_logger.LogInformation("Cache cleared — memory wiped, scanner_memory.json deleted");
 	}
 
-	// TODO Clean up this since there is a nuke protocol service existing.
-	public void ExecuteDelete(FileSystemInfo item)
-	{
-		if (item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
-
-		try
-		{
-			if (item is DirectoryInfo dir) dir.Delete(true);
-			else if (item is FileInfo file) file.Delete();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Failed to delete item");
-		}
-	}
-
 	public void InvalidatePaths(IEnumerable<string> paths)
 	{
 		var nukedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
