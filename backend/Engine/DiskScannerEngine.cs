@@ -39,6 +39,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 	private readonly IHubContext<SystemHub> _hub;
 	private readonly ILogger<DiskScannerEngine> _logger;
 	private int _scannedFilesCount = 0;
+	private const string EmptyFolderSentinel = "EMPTY_FOLDER_NO_FILES_HERE";
 
 	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger)
 	{
@@ -501,7 +502,7 @@ public class DiskScannerEngine : IDiskScannerEngine
 	// TODO Clean up this since there is a nuke protocol service existing.
 	public void ExecuteDelete(FileSystemInfo item)
 	{
-		if (item.Name == "EMPTY_FOLDER_NO_FILES_HERE") return;
+		if (item.Name == EmptyFolderSentinel) return;
 
 		try
 		{
